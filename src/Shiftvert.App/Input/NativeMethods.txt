@@ -1,0 +1,12 @@
+SetWindowsHookEx
+UnhookWindowsHookEx
+CallNextHookEx
+GetMessage
+PeekMessage
+PostThreadMessage
+GetCurrentThreadId
+GetAsyncKeyState
+GetSystemMetrics
+MSLLHOOKSTRUCT
+KBDLLHOOKSTRUCT
+MSG
