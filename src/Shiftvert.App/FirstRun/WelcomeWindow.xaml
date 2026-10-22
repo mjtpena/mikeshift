@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="Shiftvert.App.FirstRun.WelcomeWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="Welcome to Shiftvert">
+
+    <ScrollViewer>
+        <StackPanel Padding="32,28,32,28" Spacing="16" MaxWidth="520">
+            <TextBlock Text="Welcome to Shiftvert" Style="{StaticResource TitleTextBlockStyle}" />
+            <TextBlock TextWrapping="Wrap"
+                       Text="Shiftvert lives in the notification area, next to the clock (check the ^ overflow if you do not see it). It converts files without opening anything." />
+
+            <StackPanel Spacing="12">
+                <StackPanel Spacing="2">
+                    <TextBlock Text="Shift-drag" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                    <TextBlock TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                               Text="Start dragging a file or folder in Explorer, then hold Shift. A wheel of formats appears under the cursor: drop on one and a converted copy appears beside the original." />
+                </StackPanel>
+                <StackPanel Spacing="2">
+                    <TextBlock Text="Ctrl for tools" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                    <TextBlock TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                               Text="While the wheel is open, press Ctrl (or tick the mouse wheel) to switch to tools such as Compress, Resize, Crop, Trim, Merge and Zip. Press Shift to go back to formats." />
+                </StackPanel>
+                <StackPanel Spacing="2">
+                    <TextBlock Text="Convert Files…" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                    <TextBlock TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                               Text="Prefer not to drag? Click the tray icon and choose Convert Files… to pick files from a dialog." />
+                </StackPanel>
+            </StackPanel>
+
+            <TextBlock TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                       Text="Originals are never touched, and Shiftvert never uses the network." />
+
+            <CheckBox x:Name="OpenAtLoginBox" Content="Open at login" />
+
+            <Button x:Name="StartButton" Content="Get started" Style="{StaticResource AccentButtonStyle}"
+                    HorizontalAlignment="Right" Click="OnStartClicked" />
+        </StackPanel>
+    </ScrollViewer>
+</Window>

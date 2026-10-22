@@ -1,10 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Placeholder manifest (W1). W4b owns the final one: startupTask, appExecutionAlias, long paths, real assets. -->
+<!-- W2f: startup task, execution alias, display names. W4b owns packaging polish (final assets, publisher, bundling the CLI). -->
 <Package
   xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
   xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:uap3="http://schemas.microsoft.com/appx/manifest/uap/windows10/3"
+  xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
-  IgnorableNamespaces="uap rescap">
+  IgnorableNamespaces="uap uap3 desktop rescap">
 
   <Identity
     Name="Shiftvert"
@@ -33,6 +35,21 @@
         BackgroundColor="transparent"
         Square150x150Logo="Assets\Square150x150Logo.png"
         Square44x44Logo="Assets\Square44x44Logo.png" />
+
+      <Extensions>
+        <!-- Open at Login (StartupService, TaskId must match). Disabled until the user turns it on. -->
+        <desktop:Extension Category="windows.startupTask" Executable="Shiftvert.exe" EntryPoint="Windows.FullTrustApplication">
+          <desktop:StartupTask TaskId="ShiftvertStartup" Enabled="false" DisplayName="Shiftvert" />
+        </desktop:Extension>
+
+        <!-- `shiftvert.exe` on PATH. TODO(W4b): point this at the CLI executable (Shiftvert.Cli) once it is bundled into the
+             package; until then the alias launches the tray app itself. -->
+        <uap3:Extension Category="windows.appExecutionAlias" Executable="Shiftvert.exe" EntryPoint="Windows.FullTrustApplication">
+          <uap3:AppExecutionAlias>
+            <desktop:ExecutionAlias Alias="shiftvert.exe" />
+          </uap3:AppExecutionAlias>
+        </uap3:Extension>
+      </Extensions>
     </Application>
   </Applications>
 

@@ -1,0 +1,7 @@
+FileOpenDialog
+IFileOpenDialog
+IShellItem
+IShellItemArray
+FILEOPENDIALOGOPTIONS
+SIGDN
+GetSystemMetrics

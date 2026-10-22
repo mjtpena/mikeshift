@@ -14,6 +14,8 @@
     <Platforms>x64;ARM64</Platforms>
     <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
     <DefaultLanguage>en-US</DefaultLanguage>
+    <!-- Program.cs provides Main (single-instance redirection happens before XAML starts). -->
+    <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>
@@ -31,7 +33,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="Assets\**" />
+    <!-- Also copied beside the exe so unpackaged dev runs find the tray icon and chime (packaged: same folder in the install dir). -->
+    <Content Include="Assets\**" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
