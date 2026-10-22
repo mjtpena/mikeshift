@@ -99,6 +99,7 @@ public static class PdfConverter
     public static async Task<string> ToImagesAsync(string input, PdfPageFormat format, CancellationToken ct)
     {
         var bytes = PdfGuard.ReadBytes(input);
+        PdfGuard.RequireNotEncrypted(bytes);
         var doc = await PdfRender.OpenAsync(bytes).ConfigureAwait(false);
         var ext = format == PdfPageFormat.Png ? ".png" : ".jpg";
         var count = (int)doc.PageCount;
@@ -141,6 +142,7 @@ public static class PdfConverter
     public static async Task<string> ToTextAsync(string input, CancellationToken ct)
     {
         var bytes = PdfGuard.ReadBytes(input);
+        PdfGuard.RequireNotEncrypted(bytes);
         var text = await Task.Run(() => PdfText.Extract(bytes, ct), ct).ConfigureAwait(false);
 
         if (string.IsNullOrWhiteSpace(text)) throw new ConversionException(PdfText.ScanMessage);
