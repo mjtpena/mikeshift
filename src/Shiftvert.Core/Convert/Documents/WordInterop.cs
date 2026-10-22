@@ -1,4 +1,7 @@
+using System.Diagnostics;
 using System.Runtime.InteropServices;
+using Windows.Win32;
+using Windows.Win32.Foundation;
 
 namespace Shiftvert.Core.Documents;
 
@@ -6,6 +9,8 @@ namespace Shiftvert.Core.Documents;
 /// Optional high-fidelity path through an installed Microsoft Word (late-bound COM, no interop assemblies): DOC/DOCX to PDF
 /// (<c>ExportAsFixedFormat</c>) and legacy DOC to the other formats (<c>SaveAs2</c>). Word is started invisible, on a dedicated
 /// STA thread, works on a private copy of the input and is always quit again. Only used when <see cref="Capabilities.WordCom"/>.
+/// A conversion that does not finish within <see cref="Timeout"/> (or is cancelled) has its own WINWORD.EXE killed, so a hung
+/// or prompting Word can never block the job forever.
 /// </summary>
 internal static class WordInterop
 {
@@ -17,6 +22,48 @@ internal static class WordInterop
     private const int WdFormatOpenDocumentText = 23;
     private const int WdExportFormatPdf = 17;
     private const int MsoEncodingUtf8 = 65001;
+
+    /// <summary>How long one Word conversion may take before Word is killed and the job fails (test hook: settable).</summary>
+    internal static TimeSpan Timeout { get; set; } = TimeSpan.FromSeconds(90);
+
+    // A password that no document uses: a protected file fails fast instead of making Word prompt.
+    private const string BogusPassword = "\u0001";
+
+    /// <summary>The WINWORD.EXE processes that existed before this conversion, and the one it started (once known).</summary>
+    private sealed class Instance(HashSet<int> before)
+    {
+        public HashSet<int> Before { get; } = before;
+        public volatile int Pid;
+    }
+
+    private static HashSet<int> WordPids()
+    {
+        var pids = new HashSet<int>();
+        foreach (var p in Process.GetProcessesByName("WINWORD"))
+        {
+            using (p) pids.Add(p.Id);
+        }
+        return pids;
+    }
+
+    /// <summary>Kills the Word process this conversion started (never one that was already running).</summary>
+    private static void Kill(Instance instance)
+    {
+        var pids = instance.Pid != 0 ? [instance.Pid] : WordPids().Except(instance.Before).ToList();
+        foreach (var pid in pids)
+        {
+            if (instance.Before.Contains(pid)) continue;
+            try
+            {
+                using var p = Process.GetProcessById(pid);
+                if (string.Equals(p.ProcessName, "WINWORD", StringComparison.OrdinalIgnoreCase)) p.Kill();
+            }
+            catch (Exception)
+            {
+                // already gone
+            }
+        }
+    }
 
     public static int SaveFormat(DocFormat format) => format switch
     {
@@ -44,12 +91,13 @@ internal static class WordInterop
             File.Copy(input, copy);
             var produced = Path.Combine(work, "output" + ExtensionOf(format));
 
+            var instance = new Instance(WordPids());
             var tcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
             var thread = new Thread(() =>
             {
                 try
                 {
-                    Run(copy, format, produced);
+                    Run(copy, format, produced, instance);
                     tcs.SetResult();
                 }
                 catch (Exception ex)
@@ -61,9 +109,20 @@ internal static class WordInterop
             thread.SetApartmentState(ApartmentState.STA);
             thread.Start();
 
+            using var limit = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            limit.CancelAfter(Timeout);
             try
             {
-                await tcs.Task.ConfigureAwait(false);
+                await tcs.Task.WaitAsync(limit.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                // Timed out or cancelled: take Word down so the COM thread unblocks, then give it a moment to unwind.
+                Kill(instance);
+                _ = tcs.Task.ContinueWith(static t => _ = t.Exception, TaskScheduler.Default);
+                await Task.WhenAny(tcs.Task, Task.Delay(3000, CancellationToken.None)).ConfigureAwait(false);
+                if (ct.IsCancellationRequested) throw new OperationCanceledException(ct);
+                throw new ConversionException("Word didn't respond, so the conversion was stopped. Close any Word dialogs and try again.");
             }
             catch (ConversionException)
             {
@@ -96,7 +155,11 @@ internal static class WordInterop
         _ => ".odt",
     };
 
-    private static void Run(string input, DocFormat format, string output)
+    // 5408/5174-style VBA errors ("password is incorrect") surface as HRESULT 0x800A1520; the text check covers the English message.
+    private static bool IsPasswordError(COMException ex) =>
+        (ex.HResult & 0xFFFF) == 0x1520 || ex.Message.Contains("password", StringComparison.OrdinalIgnoreCase);
+
+    private static void Run(string input, DocFormat format, string output, Instance instance)
     {
         var type = Type.GetTypeFromProgID("Word.Application")
                    ?? throw new ConversionException("Microsoft Word isn't available.");
@@ -105,13 +168,30 @@ internal static class WordInterop
         try
         {
             word = Activator.CreateInstance(type) ?? throw new ConversionException("Microsoft Word couldn't be started.");
+            try
+            {
+                PInvoke.GetWindowThreadProcessId(new HWND((nint)(int)word.Hwnd), out var pid);
+                instance.Pid = (int)pid;
+            }
+            catch (Exception)
+            {
+                // Hwnd is optional; the before/after process diff finds the instance instead.
+            }
             word.Visible = false;
             word.DisplayAlerts = 0;               // wdAlertsNone
             try { word.AutomationSecurity = 3; } catch (Exception) { /* msoAutomationSecurityForceDisable; optional */ }
 
-            doc = word.Documents.Open(
-                FileName: input, ConfirmConversions: false, ReadOnly: true, AddToRecentFiles: false,
-                Visible: false, NoEncodingDialog: true, OpenAndRepair: false);
+            try
+            {
+                doc = word.Documents.Open(
+                    FileName: input, ConfirmConversions: false, ReadOnly: true, AddToRecentFiles: false,
+                    PasswordDocument: BogusPassword, WritePasswordDocument: BogusPassword,
+                    Visible: false, NoEncodingDialog: true, OpenAndRepair: false);
+            }
+            catch (COMException ex) when (IsPasswordError(ex))
+            {
+                throw new ConversionException("This document is password-protected, so Word can't open it.", ex);
+            }
 
             if (format == DocFormat.Pdf)
             {

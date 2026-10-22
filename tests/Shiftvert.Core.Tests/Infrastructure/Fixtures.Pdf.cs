@@ -136,6 +136,20 @@ public static partial class Fixtures
         return Save(doc);
     }
 
+    /// <summary>A text PDF with an owner password only (print/copy restrictions): opens with an empty user password.</summary>
+    public static byte[] PdfOwnerPasswordOnly()
+    {
+        PdfFonts.EnsureInitialized();
+        using var doc = new PdfDocument();
+        var page = doc.AddPage();
+        using (var gfx = XGraphics.FromPdfPage(page))
+            gfx.DrawString("Restricted but readable.", new XFont("Arial", 14), XBrushes.Black, 60, 80);
+        doc.SecuritySettings.OwnerPassword = "owner-secret";
+        doc.SecuritySettings.PermitPrint = false;
+        doc.SecuritySettings.PermitExtractContent = false;
+        return Save(doc);
+    }
+
     /// <summary>
     /// Hebrew text. <paramref name="reversed"/> = false stores it in logical order (final letters at word ends, extractable);
     /// true stores the visual order (every word and the line reversed: final letters at word starts), as broken producers do.

@@ -217,7 +217,7 @@ public class DocumentConversionTests
 
         var text = File.ReadAllText(path, new UTF8Encoding(false, true));
         Assert.Contains("<meta charset=\"utf-8\">", text);
-        Assert.Contains("<p dir=\"rtl\">" + Fixtures.DocHebrewText + "</p>", text);
+        Assert.Contains("<p dir=\"rtl\" style=\"white-space:pre-wrap\">" + Fixtures.DocHebrewText + "</p>", text);
         Assert.Contains("a &lt; b &amp; c &gt; d &quot;q&quot;", text);
         Assert.DoesNotContain("<script", text);
         Assert.Equal(["P:" + Fixtures.DocHebrewText, "P:a < b & c > d \"q\""], Outline(Read(path)));
@@ -364,6 +364,104 @@ public class DocumentConversionTests
         var output = await ConvertAsync(input, DocFormat.Pdf);
         var flat = PdfFlat(output).Replace(" ", "");
         Assert.Equal(400, flat.Count(c => c == 'W'));
+    }
+
+    [Fact]
+    public async Task Txt_to_html_to_txt_keeps_leading_and_repeated_spaces_tabs_and_blank_lines()
+    {
+        using var tmp = new TempDir();
+        const string text = "  indented two\r\nsingle then  double  spaces\r\n\tTabbed\r\n\r\n\r\nafter two blank lines\r\n    \r\ntrailing   \r\nlast line\r\n";
+        var txt = tmp.WriteFile("spaces.txt", text);
+
+        var html = await ConvertAsync(txt, DocFormat.Html);
+        var html2 = File.ReadAllText(html);
+        Assert.DoesNotContain("&nbsp;", html2);
+        Assert.DoesNotContain(' ', html2);
+        Assert.Contains("white-space:pre-wrap", html2);
+
+        var back = await ConvertAsync(html, DocFormat.Txt);
+        Assert.Equal(text, File.ReadAllText(back));
+    }
+
+    [Fact]
+    public void Html_writer_keeps_blank_paragraphs_and_the_reader_maps_nbsp_back_to_a_space()
+    {
+        var model = new DocModel();
+        model.Blocks.Add(DocParagraph.Plain("one"));
+        model.Blocks.Add(new DocParagraph());
+        model.Blocks.Add(DocParagraph.Plain("two"));
+        using var ms = new MemoryStream();
+        HtmlWriter.Write(model, ms, "t");
+        var written = Encoding.UTF8.GetString(ms.ToArray());
+        Assert.Contains("<p style=\"white-space:pre-wrap\"><br></p>", written);
+
+        var read = HtmlReader.Read(written);
+        Assert.Equal(["one", "", "two"], read.Blocks.OfType<DocParagraph>().Select(p => p.Text).ToArray());
+
+        // HTML from older Shiftvert versions (or elsewhere) used &nbsp; for indentation.
+        var legacy = HtmlReader.Read("<p>&nbsp;&nbsp;a&nbsp;b</p>");
+        Assert.Equal("  a b", Assert.IsType<DocParagraph>(Assert.Single(legacy.Blocks)).Text);
+    }
+
+    [Fact]
+    public async Task Pre_wrap_blocks_from_other_html_keep_their_spaces_but_plain_blocks_still_collapse()
+    {
+        using var tmp = new TempDir();
+        var html = tmp.WriteFile("mix.html", "<p style=\"white-space: pre-wrap\">  a   b</p><p>c    d\n  e</p>");
+        var back = await ConvertAsync(html, DocFormat.Txt);
+        Assert.Equal("  a   b\r\nc d e\r\n", File.ReadAllText(back));
+    }
+
+    [Theory]
+    [InlineData("日本語のテキスト", PdfDocWriter.Face.Cjk)]            // Japanese: Han + Hiragana + Katakana
+    [InlineData("안녕하세요 세계", PdfDocWriter.Face.Hangul)]             // Korean
+    [InlineData("नमस्ते दुनिया", PdfDocWriter.Face.Indic)]  // Hindi
+    [InlineData("สวัสดีชาวโลก", PdfDocWriter.Face.Thai)] // Thai
+    [InlineData("★→♫", PdfDocWriter.Face.Symbol)]
+    public async Task Pdf_renders_non_latin_scripts_with_a_fallback_font_not_boxes(string line, PdfDocWriter.Face face)
+    {
+        if (PdfDocWriter.FamilyFor(face) is null) return; // the system has no font for this script: nothing to assert
+        using var tmp = new TempDir();
+        var input = tmp.WriteFile("scripts.txt", "Hello before\n" + line + "\nAfter line");
+        var output = await ConvertAsync(input, DocFormat.Pdf);
+
+        var text = PdfText(output).Replace("\r", "").Replace("\n", "");
+        Assert.Contains(line.Replace(" ", ""), text.Replace(" ", ""));
+        Assert.DoesNotContain('\0', text);
+        Assert.Contains("Hello before", text);
+        Assert.Contains("After line", text);
+    }
+
+    [Fact]
+    public async Task Pdf_mixed_script_line_keeps_latin_and_cjk_in_order()
+    {
+        if (PdfDocWriter.FamilyFor(PdfDocWriter.Face.Cjk) is null) return;
+        using var tmp = new TempDir();
+        var input = tmp.WriteFile("mixed.txt", "Tokyo 東京 2024 から done");
+        var output = await ConvertAsync(input, DocFormat.Pdf);
+
+        // Order by position on the line (the extractor groups words by font).
+        using var pdf = UglyToad.PdfPig.PdfDocument.Open(output);
+        var onLine = string.Concat(pdf.GetPage(1).Letters.OrderBy(l => l.BoundingBox.Left).Select(l => l.Value)).Replace(" ", "");
+        Assert.Equal("Tokyo東京2024からdone", onLine);
+    }
+
+    [Fact]
+    public void Script_classifier_maps_code_points_to_font_groups()
+    {
+        Assert.Equal(PdfDocWriter.Face.Default, PdfDocWriter.FaceOf('A'));
+        Assert.Equal(PdfDocWriter.Face.Default, PdfDocWriter.FaceOf(0x0416)); // Cyrillic
+        Assert.Equal(PdfDocWriter.Face.Default, PdfDocWriter.FaceOf(0x05D0)); // Hebrew
+        Assert.Equal(PdfDocWriter.Face.Default, PdfDocWriter.FaceOf(0x0627)); // Arabic
+        Assert.Equal(PdfDocWriter.Face.Cjk, PdfDocWriter.FaceOf(0x4E2D));
+        Assert.Equal(PdfDocWriter.Face.Cjk, PdfDocWriter.FaceOf(0x3042));
+        Assert.Equal(PdfDocWriter.Face.Cjk, PdfDocWriter.FaceOf(0x30AB));
+        Assert.Equal(PdfDocWriter.Face.Hangul, PdfDocWriter.FaceOf(0xD55C));
+        Assert.Equal(PdfDocWriter.Face.Indic, PdfDocWriter.FaceOf(0x0928));
+        Assert.Equal(PdfDocWriter.Face.Indic, PdfDocWriter.FaceOf(0x0B95)); // Tamil
+        Assert.Equal(PdfDocWriter.Face.Thai, PdfDocWriter.FaceOf(0x0E01));
+        Assert.Equal(PdfDocWriter.Face.Symbol, PdfDocWriter.FaceOf(0x2605));
+        Assert.Equal(PdfDocWriter.Face.Emoji, PdfDocWriter.FaceOf(0x1F600));
     }
 
     [Fact]
@@ -537,5 +635,87 @@ public class DocumentConversionTests
             Assert.True(new FileInfo(output).Length > 0, f.ToString());
         }
         Assert.Contains("Quarterly Report", File.ReadAllText(await ConvertAsync(doc, DocFormat.Txt, Capabilities.Current)));
+    }
+
+    private static HashSet<int> WordPids() =>
+        System.Diagnostics.Process.GetProcessesByName("WINWORD").Select(p => { using (p) return p.Id; }).ToHashSet();
+
+    private static void MakePasswordProtectedDoc(string path)
+    {
+        dynamic word = Activator.CreateInstance(Type.GetTypeFromProgID("Word.Application")!)!;
+        try
+        {
+            word.Visible = false;
+            word.DisplayAlerts = 0;
+            dynamic doc = word.Documents.Add();
+            doc.Content.Text = "secret";
+            doc.SaveAs2(FileName: path, FileFormat: 0, Password: "pw");
+            doc.Close(SaveChanges: 0);
+        }
+        finally
+        {
+            word.Quit(SaveChanges: 0);
+        }
+    }
+
+    [SkipIfNoCapability(nameof(Capabilities.WordCom))]
+    public async Task Word_fails_fast_with_a_clear_message_on_a_password_protected_doc()
+    {
+        using var tmp = new TempDir();
+        var path = tmp.Combine("locked.doc");
+        MakePasswordProtectedDoc(path);
+
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        var ex = await Assert.ThrowsAsync<ConversionException>(() => ConvertAsync(path, DocFormat.Txt, Capabilities.Current));
+
+        Assert.Contains("password", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.True(clock.Elapsed < TimeSpan.FromSeconds(60), clock.Elapsed.ToString());
+        Assert.Empty(Directory.GetFileSystemEntries(tmp.Path, "*.shiftvert-tmp"));
+    }
+
+    [SkipIfNoCapability(nameof(Capabilities.WordCom))]
+    public async Task Word_conversion_that_times_out_is_killed_and_reports_it()
+    {
+        using var tmp = new TempDir();
+        var doc = tmp.WriteFile("legacy.doc", Encoding.ASCII.GetBytes(Fixtures.RtfSample()));
+        var before = WordPids();
+        var previous = WordInterop.Timeout;
+        WordInterop.Timeout = TimeSpan.FromMilliseconds(100); // Word needs far longer than this just to start
+        try
+        {
+            var ex = await Assert.ThrowsAsync<ConversionException>(() => ConvertAsync(doc, DocFormat.Txt, Capabilities.Current));
+            Assert.Contains("didn't respond", ex.Message);
+        }
+        finally
+        {
+            WordInterop.Timeout = previous;
+        }
+
+        await AssertNoNewWordProcess(before);
+        Assert.Empty(Directory.GetFileSystemEntries(tmp.Path, "*.shiftvert-tmp"));
+    }
+
+    [SkipIfNoCapability(nameof(Capabilities.WordCom))]
+    public async Task Word_conversion_honours_cancellation_and_kills_its_Word()
+    {
+        using var tmp = new TempDir();
+        var doc = tmp.WriteFile("legacy.doc", Encoding.ASCII.GetBytes(Fixtures.RtfSample()));
+        var before = WordPids();
+        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            DocumentConverter.ToFormatAsync(doc, DocFormat.Txt, Capabilities.Current, cts.Token));
+
+        await AssertNoNewWordProcess(before);
+    }
+
+    private static async Task AssertNoNewWordProcess(HashSet<int> before)
+    {
+        for (var i = 0; i < 50; i++)
+        {
+            if (!WordPids().Except(before).Any()) return;
+            await Task.Delay(100);
+        }
+        Assert.Empty(WordPids().Except(before));
     }
 }

@@ -102,7 +102,8 @@ public sealed class TrayController : IDisposable
         var menu = new PopupMenu();
         menu.Items.Add(new PopupMenuItem("Shift-drag files to convert", (_, _) => { }) { Enabled = false });
         menu.Items.Add(new PopupMenuSeparator());
-        menu.Items.Add(new PopupMenuItem("Convert Files…\tCtrl+O", (_, _) => Post(ConvertFiles)));
+        // Access key (C) instead of a "Ctrl+O" label: a global Ctrl+O hotkey would hijack Open in every other app.
+        menu.Items.Add(new PopupMenuItem("&Convert Files…", (_, _) => Post(ConvertFiles)));
         menu.Items.Add(new PopupMenuItem("Open at Login", (_, _) => Post(() => _ = ToggleOpenAtLoginAsync())) { Checked = _openAtLogin });
         menu.Items.Add(new PopupMenuItem("Settings…", (_, _) => Post(() => SettingsWindow.ShowSingleton(_services))));
         menu.Items.Add(new PopupMenuSeparator());

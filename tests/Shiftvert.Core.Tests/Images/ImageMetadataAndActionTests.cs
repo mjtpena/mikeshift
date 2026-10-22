@@ -164,6 +164,55 @@ public class ImageActionTests
         Assert.False(File.Exists(tmp.Combine("b cropped.png")));
     }
 
+    [Theory]
+    [InlineData("anim.gif", "Animated")]
+    [InlineData("pages.tif", "2 pages")]
+    [InlineData("anim.png", "Animated")]
+    public async Task Crop_refuses_animated_and_multi_page_files_before_opening_the_editor(string name, string expected)
+    {
+        using var tmp = new TempDir();
+        var bytes = name switch
+        {
+            "anim.gif" => Fixtures.Gif(32, 24, animated: true),
+            "pages.tif" => Fixtures.TiffMultiFrame(32, 24, frames: 2),
+            _ => Fixtures.AnimatedPng(),
+        };
+        var path = tmp.WriteFile(name, bytes);
+        var interaction = new FakeInteraction(new CropChoice(new RectPx(0, 0, 8, 8), 8, 8));
+
+        var result = await Action("Crop").Run([path], Ctx(interaction), default);
+
+        Assert.True(result.AllFailed);
+        Assert.Contains(expected, result.AllFailedMessage);
+        Assert.Equal(0, interaction.CropRequests); // the editor was never asked
+        Assert.Empty(result.Outputs);
+    }
+
+    [Fact]
+    public async Task Crop_of_a_still_image_still_opens_the_editor()
+    {
+        using var tmp = new TempDir();
+        var png = tmp.WriteFile("still.png", Fixtures.PngRgb(32, 24));
+        var interaction = new FakeInteraction(new CropChoice(new RectPx(0, 0, 8, 8), 8, 8));
+
+        var result = await Action("Crop").Run([png], Ctx(interaction), default);
+
+        Assert.Equal(1, interaction.CropRequests);
+        Assert.Single(result.Outputs);
+    }
+
+    [Fact]
+    public void Compress_is_hidden_for_heic_selections_when_this_pc_cannot_encode_heic()
+    {
+        var compress = Action("Compress");
+        string[] heic = [@"C:\x\a.heic", @"C:\x\b.HEIF"];
+
+        Assert.False(compress.IsVisibleFor(heic, NoHeic));
+        Assert.True(compress.IsVisibleFor(heic, Capabilities.All));                      // HEIC encoder present: HEIC stays HEIC
+        Assert.True(compress.IsVisibleFor([@"C:\x\a.heic", @"C:\x\c.jpg"], NoHeic));     // a JPG in the mix can still be compressed
+        Assert.True(compress.IsVisibleFor([@"C:\x\c.jpg"], NoHeic));
+    }
+
     private sealed class CountingCrop(Func<CropChoice?> next) : IInteraction
     {
         public Task<CropChoice?> ChooseCropAsync(string path, CancellationToken ct) => Task.FromResult(next());

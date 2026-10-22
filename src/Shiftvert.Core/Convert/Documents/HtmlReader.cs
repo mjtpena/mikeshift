@@ -35,6 +35,7 @@ public static class HtmlReader
 
         private DocParagraph? _cur;
         private int _bold, _italic, _underline, _pre;
+        private bool _keepWs, _nextKeepWs; // current / next block is white-space:pre or pre-wrap: spaces, tabs and blank lines are content
         private bool _inTh;
         private readonly List<string?> _links = [];
         private readonly List<bool> _lists = [];
@@ -175,6 +176,7 @@ public static class HtmlReader
             if (hasDir && !IsVoid(name) && !selfClosing) _dirs.Add((name, rtl));
 
             var pageBreak = attrs.TryGetValue("style", out var style) && HasPageBreakBefore(style);
+            _nextKeepWs = style is not null && HasPreservedWhitespace(style);
 
             switch (name)
             {
@@ -302,6 +304,17 @@ public static class HtmlReader
                    || h.StartsWith("mailto:", StringComparison.OrdinalIgnoreCase);
         }
 
+        private static bool HasPreservedWhitespace(string style)
+        {
+            var s = style.Replace(" ", "").ToLowerInvariant();
+            var at = s.IndexOf("white-space:", StringComparison.Ordinal);
+            if (at < 0) return false;
+            var value = s[(at + "white-space:".Length)..];
+            var end = value.IndexOfAny([';', '!']);
+            if (end >= 0) value = value[..end];
+            return value is "pre" or "pre-wrap" or "break-spaces";
+        }
+
         private static bool HasPageBreakBefore(string style)
         {
             var s = style.Replace(" ", "").ToLowerInvariant();
@@ -323,6 +336,7 @@ public static class HtmlReader
         {
             FlushParagraph();
             if (pageBreak) AddBlock(new DocPageBreak());
+            _keepWs = _nextKeepWs;
             _cur = new DocParagraph { Kind = kind, Level = level, Ordered = ordered, Rtl = CurrentRtl };
         }
 
@@ -334,9 +348,9 @@ public static class HtmlReader
 
         private void AddText(string text, bool keepLeading)
         {
-            if (_pre > 0 || keepLeading)
+            if (_pre > 0 || _keepWs || keepLeading)
             {
-                text = text.Replace("\r\n", "\n").Replace('\r', '\n');
+                text = text.Replace("\r\n", "\n").Replace('\r', '\n').Replace('\u00A0', ' ');
                 if (_pre > 0 && _cur is { Runs.Count: 0 } && text.StartsWith('\n') && !keepLeading) text = text[1..];
             }
             else
@@ -353,7 +367,7 @@ public static class HtmlReader
                     }
                     else
                     {
-                        sb.Append(ch);
+                        sb.Append(ch == '\u00A0' ? ' ' : ch); // &nbsp; is a space that does not collapse
                         lastSpace = false;
                     }
                 }
@@ -375,24 +389,29 @@ public static class HtmlReader
         private void FlushParagraph()
         {
             var p = _cur;
+            var keep = _keepWs;
             _cur = null;
+            _keepWs = false;
             if (p is null) return;
 
+            // In a white-space:pre-wrap block a block made only of line breaks (<p><br></p>) is a blank line, and spaces are content.
+            var blankLine = keep && p.Runs.Count > 0 && p.Runs.All(r => r.Text.All(c => c == '\n'));
+            var trailing = keep ? new[] { '\n', '\r' } : new[] { ' ', '\n', '\t', '\r' };
             for (var k = p.Runs.Count - 1; k >= 0; k--)
             {
-                var trimmed = p.Runs[k].Text.TrimEnd(' ', '\n', '\t', '\r');
+                var trimmed = p.Runs[k].Text.TrimEnd(trailing);
                 if (trimmed.Length == 0) { p.Runs.RemoveAt(k); continue; }
                 p.Runs[k] = p.Runs[k] with { Text = trimmed };
                 break;
             }
-            // Leading breaks are not content either.
-            while (p.Runs.Count > 0 && p.Runs[0].Text.TrimStart('\n').Length != p.Runs[0].Text.Length)
+            // Leading breaks are not content either (except in a preserved block, where they are blank lines).
+            while (!keep && p.Runs.Count > 0 && p.Runs[0].Text.TrimStart('\n').Length != p.Runs[0].Text.Length)
             {
                 var t = p.Runs[0].Text.TrimStart('\n');
                 if (t.Length == 0) p.Runs.RemoveAt(0);
                 else { p.Runs[0] = p.Runs[0] with { Text = t }; break; }
             }
-            if (p.Runs.Count == 0) return;
+            if (p.Runs.Count == 0 && !blankLine) return;
             if (p.Kind == ParagraphKind.Heading)
                 for (var k = 0; k < p.Runs.Count; k++)
                     p.Runs[k] = p.Runs[k] with { Bold = false, Italic = false };

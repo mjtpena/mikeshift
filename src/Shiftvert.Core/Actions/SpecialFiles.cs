@@ -11,6 +11,14 @@ internal static class SpecialFiles
     private const uint ReparseTagLxChr = 0x80000025;
     private const uint ReparseTagLxBlk = 0x80000026;
 
+    private const uint ReparseTagNameSurrogateBit = 0x20000000;
+
+    /// <summary>
+    /// True if a reparse tag denotes a name-surrogate link (symlink 0xA000000C, junction 0xA0000003, ...): another name for a
+    /// different path. Cloud placeholders (OneDrive 0x9000701A, ...) and other tags are not.
+    /// </summary>
+    public static bool IsNameSurrogate(uint tag) => (tag & ReparseTagNameSurrogateBit) != 0;
+
     /// <summary>True for Win32 device-namespace paths such as <c>\\.\pipe\x</c> or <c>\\.\PhysicalDrive0</c>.</summary>
     public static bool IsDeviceNamespacePath(string path)
     {

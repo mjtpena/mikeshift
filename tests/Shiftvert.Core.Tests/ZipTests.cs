@@ -168,6 +168,31 @@ public class ZipTests
     }
 
     [Fact]
+    public async Task Junction_to_another_folder_is_skipped_but_plain_subfolders_are_kept()
+    {
+        using var tmp = new TempDir();
+        var root = tmp.CreateDir("root");
+        tmp.WriteFile("root/plain/inner.txt", "inner");
+        tmp.WriteFile("other/elsewhere.txt", "x");
+        if (!TryCreateJunction(Path.Combine(root, "link"), tmp.Combine("other"))) Assert.Fail("JUNCTION UNAVAILABLE");
+
+        var output = (await Run([root])).Outputs[0].Path;
+
+        Assert.Equal(["root/", "root/plain/", "root/plain/inner.txt"], EntryNames(output));
+    }
+
+    [Fact]
+    public void Only_name_surrogate_reparse_tags_are_treated_as_links()
+    {
+        Assert.True(SpecialFiles.IsNameSurrogate(0xA000000C));  // symlink
+        Assert.True(SpecialFiles.IsNameSurrogate(0xA0000003));  // junction
+        Assert.False(SpecialFiles.IsNameSurrogate(0x9000701A)); // OneDrive placeholder
+        Assert.False(SpecialFiles.IsNameSurrogate(0x9000001A)); // cloud files
+        Assert.False(SpecialFiles.IsNameSurrogate(0x80000013)); // dedup
+        Assert.False(SpecialFiles.IsNameSurrogate(0));
+    }
+
+    [Fact]
     public async Task Named_pipes_and_device_paths_are_refused()
     {
         var result = await Run([@"\\.\pipe\shiftvert-test-pipe"]);

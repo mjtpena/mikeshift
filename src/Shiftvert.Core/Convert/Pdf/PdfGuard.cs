@@ -31,12 +31,33 @@ internal static class PdfGuard
         return bytes;
     }
 
-    /// <summary>Opens for importing pages (split, merge). Throws <see cref="ConversionException"/> for encrypted or damaged files.</summary>
-    public static PdfDocument OpenImport(byte[] bytes) => Open(bytes, PdfDocumentOpenMode.Import);
+    /// <summary>
+    /// Opens for importing pages (split, merge). Throws <see cref="ConversionException"/> for encrypted or damaged files; a PDF
+    /// that opens with an empty user password but carries an owner password (print/copy restrictions) is refused too, because
+    /// the output would silently drop those restrictions.
+    /// </summary>
+    public static PdfDocument OpenImport(byte[] bytes)
+    {
+        RequireNotEncrypted(bytes);
+        var doc = Open(bytes, PdfDocumentOpenMode.Import);
+        if (IsEncrypted(doc))
+        {
+            doc.Dispose();
+            throw new ConversionException(EncryptedMessage);
+        }
+        return doc;
+    }
+
+    /// <summary>Throws the password-protected <see cref="ConversionException"/> for any encrypted PDF (user or owner password).</summary>
+    public static void RequireNotEncrypted(byte[] bytes)
+    {
+        if (IsEncryptedFile(bytes)) throw new ConversionException(EncryptedMessage);
+    }
 
     /// <summary>Opens for modification (compress). Encrypted documents are refused even with an empty user password.</summary>
     public static PdfDocument OpenModify(byte[] bytes)
     {
+        RequireNotEncrypted(bytes);
         var doc = Open(bytes, PdfDocumentOpenMode.Modify);
         if (IsEncrypted(doc))
         {
@@ -46,9 +67,26 @@ internal static class PdfGuard
         return doc;
     }
 
-    /// <summary>True if the file needs a password to open (or is encrypted at all). Never throws: damaged files give false.</summary>
+    /// <summary>
+    /// True if the file needs a password to open or is encrypted at all. An owner password with an empty user password counts:
+    /// PDFsharp opens those silently, so the trailer's <c>/Encrypt</c> is checked through PdfPig. Never throws: damaged files give false.
+    /// </summary>
     public static bool IsEncryptedFile(byte[] bytes)
     {
+        try
+        {
+            using var probe = UglyToad.PdfPig.PdfDocument.Open(bytes, new UglyToad.PdfPig.ParsingOptions { UseLenientParsing = true, SkipMissingFonts = true });
+            if (probe.IsEncrypted) return true;
+        }
+        catch (UglyToad.PdfPig.Exceptions.PdfDocumentEncryptedException)
+        {
+            return true;
+        }
+        catch (Exception)
+        {
+            // not readable by PdfPig: fall through to the PDFsharp check
+        }
+
         try
         {
             using var doc = PdfReader.Open(new MemoryStream(bytes, writable: false), PdfDocumentOpenMode.Import);

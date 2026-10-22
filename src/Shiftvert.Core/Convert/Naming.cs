@@ -111,12 +111,13 @@ public static class Naming
 
     /// <summary>
     /// Writes an output atomically and returns its final location.
-    /// <para>File outputs: <paramref name="write"/> receives a temp path (does not exist yet) in the target directory
-    /// and must create the file there. Folder outputs (<c>spec.Extension == ""</c>): <paramref name="write"/> receives a
-    /// temp directory (already created) and must create the content inside it; its final name is
+    /// <para>File outputs: <paramref name="write"/> receives a temp path (does not exist yet) inside a hidden temp folder in the
+    /// target directory and must create the file there. Folder outputs (<c>spec.Extension == ""</c>): <paramref name="write"/> receives a
+    /// temp directory (already created, hidden until committed) and must create the content inside it; its final name is
     /// <c>{BaseName}</c>, <c>{BaseName} 2</c>...</para>
     /// <para>If the target directory is not writable the output goes to <see cref="DownloadsDirectory"/> instead
-    /// (<see cref="CommitResult.UsedDownloadsFallback"/> = true). The final move never overwrites: on a name race
+    /// (<see cref="CommitResult.UsedDownloadsFallback"/> = true). Transient sharing violations (antivirus, cloud sync) are
+    /// retried when reserving the temp and on the final move. The final move never overwrites: on a name race
     /// the next free name is used. On any failure or cancellation the temp item is removed.</para>
     /// </summary>
     public static async Task<CommitResult> CommitAsync(
@@ -127,32 +128,33 @@ public static class Naming
 
         var fallback = false;
         var dir = spec.Directory;
-        var temp = TryReserveTemp(dir, spec);
+        var temp = await TryReserveTempAsync(dir, spec, ct).ConfigureAwait(false);
         if (temp is null)
         {
             dir = DownloadsDirectory();
             fallback = true;
             try { Directory.CreateDirectory(dir); } catch (Exception) { /* reported below */ }
-            temp = TryReserveTemp(dir, spec)
+            temp = await TryReserveTempAsync(dir, spec, ct).ConfigureAwait(false)
                    ?? throw new ConversionException(
                        $"Can't save next to the original, and Downloads isn't writable either ({dir}).");
         }
 
+        var (container, path) = temp.Value;
         try
         {
-            await write(temp, ct).ConfigureAwait(false);
+            await write(path, ct).ConfigureAwait(false);
             ct.ThrowIfCancellationRequested();
 
-            if (spec.IsFolder ? !Directory.Exists(temp) : !File.Exists(temp))
+            if (spec.IsFolder ? !Directory.Exists(path) : !File.Exists(path))
                 throw new ConversionException("The converter did not produce an output.");
 
-            var final = MoveWithoutOverwrite(temp, dir, spec);
-            temp = null;
+            var final = await MoveWithoutOverwriteAsync(path, dir, spec, ct).ConfigureAwait(false);
+            if (spec.IsFolder) container = null; // the container IS the moved folder
             return new CommitResult(final, fallback);
         }
         finally
         {
-            if (temp is not null) TryDelete(temp, spec.IsFolder);
+            if (container is not null) TryDelete(container, folder: true);
         }
     }
 
@@ -170,43 +172,74 @@ public static class Naming
     private static string TempName(OutputSpec spec) =>
         $".{(spec.BaseName.Length > 40 ? spec.BaseName[..40] : spec.BaseName)}.{Guid.NewGuid():N}.shiftvert-tmp";
 
-    /// <summary>Creates (and for files, removes again) a temp item in <paramref name="dir"/> to prove writability. Null = not writable.</summary>
-    private static string? TryReserveTemp(string dir, OutputSpec spec)
+    private static readonly int[] s_retryDelaysMs = [100, 250, 500];
+
+    private static bool IsSharingViolation(IOException ex) => (ex.HResult & 0xFFFF) is 32 /*SHARING*/ or 33 /*LOCK*/;
+
+    /// <summary>Runs <paramref name="op"/>, retrying transient sharing violations (antivirus, indexers, cloud sync) after 100/250/500 ms.</summary>
+    private static async Task<T> RetryOnSharingViolationAsync<T>(Func<T> op, CancellationToken ct)
     {
-        var temp = Path.Combine(dir, TempName(spec));
+        for (var attempt = 0; ; attempt++)
+        {
+            try { return op(); }
+            catch (IOException ex) when (IsSharingViolation(ex) && attempt < s_retryDelaysMs.Length)
+            {
+                await Task.Delay(s_retryDelaysMs[attempt], ct).ConfigureAwait(false);
+            }
+            catch (IOException ex) when (IsSharingViolation(ex))
+            {
+                throw new ConversionException("The output couldn't be saved because another program is using the file or folder.", ex);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Reserves the temp location in <paramref name="dir"/> by creating a hidden container folder
+    /// (<c>.name.guid.shiftvert-tmp</c>) there, so a crash leaves nothing visible. Folder outputs use the container itself as the
+    /// temp folder; file outputs get a not-yet-existing file path inside it (writers may use any file mode, which a pre-created
+    /// hidden file would break). Null = the directory is not writable. There is no separate create/delete probe.
+    /// </summary>
+    private static async Task<(string Container, string Path)?> TryReserveTempAsync(string dir, OutputSpec spec, CancellationToken ct)
+    {
+        var container = Path.Combine(dir, TempName(spec));
         try
         {
-            if (spec.IsFolder)
+            await RetryOnSharingViolationAsync(() =>
             {
-                Directory.CreateDirectory(temp);
-            }
-            else
-            {
-                // Prove we can create files here, then hand the converter a fresh, non-existent name.
-                using (new FileStream(temp, FileMode.CreateNew, FileAccess.Write, FileShare.None)) { }
-                File.Delete(temp);
-            }
-            return temp;
+                Directory.CreateDirectory(container);
+                File.SetAttributes(container, FileAttributes.Directory | FileAttributes.Hidden);
+                return true;
+            }, ct).ConfigureAwait(false);
+            return (container, spec.IsFolder ? container : Path.Combine(container, "output.shiftvert-tmp"));
         }
         catch (Exception ex) when (IsNotWritable(ex))
         {
+            TryDelete(container, folder: true);
             return null;
         }
     }
 
     private static bool IsNotWritable(Exception ex) =>
         ex is UnauthorizedAccessException or DirectoryNotFoundException or PathTooLongException
-        || (ex is IOException io && (io.HResult & 0xFFFF) is 5 /*ACCESS_DENIED*/ or 19 /*WRITE_PROTECT*/ or 32 /*SHARING*/ or 21 /*NOT_READY*/);
+        || (ex is IOException io && (io.HResult & 0xFFFF) is 5 /*ACCESS_DENIED*/ or 19 /*WRITE_PROTECT*/ or 21 /*NOT_READY*/);
 
-    private static string MoveWithoutOverwrite(string temp, string dir, OutputSpec spec)
+    private static async Task<string> MoveWithoutOverwriteAsync(string temp, string dir, OutputSpec spec, CancellationToken ct)
     {
         for (var attempt = 0; attempt < MaxUniqueAttempts; attempt++)
         {
             var target = Unique(dir, spec.BaseName, spec.Extension);
             try
             {
-                if (spec.IsFolder) Directory.Move(temp, target);
-                else File.Move(temp, target, overwrite: false);
+                await RetryOnSharingViolationAsync(() =>
+                {
+                    if (spec.IsFolder) Directory.Move(temp, target);
+                    else File.Move(temp, target, overwrite: false);
+                    return true;
+                }, ct).ConfigureAwait(false);
+                if (spec.IsFolder)
+                {
+                    try { File.SetAttributes(target, FileAttributes.Directory); } catch (Exception) { /* stays hidden: harmless */ }
+                }
                 return target;
             }
             catch (IOException) when (File.Exists(target) || Directory.Exists(target))

@@ -84,14 +84,22 @@ public partial class App : Application
         });
     }
 
-    /// <summary>Stops running jobs, removes the tray icon and exits the process.</summary>
-    public void Quit()
+    private bool _quitting;
+
+    /// <summary>
+    /// Stops running jobs, removes the tray icon and exits the process. Running jobs get up to 3 s (awaited, so the UI thread keeps
+    /// pumping messages) to unwind and delete their temp files before the process ends.
+    /// </summary>
+    public async void Quit()
     {
+        if (_quitting) return;
+        _quitting = true;
         _drag?.Dispose();
         _drag = null;
-        Services.Jobs.Shutdown();
-        Services.Hud.Dispose();
         Tray.Dispose();
+        try { await Services.Jobs.ShutdownAsync(TimeSpan.FromSeconds(3)); }
+        catch (Exception) { /* exit regardless */ }
+        Services.Hud.Dispose();
         Exit();
     }
 

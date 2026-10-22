@@ -146,7 +146,7 @@ internal static class ImageCodec
         return false;
     }
 
-    private static bool IsAnimatedWebp(ReadOnlySpan<byte> head) =>
+    internal static bool IsAnimatedWebp(ReadOnlySpan<byte> head) =>
         head.Length >= 21 && head.Slice(12, 4).SequenceEqual("VP8X"u8) && (head[20] & 0x02) != 0;
 
     // ------------------------------------------------------------------ decode
@@ -285,6 +285,42 @@ internal static class ImageCodec
     }
 
     // ------------------------------------------------------------------ probe helpers
+
+    /// <summary>
+    /// Header-only frame information (no pixel decode): how many frames the file has and whether it is an animation
+    /// (animated GIF, APNG, animated WebP). Unknown or unreadable files report one still frame; the real decode decides later.
+    /// </summary>
+    public static async Task<(int Frames, bool Animated)> FrameInfoAsync(string path, CancellationToken ct)
+    {
+        try
+        {
+            var container = SniffFile(path);
+            switch (container)
+            {
+                case ImageContainer.Png:
+                    return (1, IsApng(path));
+                case ImageContainer.Webp:
+                    return (1, IsAnimatedWebp(ReadHead(path, 32)));
+                case ImageContainer.Gif or ImageContainer.Tiff or ImageContainer.Ico:
+                    using (var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete, 4096))
+                    using (var ras = fs.AsRandomAccessStream())
+                    {
+                        var decoder = await BitmapDecoder.CreateAsync(ras).AsTask(ct).ConfigureAwait(false);
+                        var frames = (int)decoder.FrameCount;
+                        return (frames, container == ImageContainer.Gif && frames > 1);
+                    }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception)
+        {
+            // not decidable from the header
+        }
+        return (1, false);
+    }
 
     /// <summary>Header-only check that some decoder accepts the file.</summary>
     public static bool CanDecodeHeader(string path)

@@ -3,9 +3,15 @@ using System.Text;
 
 namespace Shiftvert.Core.Documents;
 
-/// <summary>HTML writer: one UTF-8 file, no scripts and no external references; <c>dir="rtl"</c> on right-to-left blocks.</summary>
+/// <summary>
+/// HTML writer: one UTF-8 file, no scripts and no external references; <c>dir="rtl"</c> on right-to-left blocks.
+/// Paragraphs and list items are <c>white-space:pre-wrap</c> with ordinary spaces (leading and repeated spaces survive,
+/// no U+00A0), and blank paragraphs are written as <c>&lt;p&gt;&lt;br&gt;&lt;/p&gt;</c> so a TXT line structure round-trips.
+/// </summary>
 public static class HtmlWriter
 {
+    private const string PreWrap = " style=\"white-space:pre-wrap\"";
+
     public static void Write(DocModel model, Stream output, string title)
     {
         using var w = new StreamWriter(output, new UTF8Encoding(false), 64 * 1024, leaveOpen: true) { NewLine = "\n" };
@@ -34,13 +40,13 @@ public static class HtmlWriter
                 {
                     var level = Math.Clamp(h.Level, 1, 6);
                     w.Write($"<h{level}{Dir(h)}>");
-                    WriteRuns(w, h);
+                    WriteRuns(w, h, preserve: false);
                     w.WriteLine($"</h{level}>");
                     break;
                 }
                 case DocParagraph p:
-                    w.Write($"<p{Dir(p)}>");
-                    WriteRuns(w, p);
+                    w.Write($"<p{Dir(p)}{PreWrap}>");
+                    WriteBlankOr(w, p, preserve: true);
                     w.WriteLine("</p>");
                     break;
                 case DocTable t:
@@ -86,8 +92,8 @@ public static class HtmlWriter
             w.WriteLine($"<{tag}>"); // nested inside the parent's open <li>
             open.Push(tag);
         }
-        w.Write($"<li{Dir(item)}>");
-        WriteRuns(w, item);
+        w.Write($"<li{Dir(item)}{PreWrap}>");
+        WriteRuns(w, item, preserve: true);
     }
 
     // Every open list has an open <li> (items are opened as soon as their list is).
@@ -115,8 +121,8 @@ public static class HtmlWriter
                 w.Write("<td>");
                 for (var k = 0; k < paragraphs.Count; k++)
                 {
-                    w.Write($"<p{Dir(paragraphs[k])}>");
-                    WriteRuns(w, paragraphs[k]);
+                    w.Write($"<p{Dir(paragraphs[k])}{PreWrap}>");
+                    WriteBlankOr(w, paragraphs[k], preserve: true);
                     w.Write("</p>");
                 }
                 w.WriteLine("</td>");
@@ -126,10 +132,19 @@ public static class HtmlWriter
         w.WriteLine("</table>");
     }
 
-    private static void WriteRuns(StreamWriter w, DocParagraph p)
+    /// <summary>A paragraph without text is a blank line: <c>&lt;br&gt;</c> gives it the height of one.</summary>
+    private static void WriteBlankOr(StreamWriter w, DocParagraph p, bool preserve)
+    {
+        if (p.IsEmpty) w.Write("<br>");
+        else WriteRuns(w, p, preserve);
+    }
+
+    /// <param name="p">The paragraph.</param>
+    /// <param name="preserve">The enclosing element is <c>white-space:pre-wrap</c>: spaces are written as they are. Otherwise a leading or repeated space is written as &amp;nbsp; (the reader maps it back to a space).</param>
+    private static void WriteRuns(StreamWriter w, DocParagraph p, bool preserve)
     {
         var heading = p.Kind == ParagraphKind.Heading;
-        var lastWasSpace = true; // a leading space or a second space in a row is written as &nbsp;
+        var lastWasSpace = true;
         foreach (var run in p.Runs)
         {
             var link = run.Link is not null && Uri.TryCreate(run.Link, UriKind.Absolute, out _) ? run.Link : null;
@@ -157,7 +172,7 @@ public static class HtmlWriter
                         {
                             if (ch == ' ')
                             {
-                                sb.Append(lastWasSpace ? "&nbsp;" : " ");
+                                sb.Append(lastWasSpace && !preserve ? "&nbsp;" : " ");
                                 lastWasSpace = true;
                             }
                             else
