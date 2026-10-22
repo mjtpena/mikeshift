@@ -168,12 +168,24 @@ public static class ImageConverter
 
     // ------------------------------------------------------------------ helpers
 
-    private static void RequireSingleFrame(DecodedImage img, string verb)
+    private static void RequireSingleFrame(DecodedImage img, string verb) => RequireSingleFrame(img.FrameCount, img.IsAnimated, verb);
+
+    private static void RequireSingleFrame(int frameCount, bool animated, string verb)
     {
-        if (img.IsAnimated)
+        if (animated)
             throw new ConversionException($"Animated images can't be {verb} without losing the animation.");
-        if (img.FrameCount > 1)
-            throw new ConversionException($"This file has {img.FrameCount} pages, and only the first would be kept, so it can't be {verb}.");
+        if (frameCount > 1)
+            throw new ConversionException($"This file has {frameCount} pages, and only the first would be kept, so it can't be {verb}.");
+    }
+
+    /// <summary>
+    /// Fast header-only version of the single-frame check, so an interactive tool (Crop) can refuse an animated GIF, multi-page
+    /// TIFF or animated WebP before the user spends time in the editor. Throws the same <see cref="ConversionException"/> as the conversion.
+    /// </summary>
+    internal static async Task RequireSingleFrameAsync(string input, string verb, CancellationToken ct)
+    {
+        var (frames, animated) = await ImageCodec.FrameInfoAsync(input, ct).ConfigureAwait(false);
+        RequireSingleFrame(frames, animated, verb);
     }
 
     private static Raster LongSideAtMost(Raster pixels, int maxLongSide)
