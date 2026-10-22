@@ -79,6 +79,87 @@ public static class Kind
         }
     }
 
+    /// <summary>Selections up to this size are classified exactly, file by file (a misnamed file is always noticed).</summary>
+    internal const int ExactSelectionLimit = 16;
+
+    /// <summary>How many files of a large, extension-uniform selection are sniffed to confirm the extensions.</summary>
+    private const int SampleSize = 12;
+
+    /// <summary>
+    /// The single category shared by every path, or null if they are mixed, include a folder or an unknown/unreadable file.
+    /// Up to <see cref="ExactSelectionLimit"/> files every file goes through <see cref="Of"/>. A larger selection whose extensions all
+    /// point at one category (the common "500 photos" drop) is confirmed by sniffing a bounded, evenly spread sample of
+    /// <see cref="SampleSize"/> files, so the wheel gets its tiles in milliseconds instead of decoding 500 headers; a misnamed
+    /// file outside the sample then fails with the converter's own clean error. Any other large selection is sniffed in
+    /// full, in parallel, stopping at the first file that disagrees.
+    /// </summary>
+    public static Category? CommonOf(IReadOnlyList<string> paths)
+    {
+        ArgumentNullException.ThrowIfNull(paths);
+        if (paths.Count == 0) return null;
+        if (paths.Count <= ExactSelectionLimit) return Sequential(paths);
+
+        var hint = ExtensionVerdict(paths[0]);
+        if (hint is { } h and not Category.Other && AllShare(paths, h))
+        {
+            var step = Math.Max(1, paths.Count / SampleSize);
+            var confirmed = true;
+            for (var i = 0; i < paths.Count && confirmed; i += step)
+                confirmed = Of(paths[i]) == h;
+            if (confirmed && Of(paths[^1]) == h) return h;
+        }
+        return Parallel(paths);
+    }
+
+    private static Category? Sequential(IReadOnlyList<string> paths)
+    {
+        Category? common = null;
+        foreach (var p in paths)
+        {
+            var k = Of(p);
+            if (k == Category.Other) return null;
+            if (common is null) common = k;
+            else if (common != k) return null;
+        }
+        return common;
+    }
+
+    private static Category? Parallel(IReadOnlyList<string> paths)
+    {
+        var first = Of(paths[0]);
+        if (first == Category.Other) return null;
+        var agree = true;
+        System.Threading.Tasks.Parallel.ForEach(paths, new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount },
+            (p, state) =>
+            {
+                if (Of(p) != first) { agree = false; state.Stop(); }
+            });
+        return agree ? first : null;
+    }
+
+    /// <summary>True if every path is an existing file (no folder, nothing vanished) whose extension verdict is <paramref name="category"/>.</summary>
+    private static bool AllShare(IReadOnlyList<string> paths, Category category)
+    {
+        foreach (var p in paths)
+        {
+            if (ExtensionVerdict(p) != category) return false;
+            try
+            {
+                if ((File.GetAttributes(p) & FileAttributes.Directory) != 0) return false;
+            }
+            catch (Exception) { return false; }
+        }
+        return true;
+    }
+
+    /// <summary>The category an extension implies, or null if the extension alone cannot say (<c>.ts</c> family needs sync bytes).</summary>
+    private static Category? ExtensionVerdict(string path)
+    {
+        var ext = ExtensionOf(path);
+        if (ext is "ts" or "mts" or "m2ts") return null;
+        return ClassifyByExtensionOnly(ext);
+    }
+
     internal static Category Classify(string path, FileAttributes attrs)
     {
         var ext = ExtensionOf(path);

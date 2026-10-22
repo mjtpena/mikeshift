@@ -58,6 +58,9 @@ public static class DocumentConverter
         {
             if (!caps.WordCom)
                 throw new ConversionException("Legacy .doc files need Microsoft Word to be installed.");
+            // Word would happily "open" random bytes as text and hand back a garbage document; only real Word files go through.
+            if (!LooksLikeWordFile(input))
+                throw new ConversionException("This isn't a valid Word document (.doc); it may be damaged.");
             return await ViaWordAsync(input, format, spec, ct).ConfigureAwait(false);
         }
 
@@ -86,6 +89,30 @@ public static class DocumentConverter
         var result = await Naming.CommitStreamAsync(spec,
             (stream, token) => Task.Run(() => Write(model, format, stream, title, a4, token), token), ct).ConfigureAwait(false);
         return result.Path;
+    }
+
+    /// <summary>
+    /// What Word itself accepts under a <c>.doc</c> name: an OLE2 compound file (the real thing), a ZIP package (a DOCX renamed), RTF, or
+    /// plain text (no NUL bytes). Anything else (random or truncated-to-nothing data) is refused before Word is started.
+    /// </summary>
+    private static bool LooksLikeWordFile(string path)
+    {
+        try
+        {
+            using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            Span<byte> head = stackalloc byte[4096];
+            var n = fs.Read(head);
+            if (n == 0) return false;
+            head = head[..n];
+            ReadOnlySpan<byte> ole = [0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1];
+            if (head.StartsWith(ole)) return true;
+            if (head.StartsWith("PK"u8) || head.StartsWith("{\\rtf"u8)) return true;
+            return !head.Contains((byte)0);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return true; // let Word report the real problem
+        }
     }
 
     private static async Task<string> ViaWordAsync(string input, DocFormat format, OutputSpec spec, CancellationToken ct)
