@@ -61,7 +61,9 @@ public partial class App : Application
         // W3 wiring: the input monitor + wheel thread, and the click-mode wheel for Convert Files….
         _drag = DragCoordinator.Start(Services);
         if (_drag is not null) Tray.ConvertFilesRequested += _drag.ShowClickMode;
-        // W4a wiring: Services.Interaction.CropEditor / TrimEditor.
+        // Crop/Trim editors for interactive actions; dev flags `--crop <img>` / `--trim <media>` open them directly.
+        Editors.EditorRegistration.Register(Services.Interaction);
+        Editors.EditorRegistration.TryHandleDevArgs(Environment.GetCommandLineArgs());
 
         var args2 = Environment.GetCommandLineArgs();
         dispatcher.TryEnqueue(() =>
