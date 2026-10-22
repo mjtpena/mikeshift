@@ -59,7 +59,7 @@ public class NamingTests
         {
             seenTemp = temp;
             Assert.NotEqual(tmp.Combine("a.out"), temp);
-            Assert.Equal(tmp.Path, Path.GetDirectoryName(temp));
+            Assert.Equal(tmp.Path, Path.GetDirectoryName(Path.GetDirectoryName(temp)));
             await File.WriteAllTextAsync(temp, "data", ct);
         }, CancellationToken.None);
 
@@ -68,6 +68,72 @@ public class NamingTests
         Assert.Equal("data", File.ReadAllText(result.Path));
         Assert.False(File.Exists(seenTemp));
         Assert.Equal(["a.out", "a.txt"], Directory.GetFiles(tmp.Path).Select(f => Path.GetFileName(f)!).Order().ToArray());
+    }
+
+    [Fact]
+    public async Task Temp_items_are_hidden_while_being_written_and_the_final_output_is_not()
+    {
+        using var tmp = new TempDir();
+        var input = tmp.WriteFile("a.txt", "x");
+        FileAttributes? tempContainer = null, folderTemp = null;
+
+        var file = await Naming.CommitAsync(Naming.Plan(input, "out"), async (temp, ct) =>
+        {
+            tempContainer = new DirectoryInfo(Path.GetDirectoryName(temp)!).Attributes;
+            await File.WriteAllTextAsync(temp, "data", ct);
+        }, CancellationToken.None);
+        var folder = await Naming.CommitAsync(Naming.Plan(input, "", " pages"), async (tempDir, ct) =>
+        {
+            folderTemp = new DirectoryInfo(tempDir).Attributes;
+            await File.WriteAllTextAsync(Path.Combine(tempDir, "p.txt"), "p", ct);
+        }, CancellationToken.None);
+
+        Assert.True(tempContainer!.Value.HasFlag(FileAttributes.Hidden));
+        Assert.True(folderTemp!.Value.HasFlag(FileAttributes.Hidden));
+        Assert.False(File.GetAttributes(file.Path).HasFlag(FileAttributes.Hidden));
+        Assert.False(File.GetAttributes(folder.Path).HasFlag(FileAttributes.Hidden));
+        Assert.Equal(["a.out", "a.txt"], Directory.GetFiles(tmp.Path).Select(f => Path.GetFileName(f)!).Order().ToArray());
+    }
+
+    [Fact]
+    public async Task Commit_retries_the_final_move_while_the_temp_file_is_briefly_locked()
+    {
+        using var tmp = new TempDir();
+        var input = tmp.WriteFile("a.txt", "x");
+
+        var result = await Naming.CommitAsync(Naming.Plan(input, "out"), async (temp, ct) =>
+        {
+            await File.WriteAllTextAsync(temp, "data", ct);
+            var locked = new FileStream(temp, FileMode.Open, FileAccess.Read, FileShare.None);
+            _ = Task.Delay(150, CancellationToken.None).ContinueWith(_ => locked.Dispose(), TaskScheduler.Default);
+        }, CancellationToken.None);
+
+        Assert.False(result.UsedDownloadsFallback);
+        Assert.Equal(tmp.Combine("a.out"), result.Path);
+        Assert.Equal("data", File.ReadAllText(result.Path));
+        Assert.Empty(Directory.GetFileSystemEntries(tmp.Path, "*.shiftvert-tmp"));
+    }
+
+    [Fact]
+    public async Task Commit_gives_up_with_a_clear_message_when_the_temp_stays_locked()
+    {
+        using var tmp = new TempDir();
+        var input = tmp.WriteFile("a.txt", "x");
+        FileStream? locked = null;
+        try
+        {
+            var ex = await Assert.ThrowsAsync<ConversionException>(() => Naming.CommitAsync(Naming.Plan(input, "out"), async (temp, ct) =>
+            {
+                await File.WriteAllTextAsync(temp, "data", ct);
+                locked = new FileStream(temp, FileMode.Open, FileAccess.Read, FileShare.None);
+            }, CancellationToken.None));
+            Assert.Contains("another program", ex.Message);
+        }
+        finally
+        {
+            locked?.Dispose();
+        }
+        Assert.False(File.Exists(tmp.Combine("a.out")));
     }
 
     [Fact]

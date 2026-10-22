@@ -104,6 +104,8 @@ public static class ZipAction
 
             if ((child.Attributes & FileAttributes.Directory) != 0)
             {
+                // The archive's own (hidden) temp container may sit inside the folder being zipped.
+                if (string.Equals(child.FullName, Path.GetDirectoryName(tempFull), StringComparison.OrdinalIgnoreCase)) continue;
                 // Never follow symlinks/junctions below the selected root: that is how link loops happen.
                 // Cloud placeholders (OneDrive, Dropbox, ...) are reparse points too but are real folders: keep them.
                 if ((child.Attributes & FileAttributes.ReparsePoint) != 0 && IsLink(child)) continue;
