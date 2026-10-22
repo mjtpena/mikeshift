@@ -1,0 +1,11 @@
+GetCursorPos
+GetDpiForWindow
+GetWindowLongPtr
+SetWindowLongPtr
+SetWindowPos
+ShowWindow
+DwmSetWindowAttribute
+DWM_WINDOW_CORNER_PREFERENCE
+MessageBox
+SetForegroundWindow
+WINDOW_EX_STYLE
