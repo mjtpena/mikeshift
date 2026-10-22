@@ -18,8 +18,17 @@ public static class EditorRegistration
     /// </summary>
     public static void Register(UiInteraction interaction)
     {
-        interaction.CropEditor = (path, ct) => interaction.OnUiThreadAsync(() => CropEditorWindow.ShowAsync(path, ct));
-        interaction.TrimEditor = (path, ct) => interaction.OnUiThreadAsync(() => TrimDialog.ShowAsync(path, ct));
+        // An editor holds a decoded preview and a few dozen MB of XAML state; hand them back once it is closed.
+        interaction.CropEditor = (path, ct) => interaction.OnUiThreadAsync(async () =>
+        {
+            try { return await CropEditorWindow.ShowAsync(path, ct); }
+            finally { MemoryTrim.CompactSoon(); }
+        });
+        interaction.TrimEditor = (path, ct) => interaction.OnUiThreadAsync(async () =>
+        {
+            try { return await TrimDialog.ShowAsync(path, ct); }
+            finally { MemoryTrim.CompactSoon(); }
+        });
     }
 
     /// <summary>

@@ -69,6 +69,9 @@ internal sealed class DragCoordinator : IDisposable
             }
         }
 
+        // A finished conversion may have left large buffers behind: give them back a moment later (the app is idle again by then).
+        services.Jobs.JobFinished += (_, _) => MemoryTrim.CompactSoon();
+
         return new DragCoordinator(thread, monitor);
     }
 

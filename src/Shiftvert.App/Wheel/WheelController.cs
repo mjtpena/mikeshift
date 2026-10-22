@@ -43,6 +43,14 @@ internal sealed class WheelController : IDisposable
     private const long NudgeRetryMs = 90;
     private static readonly double s_ticksPerSecond = Stopwatch.Frequency;
 
+    /// <summary>
+    /// How long the wheel must have been idle before the Win2D device and its buffers are released (about 45 MB of resident memory).
+    /// Any left-button press re-creates them (<see cref="PrewarmIfCold"/>), which takes ~100 ms and is long finished by the time a
+    /// drag has moved and Shift is pressed. <c>SHIFTVERT_TRIM_MS</c> overrides it for measurements.
+    /// </summary>
+    private static readonly long TrimAfterMs =
+        long.TryParse(Environment.GetEnvironmentVariable("SHIFTVERT_TRIM_MS"), out var v) && v >= 0 ? v : 15_000;
+
     private readonly AppServices _services;
     private readonly WheelThread _thread;
     private readonly bool _installDropTarget;
@@ -78,6 +86,7 @@ internal sealed class WheelController : IDisposable
     private int _timerResolutionUsers;
     private long _clickForegroundCheckTick;
     private long _forcedDismissTick;
+    private long _trimDueTick;
     private bool _disposed;
     private int _frames;
     private long _shownAtMs;
@@ -134,7 +143,7 @@ internal sealed class WheelController : IDisposable
         _clickModel.Cancelled += () => BeginDismiss("escape (click mode)");
         _services.Preferences.Changed += OnPreferenceChanged;
 
-        WheelLog.Info($"wheel ready (software renderer: {_renderer.IsSoftware}, drop target: {_dropTarget is not null})");
+        WheelLog.Info($"wheel ready (drop target: {_dropTarget is not null}; the Win2D device is created on demand)");
         WheelLog.Stage("wheel ready");
     }
 
@@ -144,9 +153,12 @@ internal sealed class WheelController : IDisposable
     /// </summary>
     public void Warmup()
     {
+        // Only ever between interactions: it plays with the shared animation clock.
+        if (_mode != Mode.None || _window.IsShown) return;
         try
         {
             var started = Stopwatch.GetTimestamp();
+            _renderer.EnsureDevice();
             ActionDef Dummy(string title, WheelPage page, string? glyph = null) =>
                 new(title, page, (_, _, _) => Task.FromResult(new ActionResult())) { Glyph = glyph };
             IReadOnlyList<ActionDef> tiles =
@@ -182,7 +194,7 @@ internal sealed class WheelController : IDisposable
             });
             _renderer.ClearGlass();
             _anim.Hide();
-            WheelLog.Info($"renderer warm-up took {(Stopwatch.GetTimestamp() - started) * 1000 / Stopwatch.Frequency} ms");
+            WheelLog.Info($"renderer warm-up took {(Stopwatch.GetTimestamp() - started) * 1000 / Stopwatch.Frequency} ms (software renderer: {_renderer.IsSoftware})");
         }
         catch (Exception ex)
         {
@@ -190,6 +202,31 @@ internal sealed class WheelController : IDisposable
             try { _renderer.ClearGlass(); } catch (Exception) { }
             _anim.Hide();
         }
+        _trimDueTick = Math.Max(1, Environment.TickCount64 + TrimAfterMs);
+    }
+
+    /// <summary>A left press anywhere may start a drag: make sure the renderer is ready (or keep it ready) before the gesture needs it.</summary>
+    private void PrewarmIfCold()
+    {
+        if (_mode != Mode.None || _window.IsShown) return;
+        if (_renderer.IsWarm)
+        {
+            if (_trimDueTick != 0) _trimDueTick = Math.Max(1, Environment.TickCount64 + TrimAfterMs);
+            return;
+        }
+        WheelLog.Info("left press with a cold renderer: warming up");
+        Warmup();
+    }
+
+    /// <summary>Hands the graphics memory back while nothing is going on.</summary>
+    private void TrimMemory()
+    {
+        _trimDueTick = 0;
+        if (_mode != Mode.None || _window.IsShown || !_renderer.IsWarm) return;
+        var before = GC.GetTotalMemory(false);
+        _renderer.Release();
+        MemoryTrim.CompactNow();
+        WheelLog.Info($"renderer released after {TrimAfterMs} ms idle (managed heap {before / 1024} KB -> {GC.GetTotalMemory(false) / 1024} KB, working set trimmed)");
     }
 
     private static CoreToolsKey Map(AppToolsKey key) => key switch
@@ -224,7 +261,11 @@ internal sealed class WheelController : IDisposable
     {
         while (_inputs.TryDequeue(out var e))
         {
-            try { _session.Process(e); }
+            try
+            {
+                if (e.Kind == InputKind.LButtonDown) PrewarmIfCold();
+                _session.Process(e);
+            }
             catch (Exception ex) { WheelLog.Error("session.Process failed", ex); }
         }
     }
@@ -247,6 +288,7 @@ internal sealed class WheelController : IDisposable
         if (_nudgeRetryTick != 0) best = Math.Min(best, Math.Max(0, _nudgeRetryTick - tick));
         if (_forcedDismissTick != 0) best = Math.Min(best, Math.Max(0, _forcedDismissTick - tick));
         if (_clickForegroundCheckTick != 0) best = Math.Min(best, Math.Max(0, _clickForegroundCheckTick - tick));
+        if (_trimDueTick != 0) best = Math.Min(best, Math.Max(0, _trimDueTick - tick));
         return best == long.MaxValue ? Infinite : (uint)Math.Min(best, int.MaxValue);
     }
 
@@ -283,6 +325,12 @@ internal sealed class WheelController : IDisposable
 
         if (_window.IsShown && (_needsFrame || _anim.IsAnimating(NowSeconds)) && NowMs >= _nextFrameMs)
             RenderFrame();
+
+        if (_trimDueTick != 0 && tick >= _trimDueTick)
+        {
+            if (_mode == Mode.None && !_window.IsShown && !_session.IsActive) TrimMemory();
+            else _trimDueTick = tick + TrimAfterMs; // busy: look again later
+        }
     }
 
     private void RequestFrame()
@@ -438,6 +486,7 @@ internal sealed class WheelController : IDisposable
         _dragModel.SetActions([]);
         _clickModel.SetActions([]);
         EndTimerResolution();
+        _trimDueTick = Math.Max(1, Environment.TickCount64 + TrimAfterMs);
         PublishSnapshot();
         _automation.OnHidden();
     }

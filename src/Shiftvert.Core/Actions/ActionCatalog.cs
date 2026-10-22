@@ -16,8 +16,14 @@ namespace Shiftvert.Core.Actions;
 public static class ActionCatalog
 {
     /// <summary>The actions for <paramref name="paths"/> on this machine (<see cref="Kind.Of"/> for classification).</summary>
-    public static IReadOnlyList<ActionDef> For(IReadOnlyList<string> paths, Capabilities caps) =>
-        For(paths, caps, Kind.Of);
+    public static IReadOnlyList<ActionDef> For(IReadOnlyList<string> paths, Capabilities caps)
+    {
+        ArgumentNullException.ThrowIfNull(paths);
+        ArgumentNullException.ThrowIfNull(caps);
+        if (paths.Count == 0) return [];
+        // Kind.CommonOf keeps big selections fast (sampled sniffing); small ones are classified exactly, file by file.
+        return Build(Kind.CommonOf(paths), paths, caps);
+    }
 
     /// <summary>As <see cref="For(IReadOnlyList{string}, Capabilities)"/> with an injectable classifier (unit tests).</summary>
     public static IReadOnlyList<ActionDef> For(IReadOnlyList<string> paths, Capabilities caps, Func<string, Category> kindOf)
@@ -25,8 +31,11 @@ public static class ActionCatalog
         ArgumentNullException.ThrowIfNull(paths);
         ArgumentNullException.ThrowIfNull(caps);
         if (paths.Count == 0) return [];
+        return Build(CommonCategory(paths, kindOf), paths, caps);
+    }
 
-        var category = CommonCategory(paths, kindOf);
+    private static IReadOnlyList<ActionDef> Build(Category? category, IReadOnlyList<string> paths, Capabilities caps)
+    {
         var result = new List<ActionDef>();
         if (category is { } c)
         {

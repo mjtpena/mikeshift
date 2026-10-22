@@ -45,7 +45,10 @@ internal sealed class WheelScene
 /// </summary>
 internal sealed class WheelRenderer : IDisposable
 {
-    private CanvasDevice _device;
+    // The device (D3D11 + D2D + the driver's heaps and the effect shaders) is by far the biggest thing the wheel owns, so it is created
+    // on demand and handed back by Release() once the wheel has been hidden for a while (PLAN §6: resident memory).
+    private CanvasDevice? _device;
+    private bool _software;
     private CanvasRenderTarget? _target;
     private CanvasRenderTarget? _glass;
     private int _glassPx;
@@ -60,15 +63,34 @@ internal sealed class WheelRenderer : IDisposable
 
     public WheelRenderer()
     {
-        _device = CreateDevice();
         var families = new HashSet<string>(CanvasTextFormat.GetSystemFontFamilies(), StringComparer.OrdinalIgnoreCase);
         _textFont = families.Contains("Segoe UI Variable Text") ? "Segoe UI Variable Text" : "Segoe UI";
         _iconFont = families.Contains("Segoe Fluent Icons") ? "Segoe Fluent Icons" : "Segoe MDL2 Assets";
-        WheelLog.Info($"Win2D device ready (hardware accelerated: {!_device.ForceSoftwareRenderer}), fonts: {_textFont} / {_iconFont}");
     }
 
-    /// <summary>True if the Win2D device renders in software (no usable GPU).</summary>
-    public bool IsSoftware => _device.ForceSoftwareRenderer;
+    /// <summary>True while a Win2D device exists (the next frame needs no start-up cost).</summary>
+    public bool IsWarm => _device is not null;
+
+    /// <summary>True if the Win2D device renders in software (no usable GPU). Valid after the first device was created.</summary>
+    public bool IsSoftware => _software;
+
+    /// <summary>The device, created on first use.</summary>
+    private CanvasDevice Device
+    {
+        get
+        {
+            if (_device is null)
+            {
+                _device = CreateDevice();
+                _software = _device.ForceSoftwareRenderer;
+                WheelLog.Info($"Win2D device ready (hardware accelerated: {!_software}), fonts: {_textFont} / {_iconFont}");
+            }
+            return _device;
+        }
+    }
+
+    /// <summary>Creates the device now (no-op if it exists).</summary>
+    public void EnsureDevice() => _ = Device;
 
     private static CanvasDevice CreateDevice()
     {
@@ -87,9 +109,18 @@ internal sealed class WheelRenderer : IDisposable
     public void RecreateDevice()
     {
         WheelLog.Info("recreating the Win2D device");
+        Release();
+        EnsureDevice();
+    }
+
+    /// <summary>Disposes the device, the render targets, cached geometry and the pixel buffers; the next frame builds them again.</summary>
+    public void Release()
+    {
         ReleaseResources();
-        _device.Dispose();
-        _device = CreateDevice();
+        _device?.Dispose();
+        _device = null;
+        _pixels = [];
+        _pixelBuffer = null;
     }
 
     private void ReleaseResources()
@@ -111,9 +142,9 @@ internal sealed class WheelRenderer : IDisposable
     {
         ClearGlass();
         var dpi = (float)(96 * dpiScale);
-        using var bitmap = CanvasBitmap.CreateFromBytes(_device, bgra, sizePx, sizePx, DirectXPixelFormat.B8G8R8A8UIntNormalized, dpi, CanvasAlphaMode.Ignore);
+        using var bitmap = CanvasBitmap.CreateFromBytes(Device, bgra, sizePx, sizePx, DirectXPixelFormat.B8G8R8A8UIntNormalized, dpi, CanvasAlphaMode.Ignore);
         var dips = (float)(sizePx / dpiScale);
-        _glass = new CanvasRenderTarget(_device, dips, dips, dpi, DirectXPixelFormat.B8G8R8A8UIntNormalized, CanvasAlphaMode.Premultiplied);
+        _glass = new CanvasRenderTarget(Device, dips, dips, dpi, DirectXPixelFormat.B8G8R8A8UIntNormalized, CanvasAlphaMode.Premultiplied);
         using var blur = new GaussianBlurEffect
         {
             Source = bitmap,
@@ -145,7 +176,7 @@ internal sealed class WheelRenderer : IDisposable
         {
             _target?.Dispose();
             var dips = (float)(size / scene.DpiScale);
-            _target = new CanvasRenderTarget(_device, dips, dips, dpi, DirectXPixelFormat.B8G8R8A8UIntNormalized, CanvasAlphaMode.Premultiplied);
+            _target = new CanvasRenderTarget(Device, dips, dips, dpi, DirectXPixelFormat.B8G8R8A8UIntNormalized, CanvasAlphaMode.Premultiplied);
             _pixels = new byte[size * size * 4];
             _pixelBuffer = _pixels.AsBuffer();
         }
@@ -400,13 +431,13 @@ internal sealed class WheelRenderer : IDisposable
         CanvasGeometry core;
         if (seg.IsFullRing)
         {
-            using var outer = CanvasGeometry.CreateCircle(_device, Vector2.Zero, (float)seg.OuterRadius);
-            using var inner = CanvasGeometry.CreateCircle(_device, Vector2.Zero, (float)seg.InnerRadius);
+            using var outer = CanvasGeometry.CreateCircle(Device, Vector2.Zero, (float)seg.OuterRadius);
+            using var inner = CanvasGeometry.CreateCircle(Device, Vector2.Zero, (float)seg.InnerRadius);
             core = outer.CombineWith(inner, Matrix3x2.Identity, CanvasGeometryCombine.Exclude);
         }
         else
         {
-            using var path = new CanvasPathBuilder(_device);
+            using var path = new CanvasPathBuilder(Device);
             path.BeginFigure(P(seg.OuterStart));
             path.AddArc(P(seg.OuterEnd), (float)seg.OuterRadius, (float)seg.OuterRadius, 0, CanvasSweepDirection.Clockwise,
                 seg.OuterIsLargeArc ? CanvasArcSize.Large : CanvasArcSize.Small);
@@ -477,6 +508,6 @@ internal sealed class WheelRenderer : IDisposable
     public void Dispose()
     {
         ReleaseResources();
-        _device.Dispose();
+        _device?.Dispose();
     }
 }

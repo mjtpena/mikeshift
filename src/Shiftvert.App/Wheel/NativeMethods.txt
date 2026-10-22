@@ -85,3 +85,5 @@ IsHungAppWindow
 MapWindowPoints
 GetClientRect
 InvalidateRect
+SetProcessWorkingSetSize
+GetCurrentProcess
