@@ -10,7 +10,14 @@ public class KindTests
     public static TheoryData<string> DocExt() => [.. Kind.DocumentExtensions.Order()];
 
     [Theory, MemberData(nameof(ImageExt))]
-    public void Image_extensions_are_images(string ext) => Assert.Equal(Category.Image, OfFile($"x.{ext}", Fixtures.Noise(64)));
+    public void Image_extensions_are_images(string ext)
+    {
+        // Image needs a decoder that accepts the bytes (W2a): real tiny images where we can make them. HEIC/AVIF/JPEG XR
+        // cannot be fabricated here, so for those only "noise is not an image" is asserted.
+        var bytes = Fixtures.ImageFor(ext);
+        if (bytes is null) Assert.Equal(Category.Other, OfFile($"x.{ext}", Fixtures.Noise(64)));
+        else Assert.Equal(Category.Image, OfFile($"x.{ext}", bytes));
+    }
 
     [Theory, MemberData(nameof(VideoExt))]
     public void Video_extensions_are_video(string ext) => Assert.Equal(Category.Video, OfFile($"x.{ext}", Fixtures.Noise(64)));
