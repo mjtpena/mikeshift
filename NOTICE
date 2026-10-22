@@ -25,11 +25,14 @@ Direct dependencies (src/*)
   DocumentFormat.OpenXml 3.5.1        MIT        DOCX reading/writing (Open XML SDK).
   SkiaSharp 4.153.1                   MIT        WebP encoding, image-decode fallback.
   SkiaSharp.NativeAssets.Win32 4.153.1 MIT       Native Skia library for the above.
-  Microsoft.WindowsAppSDK 2.5.1       Microsoft Software License Terms (license.txt in the package; redistributable
-                                                 with applications). Windows App SDK, WinUI 3, and the packages it
-                                                 depends on (Microsoft.WindowsAppSDK.* 2.x, Microsoft.Windows.AI.
-                                                 MachineLearning, Microsoft.Windows.SDK.NET projection) which ship
-                                                 inside the package.
+  Microsoft.WindowsAppSDK.Base 2.0.4, .Foundation 2.3.12, .InteractiveExperiences 2.1.9, .WinUI 2.3.9
+                                      Microsoft Software License Terms (license.txt in the package; redistributable
+                                                 with applications). The Windows App SDK 2.5.1 components Shiftvert
+                                                 uses (WinUI 3, windowing/input, app lifecycle, self-contained
+                                                 deployment), plus the Microsoft.Windows.SDK.NET projection, which
+                                                 ship inside the package. The Microsoft.WindowsAppSDK metapackage and its
+                                                 AI, ML, Search, Widgets and DWrite components are restored but
+                                                 excluded (nothing from them is shipped).
   Microsoft.Graphics.Win2D 1.4.0      The package metadata links Microsoft's Win2D licence page
                                                  (eula_win2d_10012014.htm); the Win2D source repository
                                                  (github.com/microsoft/Win2D) is MIT. Used for the wheel renderer.
@@ -45,8 +48,6 @@ Transitive packages that end up in the MSIX
   Microsoft.Extensions.Logging.Abstractions 8.0.3,
   Microsoft.Win32.SystemEvents 10.0.0, System.Drawing.Common 10.0.0,
   System.IO.Packaging 10.0.2, System.Numerics.Tensors 9.0.0       MIT
-  ONNX Runtime and DirectML binaries (inside Microsoft.Windows.AI.MachineLearning 2.1.74) are Microsoft components
-  covered by that package's Microsoft Software License Terms; Shiftvert does not call any AI API.
   The .NET 10 runtime (self-contained, bundled in the package): MIT, (c) .NET Foundation and contributors.
 
 Build-time only (nothing of these is distributed)

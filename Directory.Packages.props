@@ -6,7 +6,21 @@
   </PropertyGroup>
   <ItemGroup>
     <!-- UI -->
+    <!-- Windows App SDK 2.5.1 as its component packages, not the Microsoft.WindowsAppSDK metapackage: the metapackage also pulls
+         .AI, .ML (ONNX Runtime + DirectML), .Search, .Widgets and .DWrite, which Shiftvert does not use. Versions are the ones the
+         2.5.1 metapackage depends on. -->
     <PackageVersion Include="Microsoft.WindowsAppSDK" Version="2.5.1" />
+    <PackageVersion Include="Microsoft.WindowsAppSDK.Base" Version="2.0.4" />
+    <PackageVersion Include="Microsoft.WindowsAppSDK.Foundation" Version="2.3.12" />
+    <PackageVersion Include="Microsoft.WindowsAppSDK.InteractiveExperiences" Version="2.1.9" />
+    <PackageVersion Include="Microsoft.WindowsAppSDK.WinUI" Version="2.3.9" />
+    <!-- Referenced with ExcludeAssets=all only (see Shiftvert.App.csproj): restored because the metapackage lists them, never shipped. -->
+    <PackageVersion Include="Microsoft.WindowsAppSDK.AI" Version="2.5.5" />
+    <PackageVersion Include="Microsoft.WindowsAppSDK.ML" Version="2.1.94" />
+    <PackageVersion Include="Microsoft.Windows.AI.MachineLearning" Version="2.1.74" />
+    <PackageVersion Include="Microsoft.WindowsAppSDK.Search" Version="2.5.5" />
+    <PackageVersion Include="Microsoft.WindowsAppSDK.Widgets" Version="2.0.5" />
+    <PackageVersion Include="Microsoft.WindowsAppSDK.DWrite" Version="2.1.0" />
     <PackageVersion Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2705" />
     <PackageVersion Include="Microsoft.Graphics.Win2D" Version="1.4.0" />
     <PackageVersion Include="H.NotifyIcon.WinUI" Version="2.4.1" />

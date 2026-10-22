@@ -19,7 +19,21 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.WindowsAppSDK" />
+    <!-- Windows App SDK: only the components Shiftvert uses (WinUI, windowing/input, app lifecycle, resources, self-contained deployment).
+         H.NotifyIcon.WinUI depends on the Microsoft.WindowsAppSDK metapackage, and the 2.5.1 metapackage also depends on the AI, ML
+         (ONNX Runtime + DirectML), Search, Widgets and DWrite components. They cannot be removed from the graph, so the metapackage
+         and those components are referenced with every asset excluded: restored, but nothing from them reaches the output or the MSIX. -->
+    <PackageReference Include="Microsoft.WindowsAppSDK" ExcludeAssets="all" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.AI" ExcludeAssets="all" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.ML" ExcludeAssets="all" />
+    <PackageReference Include="Microsoft.Windows.AI.MachineLearning" ExcludeAssets="all" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.Search" ExcludeAssets="all" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.Widgets" ExcludeAssets="all" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.DWrite" ExcludeAssets="all" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.Base" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.Foundation" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.InteractiveExperiences" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.WinUI" />
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" />
     <PackageReference Include="Microsoft.Graphics.Win2D" />
     <PackageReference Include="H.NotifyIcon.WinUI" />
