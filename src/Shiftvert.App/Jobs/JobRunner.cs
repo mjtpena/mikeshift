@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Microsoft.UI.Dispatching;
 using Shiftvert.App.Hud;
 using Shiftvert.App.Settings;
@@ -28,6 +29,7 @@ public sealed class JobRunner
     private readonly Func<Capabilities> _capabilities;
     private readonly JobLedger _ledger = new();
     private readonly CancellationTokenSource _shutdown = new();
+    private readonly ConcurrentDictionary<int, Task> _running = new();
 
     public JobRunner(
         DispatcherQueue dispatcher, Preferences prefs, IHud hud, IDialogService dialogs, ChimePlayer chime,
@@ -81,7 +83,7 @@ public sealed class JobRunner
         var ctx = new ActionContext(_capabilities(), notifying, progress);
         var ct = _shutdown.Token;
 
-        _ = Task.Run(async () =>
+        var task = Task.Run(async () =>
         {
             ActionResult result;
             try
@@ -100,6 +102,8 @@ public sealed class JobRunner
             if (!_dispatcher.TryEnqueue(() => Finish(id, action, result)))
                 _ledger.Complete(id, result); // dispatcher already shut down (app exiting)
         });
+        _running[id] = task;
+        _ = task.ContinueWith(_ => _running.TryRemove(id, out Task? _), TaskScheduler.Default);
 
         return id;
     }
@@ -109,6 +113,18 @@ public sealed class JobRunner
 
     /// <summary>Cancels running jobs (app exit). Outputs already written are kept.</summary>
     public void Shutdown() => _shutdown.Cancel();
+
+    /// <summary>
+    /// Cancels running jobs, then waits (without blocking the caller's thread) up to <paramref name="timeout"/> for them to
+    /// unwind, so their <c>finally</c> blocks delete temp files before the process exits.
+    /// </summary>
+    public async Task ShutdownAsync(TimeSpan timeout)
+    {
+        Shutdown();
+        var pending = _running.Values.ToArray();
+        if (pending.Length == 0) return;
+        await Task.WhenAny(Task.WhenAll(pending), Task.Delay(timeout)).ConfigureAwait(true);
+    }
 
     private void Finish(int id, ActionDef action, ActionResult result)
     {
