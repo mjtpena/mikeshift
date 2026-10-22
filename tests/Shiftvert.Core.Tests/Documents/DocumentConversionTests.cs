@@ -366,6 +366,58 @@ public class DocumentConversionTests
         Assert.Equal(400, flat.Count(c => c == 'W'));
     }
 
+    [Theory]
+    [InlineData("日本語のテキスト", PdfDocWriter.Face.Cjk)]            // Japanese: Han + Hiragana + Katakana
+    [InlineData("안녕하세요 세계", PdfDocWriter.Face.Hangul)]             // Korean
+    [InlineData("नमस्ते दुनिया", PdfDocWriter.Face.Indic)]  // Hindi
+    [InlineData("สวัสดีชาวโลก", PdfDocWriter.Face.Thai)] // Thai
+    [InlineData("★→♫", PdfDocWriter.Face.Symbol)]
+    public async Task Pdf_renders_non_latin_scripts_with_a_fallback_font_not_boxes(string line, PdfDocWriter.Face face)
+    {
+        if (PdfDocWriter.FamilyFor(face) is null) return; // the system has no font for this script: nothing to assert
+        using var tmp = new TempDir();
+        var input = tmp.WriteFile("scripts.txt", "Hello before\n" + line + "\nAfter line");
+        var output = await ConvertAsync(input, DocFormat.Pdf);
+
+        var text = PdfText(output).Replace("\r", "").Replace("\n", "");
+        Assert.Contains(line.Replace(" ", ""), text.Replace(" ", ""));
+        Assert.DoesNotContain('\0', text);
+        Assert.Contains("Hello before", text);
+        Assert.Contains("After line", text);
+    }
+
+    [Fact]
+    public async Task Pdf_mixed_script_line_keeps_latin_and_cjk_in_order()
+    {
+        if (PdfDocWriter.FamilyFor(PdfDocWriter.Face.Cjk) is null) return;
+        using var tmp = new TempDir();
+        var input = tmp.WriteFile("mixed.txt", "Tokyo 東京 2024 から done");
+        var output = await ConvertAsync(input, DocFormat.Pdf);
+
+        // Order by position on the line (the extractor groups words by font).
+        using var pdf = UglyToad.PdfPig.PdfDocument.Open(output);
+        var onLine = string.Concat(pdf.GetPage(1).Letters.OrderBy(l => l.BoundingBox.Left).Select(l => l.Value)).Replace(" ", "");
+        Assert.Equal("Tokyo東京2024からdone", onLine);
+    }
+
+    [Fact]
+    public void Script_classifier_maps_code_points_to_font_groups()
+    {
+        Assert.Equal(PdfDocWriter.Face.Default, PdfDocWriter.FaceOf('A'));
+        Assert.Equal(PdfDocWriter.Face.Default, PdfDocWriter.FaceOf(0x0416)); // Cyrillic
+        Assert.Equal(PdfDocWriter.Face.Default, PdfDocWriter.FaceOf(0x05D0)); // Hebrew
+        Assert.Equal(PdfDocWriter.Face.Default, PdfDocWriter.FaceOf(0x0627)); // Arabic
+        Assert.Equal(PdfDocWriter.Face.Cjk, PdfDocWriter.FaceOf(0x4E2D));
+        Assert.Equal(PdfDocWriter.Face.Cjk, PdfDocWriter.FaceOf(0x3042));
+        Assert.Equal(PdfDocWriter.Face.Cjk, PdfDocWriter.FaceOf(0x30AB));
+        Assert.Equal(PdfDocWriter.Face.Hangul, PdfDocWriter.FaceOf(0xD55C));
+        Assert.Equal(PdfDocWriter.Face.Indic, PdfDocWriter.FaceOf(0x0928));
+        Assert.Equal(PdfDocWriter.Face.Indic, PdfDocWriter.FaceOf(0x0B95)); // Tamil
+        Assert.Equal(PdfDocWriter.Face.Thai, PdfDocWriter.FaceOf(0x0E01));
+        Assert.Equal(PdfDocWriter.Face.Symbol, PdfDocWriter.FaceOf(0x2605));
+        Assert.Equal(PdfDocWriter.Face.Emoji, PdfDocWriter.FaceOf(0x1F600));
+    }
+
     [Fact]
     public async Task Pdf_hard_page_break_starts_a_new_page_and_headings_are_larger()
     {

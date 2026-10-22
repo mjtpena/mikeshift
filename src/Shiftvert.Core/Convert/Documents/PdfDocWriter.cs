@@ -55,7 +55,66 @@ public static class PdfDocWriter
 
     // ------------------------------------------------------------ layout
 
-    private readonly record struct Style(bool Bold, bool Italic, bool Underline, double Size);
+    /// <summary>Which installed font a run of text is set in (Latin, Greek, Cyrillic, Hebrew, Arabic and neutrals use the default family).</summary>
+    public enum Face { Default, Cjk, Hangul, Indic, Thai, Myanmar, Symbol, Emoji }
+
+    private readonly record struct Style(bool Bold, bool Italic, bool Underline, double Size, Face Face = Face.Default);
+
+    // Fallback families per script, in order of preference (PdfFonts knows the files).
+    private static readonly Dictionary<Face, string[]> FaceCandidates = new()
+    {
+        [Face.Cjk] = ["Yu Gothic", "Microsoft YaHei", "SimSun", "MS Gothic"],
+        [Face.Hangul] = ["Malgun Gothic"],
+        [Face.Indic] = ["Nirmala UI"],
+        [Face.Thai] = ["Leelawadee UI", "Tahoma"],
+        [Face.Myanmar] = ["Myanmar Text"],
+        [Face.Symbol] = ["Segoe UI Symbol"],
+        [Face.Emoji] = ["Segoe UI Emoji", "Segoe UI Symbol"],
+    };
+
+    private static readonly Dictionary<Face, string[]> s_installedFaceFamilies = [];
+
+    /// <summary>Installed fallback families for <paramref name="face"/> (empty if none of its fonts exist on this machine).</summary>
+    private static string[] InstalledFamilies(Face face)
+    {
+        lock (s_installedFaceFamilies)
+        {
+            if (s_installedFaceFamilies.TryGetValue(face, out var cached)) return cached;
+            var found = FaceCandidates.TryGetValue(face, out var list) ? list.Where(PdfFonts.IsInstalled).ToArray() : [];
+            return s_installedFaceFamilies[face] = found;
+        }
+    }
+
+    /// <summary>The font family that renders <paramref name="face"/> text, or null when no suitable font is installed.</summary>
+    internal static string? FamilyFor(Face face) => face == Face.Default ? null : InstalledFamilies(face).FirstOrDefault();
+
+    /// <summary>The script group (and so the font) a code point is set in.</summary>
+    internal static Face FaceOf(int cp) => cp switch
+    {
+        < 0x0900 => Face.Default,
+        <= 0x0DFF => Face.Indic,                                                   // Devanagari ... Sinhala
+        >= 0x0E00 and <= 0x0EFF => Face.Thai,                                      // Thai, Lao
+        >= 0x1000 and <= 0x109F => Face.Myanmar,
+        >= 0x1100 and <= 0x11FF => Face.Hangul,
+        >= 0x1780 and <= 0x17FF => Face.Thai,                                      // Khmer (Leelawadee UI)
+        >= 0x2190 and <= 0x2BFF => Face.Symbol,                                    // arrows, math, technical, shapes, dingbats
+        >= 0x2E80 and <= 0x2FDF => Face.Cjk,
+        >= 0x3000 and <= 0x30FF => Face.Cjk,                                       // CJK punctuation, Hiragana, Katakana
+        >= 0x3100 and <= 0x312F => Face.Cjk,
+        >= 0x3130 and <= 0x318F => Face.Hangul,
+        >= 0x31F0 and <= 0x31FF => Face.Cjk,
+        >= 0x3400 and <= 0x4DBF => Face.Cjk,
+        >= 0x4E00 and <= 0x9FFF => Face.Cjk,
+        >= 0xA8E0 and <= 0xA8FF => Face.Indic,
+        >= 0xA960 and <= 0xA97F => Face.Hangul,
+        >= 0xAC00 and <= 0xD7FF => Face.Hangul,
+        >= 0xF900 and <= 0xFAFF => Face.Cjk,
+        >= 0xFE30 and <= 0xFE4F => Face.Cjk,
+        >= 0xFF00 and <= 0xFFEF => Face.Cjk,                                       // full-width forms
+        >= 0x1F000 and <= 0x1FAFF => Face.Emoji,
+        >= 0x20000 and <= 0x3FFFF => Face.Cjk,
+        _ => Face.Default,
+    };
 
     private sealed record Atom(string Text, Style Style, bool IsSpace, bool IsBreak = false);
 
@@ -78,7 +137,7 @@ public static class PdfDocWriter
         private double _y;
         private bool _pageUsed;
         private bool _forceNewPage;
-        private readonly Dictionary<(bool, bool, double), XFont> _fonts = [];
+        private readonly Dictionary<(bool, bool, double, Face), XFont> _fonts = [];
         private readonly Dictionary<(XFont, string), double> _widths = [];
         private readonly Dictionary<XFont, double> _spaces = [];
         private readonly XPen _pen = new(XColors.Black, 0.5);
@@ -148,12 +207,36 @@ public static class PdfDocWriter
 
         private XFont Font(Style s)
         {
-            var key = (s.Bold, s.Italic, s.Size);
+            var key = (s.Bold, s.Italic, s.Size, s.Face);
             if (_fonts.TryGetValue(key, out var f)) return f;
             var style = (s.Bold ? XFontStyleEx.Bold : XFontStyleEx.Regular) | (s.Italic ? XFontStyleEx.Italic : XFontStyleEx.Regular);
-            f = new XFont(Family(), s.Size, style);
+            f = FallbackFont(s.Face, s.Size, style) ?? new XFont(Family(), s.Size, style);
             _fonts[key] = f;
             return f;
+        }
+
+        /// <summary>The first installed, loadable font for a non-default script (bold/italic dropped if that font lacks them); null if none.</summary>
+        private static XFont? FallbackFont(Face face, double size, XFontStyleEx style)
+        {
+            if (face == Face.Default) return null;
+            foreach (var family in InstalledFamilies(face))
+            {
+                foreach (var st in style == XFontStyleEx.Regular ? new[] { style } : new[] { style, XFontStyleEx.Regular })
+                {
+                    try
+                    {
+                        var f = new XFont(family, size, st);
+                        using var probe = XGraphics.CreateMeasureContext(new XSize(100, 100), XGraphicsUnit.Point, XPageDirection.Downwards);
+                        _ = probe.MeasureString("Ag", f);
+                        return f;
+                    }
+                    catch (Exception)
+                    {
+                        // try the regular style, then the next family
+                    }
+                }
+            }
+            return null;
         }
 
         private double Measure(string text, Style s)
@@ -255,11 +338,13 @@ public static class PdfDocWriter
                 var text = Clean(run.Text);
                 var sb = new StringBuilder();
                 var spaces = 0;
-                void FlushWord() { if (sb.Length > 0) { atoms.Add(new Atom(sb.ToString(), style, false)); sb.Clear(); } }
+                var face = Face.Default;
+                // Words are split wherever the script (and so the font) changes, so each atom is measured and drawn in one font.
+                void FlushWord() { if (sb.Length > 0) { atoms.Add(new Atom(sb.ToString(), style with { Face = face }, false)); sb.Clear(); } }
                 void FlushSpaces() { if (spaces > 0) { atoms.Add(new Atom(new string(' ', spaces), style, true)); spaces = 0; } }
-                foreach (var ch in text)
+                foreach (var rune in text.EnumerateRunes())
                 {
-                    switch (ch)
+                    switch (rune.Value)
                     {
                         case '\n':
                             FlushWord(); FlushSpaces();
@@ -272,7 +357,11 @@ public static class PdfDocWriter
                             FlushWord(); spaces++;
                             break;
                         default:
-                            FlushSpaces(); sb.Append(ch);
+                            FlushSpaces();
+                            var f = FaceOf(rune.Value);
+                            if (f != Face.Default && FamilyFor(f) is null) f = Face.Default; // no font installed for it: stay in the default font
+                            if (f != face) { FlushWord(); face = f; }
+                            sb.Append(rune.ToString());
                             break;
                     }
                 }
@@ -292,6 +381,7 @@ public static class PdfDocWriter
                     case ' ': sb.Append(' '); break;
                     case '‑': sb.Append('-'); break;
                     case '​' or '‌' or '‍' or '﻿': break;
+                    case >= '\uFE00' and <= '\uFE0F': break; // variation selectors would render as boxes in the symbol fonts
                     case < ' ' when ch is not ('\n' or '\t'): break;
                     default: sb.Append(ch); break;
                 }
