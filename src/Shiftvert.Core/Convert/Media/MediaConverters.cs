@@ -29,9 +29,10 @@ public enum AudioFormat
 /// throws <see cref="ConversionException"/> with a user-facing message for expected failures.
 /// </summary>
 /// <remarks>
-/// Deviation from PLAN: MP4/M4V/WMV/Trim always transcode (<c>MediaTranscoder</c>); there is no stream-copy re-wrap path.
-/// Windows has no public API for a lossless MP4 remux and a hand-rolled <c>IMFSinkWriter</c> pass-through is fragile
-/// across containers, so correctness wins over speed here (documented in LIMITS.md).
+/// MP4/M4V re-wrap H.264/AAC sources losslessly through <see cref="StreamCopy"/> (source reader -> sink writer) and fall back to
+/// a full <c>MediaTranscoder</c> transcode for everything else (HEVC, MPEG-2, WMV...) or if the copy fails. WMV, GIF, Compress
+/// and Trim always re-encode. Deviation from PLAN: Trim is not a stream copy, because a copy can only cut on key frames and the
+/// trim dialog promises frame-accurate ranges (documented in LIMITS.md).
 /// </remarks>
 public static class VideoConverter
 {
@@ -56,6 +57,10 @@ public static class VideoConverter
                         "WMV", token, sourceVideoSubtype: info.VideoSubtype).ConfigureAwait(false);
                     break;
                 default:
+                    // Already H.264/AAC (MOV, MKV, M4V, MP4...): re-wrap without touching the encoded data when possible.
+                    if (await Task.Run(() => StreamCopy.TryRewrapToMp4(input, info, temp, token), token).ConfigureAwait(false))
+                        break;
+                    token.ThrowIfCancellationRequested();
                     await MediaTranscode.RunAsync(input, temp, MediaTranscode.Mp4(info, info.Height, ConvertBitsPerPixel), null,
                         format == VideoFormat.Mp4 ? "MP4" : "M4V", token, sourceVideoSubtype: info.VideoSubtype).ConfigureAwait(false);
                     break;

@@ -50,3 +50,9 @@ MF_MT_INTERLACE_MODE
 MFVideoInterlaceMode
 PropVariantToUInt64
 PropVariantClear
+MFCreateSinkWriterFromURL
+IMFSinkWriter
+MF_TRANSCODE_CONTAINERTYPE
+MFTranscodeContainerType_MPEG4
+MF_READWRITE_DISABLE_CONVERTERS
+MFCreateMemoryBuffer

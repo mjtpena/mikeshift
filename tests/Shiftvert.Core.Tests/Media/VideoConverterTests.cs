@@ -98,7 +98,7 @@ public class VideoConverterTests
     }
 
     [SkipIfNoCapability(nameof(Capabilities.H264Encode), nameof(Capabilities.AacEncode))]
-    public async Task Mp4_to_Wmv_and_M4v_and_Mp4_reencode()
+    public async Task Mp4_to_Wmv_M4v_and_Mp4_produce_playable_files()
     {
         using var tmp = new TempDir();
         var mp4 = CopyMp4(tmp);
@@ -124,6 +124,46 @@ public class VideoConverterTests
         Assert.True(Info(m4v).IsH264);
         Assert.True(Info(m4v).IsAac);
         Assert.True(Info(again).IsH264);
+    }
+
+    [SkipIfNoCapability(nameof(Capabilities.H264Encode), nameof(Capabilities.AacEncode))]
+    public async Task Mp4_to_M4v_rewraps_h264_and_aac_without_reencoding()
+    {
+        using var tmp = new TempDir();
+        var mp4 = CopyMp4(tmp);
+        using var guard = OriginalsGuard.Watch(mp4);
+        var source = Info(mp4);
+
+        var m4v = await VideoConverter.ToFormatAsync(mp4, VideoFormat.M4v, NoCancel);
+
+        var copy = Info(m4v);
+        Assert.True(copy.IsH264);
+        Assert.True(copy.IsAac);
+        // A re-encode would change the audio to the profile's 48 kHz and shrink the file several-fold; a re-wrap does neither.
+        Assert.Equal(source.AudioSampleRate, copy.AudioSampleRate);
+        Assert.Equal(source.Width, copy.Width);
+        Assert.InRange(copy.Duration.TotalSeconds, source.Duration.TotalSeconds - 0.2, source.Duration.TotalSeconds + 0.2);
+        var ratio = (double)new FileInfo(m4v).Length / new FileInfo(mp4).Length;
+        Assert.InRange(ratio, 0.9, 1.1);
+        Assert.Empty(Directory.GetFiles(tmp.Path, "*.shiftvert-tmp"));
+
+        // The copied stream really decodes: every frame of it makes it into a GIF.
+        var gif = await VideoConverter.ToFormatAsync(m4v, VideoFormat.Gif, NoCancel);
+        Assert.InRange(ParseGif(File.ReadAllBytes(gif)).Delays.Count, 18, 22);
+    }
+
+    [SkipIfNoCapability(nameof(Capabilities.H264Encode), nameof(Capabilities.AacEncode))]
+    public async Task Rewrap_works_for_a_silent_video_too()
+    {
+        using var tmp = new TempDir();
+        var silent = CopySilentMp4(tmp);
+
+        var output = await VideoConverter.ToFormatAsync(silent, VideoFormat.M4v, NoCancel);
+
+        var info = Info(output);
+        Assert.True(info.HasVideo);
+        Assert.False(info.HasAudio);
+        Assert.True(info.IsH264);
     }
 
     [SkipIfNoCapability(nameof(Capabilities.H264Encode), nameof(Capabilities.AacEncode))]
