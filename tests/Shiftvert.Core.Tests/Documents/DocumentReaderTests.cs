@@ -119,7 +119,7 @@ public class DocumentReaderTests
     public void Html_tolerates_unclosed_tags_and_decodes_entities()
     {
         var model = HtmlReader.Read("<p>Fish &amp; chips &lt;b&gt; &copy; &#8364; &nbsp;x<p>Second<ul><li>one<li>two</ul>tail");
-        Assert.Equal(["P:Fish & chips <b> © €  x", "P:Second", "UL0:one", "UL0:two", "P:tail"], Outline(model));
+        Assert.Equal(["P:Fish & chips <b> © €  x", "P:Second", "UL0:one", "UL0:two", "P:tail"], Outline(model));
     }
 
     [Fact]

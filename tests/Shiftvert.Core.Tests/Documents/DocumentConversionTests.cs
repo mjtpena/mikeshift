@@ -217,7 +217,7 @@ public class DocumentConversionTests
 
         var text = File.ReadAllText(path, new UTF8Encoding(false, true));
         Assert.Contains("<meta charset=\"utf-8\">", text);
-        Assert.Contains("<p dir=\"rtl\">" + Fixtures.DocHebrewText + "</p>", text);
+        Assert.Contains("<p dir=\"rtl\" style=\"white-space:pre-wrap\">" + Fixtures.DocHebrewText + "</p>", text);
         Assert.Contains("a &lt; b &amp; c &gt; d &quot;q&quot;", text);
         Assert.DoesNotContain("<script", text);
         Assert.Equal(["P:" + Fixtures.DocHebrewText, "P:a < b & c > d \"q\""], Outline(Read(path)));
@@ -364,6 +364,52 @@ public class DocumentConversionTests
         var output = await ConvertAsync(input, DocFormat.Pdf);
         var flat = PdfFlat(output).Replace(" ", "");
         Assert.Equal(400, flat.Count(c => c == 'W'));
+    }
+
+    [Fact]
+    public async Task Txt_to_html_to_txt_keeps_leading_and_repeated_spaces_tabs_and_blank_lines()
+    {
+        using var tmp = new TempDir();
+        const string text = "  indented two\r\nsingle then  double  spaces\r\n\tTabbed\r\n\r\n\r\nafter two blank lines\r\n    \r\ntrailing   \r\nlast line\r\n";
+        var txt = tmp.WriteFile("spaces.txt", text);
+
+        var html = await ConvertAsync(txt, DocFormat.Html);
+        var html2 = File.ReadAllText(html);
+        Assert.DoesNotContain("&nbsp;", html2);
+        Assert.DoesNotContain(' ', html2);
+        Assert.Contains("white-space:pre-wrap", html2);
+
+        var back = await ConvertAsync(html, DocFormat.Txt);
+        Assert.Equal(text, File.ReadAllText(back));
+    }
+
+    [Fact]
+    public void Html_writer_keeps_blank_paragraphs_and_the_reader_maps_nbsp_back_to_a_space()
+    {
+        var model = new DocModel();
+        model.Blocks.Add(DocParagraph.Plain("one"));
+        model.Blocks.Add(new DocParagraph());
+        model.Blocks.Add(DocParagraph.Plain("two"));
+        using var ms = new MemoryStream();
+        HtmlWriter.Write(model, ms, "t");
+        var written = Encoding.UTF8.GetString(ms.ToArray());
+        Assert.Contains("<p style=\"white-space:pre-wrap\"><br></p>", written);
+
+        var read = HtmlReader.Read(written);
+        Assert.Equal(["one", "", "two"], read.Blocks.OfType<DocParagraph>().Select(p => p.Text).ToArray());
+
+        // HTML from older Shiftvert versions (or elsewhere) used &nbsp; for indentation.
+        var legacy = HtmlReader.Read("<p>&nbsp;&nbsp;a&nbsp;b</p>");
+        Assert.Equal("  a b", Assert.IsType<DocParagraph>(Assert.Single(legacy.Blocks)).Text);
+    }
+
+    [Fact]
+    public async Task Pre_wrap_blocks_from_other_html_keep_their_spaces_but_plain_blocks_still_collapse()
+    {
+        using var tmp = new TempDir();
+        var html = tmp.WriteFile("mix.html", "<p style=\"white-space: pre-wrap\">  a   b</p><p>c    d\n  e</p>");
+        var back = await ConvertAsync(html, DocFormat.Txt);
+        Assert.Equal("  a   b\r\nc d e\r\n", File.ReadAllText(back));
     }
 
     [Theory]
