@@ -16,9 +16,12 @@
     WinUI app for a specific architecture (the app needs an explicit platform if built on its own):
         dotnet build src/Shiftvert.App -p:Platform=x64
         dotnet build src/Shiftvert.App -p:Platform=ARM64
-    Unsigned MSIX (CI uses this; install needs signing, see packaging/ later):
+    Unsigned MSIX (install needs signing, see packaging/make-dev-cert.ps1 and scripts/release.ps1):
         dotnet build src/Shiftvert.App -c Release -p:Platform=x64 -p:GenerateAppxPackageOnBuild=true -p:AppxPackageSigningEnabled=false -p:AppxBundle=Never
         -> src/Shiftvert.App/AppPackages/Shiftvert.App_<ver>_x64_Test/*.msix
+        The package also contains the console CLI (cli\shiftvert.exe, published self-contained by the app build; opt out with -p:BundleCli=false).
+    Release bundle (x64 + ARM64 .msixbundle + SHA256SUMS.txt in artifacts/; signed if a pfx is given):
+        ./scripts/release.ps1 [-PfxPath <pfx> -PfxPassword <securestring>]
 
   Core, Cli and the test projects are platform-neutral and build with plain `dotnet build` / `dotnet test`.
 
@@ -26,12 +29,15 @@
 .PARAMETER Test           Also run `dotnet test Shiftvert.sln` after building.
 .PARAMETER Msix           Also build the unsigned MSIX for each platform in -Platforms.
 .PARAMETER Platforms      Platforms for -Msix. Default: x64.
+.PARAMETER Bundle         Also run scripts/release.ps1 (x64 + ARM64 unsigned .msixbundle + SHA256SUMS.txt in artifacts/, always Release).
 .PARAMETER Clean          `dotnet clean` first.
 
 .EXAMPLE
   ./scripts/build.ps1 -Test
 .EXAMPLE
   ./scripts/build.ps1 -Configuration Release -Msix -Platforms x64,ARM64
+.EXAMPLE
+  ./scripts/build.ps1 -Configuration Release -Test -Bundle
 #>
 [CmdletBinding()]
 param(
@@ -39,6 +45,7 @@ param(
     [switch] $Test,
     [switch] $Msix,
     [string[]] $Platforms = @('x64'),
+    [switch] $Bundle,
     [switch] $Clean
 )
 
@@ -69,6 +76,11 @@ try {
         }
         Get-ChildItem src/Shiftvert.App/AppPackages -Recurse -Include *.msix -ErrorAction SilentlyContinue |
             ForEach-Object { Write-Host "MSIX: $($_.FullName)" -ForegroundColor Green }
+    }
+
+    if ($Bundle) {
+        Write-Host '==> scripts/release.ps1' -ForegroundColor Cyan
+        & (Join-Path $PSScriptRoot 'release.ps1')
     }
 }
 finally {

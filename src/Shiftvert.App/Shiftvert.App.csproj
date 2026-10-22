@@ -47,4 +47,38 @@
     <AdditionalFiles Include="NativeMethods.json" />
   </ItemGroup>
 
+  <!-- Packaging (W4b) -->
+  <PropertyGroup>
+    <!-- One architecture per package, with the .NET runtime bundled: an MSIX cannot depend on a machine-wide .NET install.
+         Output stays in bin\<Platform>\<Config>\<tfm>\ (no win-x64 subfolder) so existing dev scripts keep working. -->
+    <RuntimeIdentifier Condition="'$(Platform)' == 'x64'">win-x64</RuntimeIdentifier>
+    <RuntimeIdentifier Condition="'$(Platform)' == 'ARM64'">win-arm64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+    <AppxSymbolPackageEnabled>false</AppxSymbolPackageEnabled>
+    <BundleCli Condition="'$(BundleCli)' == ''">true</BundleCli>
+  </PropertyGroup>
+
+  <!-- The console CLI ships inside the package under cli\ (its own self-contained copy: Shiftvert.exe and shiftvert.exe/.dll differ only
+       by case, so they cannot share a folder). Package.appxmanifest points the `shiftvert.exe` execution alias at cli\shiftvert.exe. -->
+  <Target Name="BundleShiftvertCli" BeforeTargets="AssignTargetPaths" Condition="'$(BundleCli)' == 'true' and '$(RuntimeIdentifier)' != ''">
+    <PropertyGroup>
+      <_CliPublishDir>$(MSBuildProjectDirectory)\$(IntermediateOutputPath)cli\</_CliPublishDir>
+      <_CliAssets>$(MSBuildProjectDirectory)\..\Shiftvert.Cli\obj\project.assets.json</_CliAssets>
+      <_CliNeedsRestore Condition="!Exists('$(_CliAssets)')">true</_CliNeedsRestore>
+      <_CliNeedsRestore Condition="'$(_CliNeedsRestore)' == '' and !$([System.IO.File]::ReadAllText('$(_CliAssets)').Contains('/$(RuntimeIdentifier)&quot;'))">true</_CliNeedsRestore>
+    </PropertyGroup>
+    <!-- The CLI is not a project reference of the app (that would add its framework-dependent output to the package), so a bare
+         `dotnet build src/Shiftvert.App` on a fresh checkout has never restored it. Restore it here, in its own evaluation, but only
+         when its assets are missing or lack this RID: rewriting project.assets.json during a parallel solution build would race. -->
+    <MSBuild Condition="'$(_CliNeedsRestore)' == 'true'" Projects="..\Shiftvert.Cli\Shiftvert.Cli.csproj" Targets="Restore"
+             Properties="Configuration=$(Configuration);Platform=$(Platform);RuntimeIdentifier=$(RuntimeIdentifier);SelfContained=true;MSBuildRestoreSessionId=$([System.Guid]::NewGuid())" />
+    <MSBuild Projects="..\Shiftvert.Cli\Shiftvert.Cli.csproj" Targets="Publish"
+             Properties="Configuration=$(Configuration);Platform=$(Platform);RuntimeIdentifier=$(RuntimeIdentifier);SelfContained=true;PublishDir=$(_CliPublishDir)" />
+    <ItemGroup>
+      <_CliFile Include="$(_CliPublishDir)**\*" Exclude="$(_CliPublishDir)**\*.pdb" />
+      <Content Include="@(_CliFile)" Link="cli\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
+  </Target>
+
 </Project>

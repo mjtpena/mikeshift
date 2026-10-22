@@ -1,12 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- W2f: startup task, execution alias, display names. W4b owns packaging polish (final assets, publisher, bundling the CLI). -->
+<!--
+  Two Application entries in one package:
+    "App"  - the tray app (Shiftvert.exe, GUI subsystem): Open at Login startup task.
+    "Cli"  - the console CLI (cli\shiftvert.exe), hidden from the Start menu, owner of the `shiftvert.exe` execution alias.
+  The CLI is a separate, self-contained copy in the cli\ folder (see "Packaging (W4b)" in Shiftvert.App.csproj); it cannot sit next to
+  Shiftvert.exe because Windows file names are case-insensitive (Shiftvert.exe / shiftvert.exe, Shiftvert.dll / shiftvert.dll).
+  Publisher must match the signing certificate: packaging\make-dev-cert.ps1 creates "CN=Shiftvert Dev".
+-->
 <Package
   xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
   xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
-  xmlns:uap3="http://schemas.microsoft.com/appx/manifest/uap/windows10/3"
+  xmlns:uap5="http://schemas.microsoft.com/appx/manifest/uap/windows10/5"
   xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
+  xmlns:desktop4="http://schemas.microsoft.com/appx/manifest/desktop/windows10/4"
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
-  IgnorableNamespaces="uap uap3 desktop rescap">
+  IgnorableNamespaces="uap uap5 desktop desktop4 rescap">
 
   <Identity
     Name="Shiftvert"
@@ -41,14 +49,25 @@
         <desktop:Extension Category="windows.startupTask" Executable="Shiftvert.exe" EntryPoint="Windows.FullTrustApplication">
           <desktop:StartupTask TaskId="ShiftvertStartup" Enabled="false" DisplayName="Shiftvert" />
         </desktop:Extension>
+      </Extensions>
+    </Application>
 
-        <!-- `shiftvert.exe` on PATH. TODO(W4b): point this at the CLI executable (Shiftvert.Cli) once it is bundled into the
-             package; until then the alias launches the tray app itself. -->
-        <uap3:Extension Category="windows.appExecutionAlias" Executable="Shiftvert.exe" EntryPoint="Windows.FullTrustApplication">
-          <uap3:AppExecutionAlias>
-            <desktop:ExecutionAlias Alias="shiftvert.exe" />
-          </uap3:AppExecutionAlias>
-        </uap3:Extension>
+    <Application Id="Cli" Executable="cli\shiftvert.exe" EntryPoint="Windows.FullTrustApplication" desktop4:Subsystem="console" desktop4:SupportsMultipleInstances="true">
+      <uap:VisualElements
+        DisplayName="Shiftvert command line"
+        Description="Convert files from a terminal: shiftvert --list / --run."
+        BackgroundColor="transparent"
+        Square150x150Logo="Assets\Square150x150Logo.png"
+        Square44x44Logo="Assets\Square44x44Logo.png"
+        AppListEntry="none" />
+
+      <Extensions>
+        <!-- `shiftvert.exe` on PATH (%LOCALAPPDATA%\Microsoft\WindowsApps), console subsystem so stdout/stderr/exit code reach the terminal. -->
+        <uap5:Extension Category="windows.appExecutionAlias" Executable="cli\shiftvert.exe" EntryPoint="Windows.FullTrustApplication">
+          <uap5:AppExecutionAlias desktop4:Subsystem="console">
+            <uap5:ExecutionAlias Alias="shiftvert.exe" />
+          </uap5:AppExecutionAlias>
+        </uap5:Extension>
       </Extensions>
     </Application>
   </Applications>
