@@ -71,7 +71,7 @@ public class CliUsageTests
     public void Trim_without_range_exits_1_with_syntax_help()
     {
         using var tmp = new TempDir();
-        var r = CliProcess.Run("--run", "Trim", tmp.WriteFile("clip.mp4", Fixtures.Noise(64)));
+        var r = CliProcess.Run("--run", "Trim", tmp.WriteFile("clip.wav", Fixtures.SineWav(0.1)));
         Assert.Equal(1, r.ExitCode);
         Assert.Contains("--range m:ss-m:ss", r.Stderr);
     }

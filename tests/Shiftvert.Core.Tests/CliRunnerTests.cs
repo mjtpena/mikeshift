@@ -101,7 +101,7 @@ public class CliRunnerTests
     public async Task Trim_without_range_exits_1_with_syntax_help()
     {
         using var tmp = new TempDir();
-        var (exit, _, stderr) = await Run("--run", "Trim", tmp.WriteFile("clip.mp4", Fixtures.Noise(64)));
+        var (exit, _, stderr) = await Run("--run", "Trim", tmp.WriteFile("clip.wav", Fixtures.SineWav(0.1)));
         Assert.Equal(1, exit);
         Assert.Contains("--range m:ss-m:ss", stderr);
     }
@@ -123,7 +123,7 @@ public class CliRunnerTests
     public async Task Invalid_range_exits_1_with_syntax_help(string range)
     {
         using var tmp = new TempDir();
-        var (exit, _, stderr) = await Run("--run", "Trim", "--range", range, tmp.WriteFile("clip.mp4", Fixtures.Noise(64)));
+        var (exit, _, stderr) = await Run("--run", "Trim", "--range", range, tmp.WriteFile("clip.wav", Fixtures.SineWav(0.1)));
         Assert.Equal(1, exit);
         Assert.Contains("--range m:ss-m:ss", stderr);
     }

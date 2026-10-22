@@ -19,11 +19,13 @@ public class KindTests
         else Assert.Equal(Category.Image, OfFile($"x.{ext}", bytes));
     }
 
+    // Audio/video are only classified as such when Media Foundation can open the file (real probes since W2c), so
+    // these extension-table tests use the placeholder path (extension verdict only). Real files: Media/MediaProbeTests.
     [Theory, MemberData(nameof(VideoExt))]
-    public void Video_extensions_are_video(string ext) => Assert.Equal(Category.Video, OfFile($"x.{ext}", Fixtures.Noise(64)));
+    public void Video_extensions_are_video(string ext) => Assert.Equal(Category.Video, ExtensionVerdict($"x.{ext}"));
 
     [Theory, MemberData(nameof(AudioExt))]
-    public void Audio_extensions_are_audio(string ext) => Assert.Equal(Category.Audio, OfFile($"x.{ext}", Fixtures.Noise(64)));
+    public void Audio_extensions_are_audio(string ext) => Assert.Equal(Category.Audio, ExtensionVerdict($"x.{ext}"));
 
     [Theory, MemberData(nameof(DocExt))]
     public void Document_extensions_are_documents(string ext) => Assert.Equal(Category.Document, OfFile($"x.{ext}", Fixtures.Noise(64)));
@@ -75,8 +77,15 @@ public class KindTests
     [Fact]
     public void Ts_with_transport_stream_sync_bytes_is_video()
     {
-        Assert.Equal(Category.Video, OfFile("clip.ts", Fixtures.MpegTs(8)));
-        Assert.Equal(Category.Video, OfFile("clip.mts", Fixtures.MpegTs(8)));
+        // Sync bytes are necessary but, since W2c, no longer sufficient: Media Foundation must also be able to open the
+        // stream, and the synthetic skeleton has no programs. The verdict therefore follows the real probe.
+        using var tmp = new TempDir();
+        foreach (var name in new[] { "clip.ts", "clip.mts" })
+        {
+            var path = tmp.WriteFile(name, Fixtures.MpegTs(8));
+            var expected = Shiftvert.Core.Media.MediaProbe.CanOpen(path) ? Category.Video : Category.Other;
+            Assert.Equal(expected, Kind.Of(path));
+        }
     }
 
     [Fact]
@@ -167,6 +176,12 @@ public class KindTests
         Assert.Equal("gz", Kind.ExtensionOf("archive.tar.gz"));
         Assert.Equal("", Kind.ExtensionOf("README"));
         Assert.Equal("", Kind.ExtensionOf("trailingdot."));
+    }
+
+    private static Category ExtensionVerdict(string name)
+    {
+        using var tmp = new TempDir();
+        return Kind.Classify(tmp.WriteFile(name, Fixtures.Noise(64)), Kind.RecallOnDataAccess);
     }
 
     private static Category OfFile(string name, byte[] content)
