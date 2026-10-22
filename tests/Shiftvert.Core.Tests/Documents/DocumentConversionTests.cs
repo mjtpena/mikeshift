@@ -590,4 +590,86 @@ public class DocumentConversionTests
         }
         Assert.Contains("Quarterly Report", File.ReadAllText(await ConvertAsync(doc, DocFormat.Txt, Capabilities.Current)));
     }
+
+    private static HashSet<int> WordPids() =>
+        System.Diagnostics.Process.GetProcessesByName("WINWORD").Select(p => { using (p) return p.Id; }).ToHashSet();
+
+    private static void MakePasswordProtectedDoc(string path)
+    {
+        dynamic word = Activator.CreateInstance(Type.GetTypeFromProgID("Word.Application")!)!;
+        try
+        {
+            word.Visible = false;
+            word.DisplayAlerts = 0;
+            dynamic doc = word.Documents.Add();
+            doc.Content.Text = "secret";
+            doc.SaveAs2(FileName: path, FileFormat: 0, Password: "pw");
+            doc.Close(SaveChanges: 0);
+        }
+        finally
+        {
+            word.Quit(SaveChanges: 0);
+        }
+    }
+
+    [SkipIfNoCapability(nameof(Capabilities.WordCom))]
+    public async Task Word_fails_fast_with_a_clear_message_on_a_password_protected_doc()
+    {
+        using var tmp = new TempDir();
+        var path = tmp.Combine("locked.doc");
+        MakePasswordProtectedDoc(path);
+
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        var ex = await Assert.ThrowsAsync<ConversionException>(() => ConvertAsync(path, DocFormat.Txt, Capabilities.Current));
+
+        Assert.Contains("password", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.True(clock.Elapsed < TimeSpan.FromSeconds(60), clock.Elapsed.ToString());
+        Assert.Empty(Directory.GetFileSystemEntries(tmp.Path, "*.shiftvert-tmp"));
+    }
+
+    [SkipIfNoCapability(nameof(Capabilities.WordCom))]
+    public async Task Word_conversion_that_times_out_is_killed_and_reports_it()
+    {
+        using var tmp = new TempDir();
+        var doc = tmp.WriteFile("legacy.doc", Encoding.ASCII.GetBytes(Fixtures.RtfSample()));
+        var before = WordPids();
+        var previous = WordInterop.Timeout;
+        WordInterop.Timeout = TimeSpan.FromMilliseconds(100); // Word needs far longer than this just to start
+        try
+        {
+            var ex = await Assert.ThrowsAsync<ConversionException>(() => ConvertAsync(doc, DocFormat.Txt, Capabilities.Current));
+            Assert.Contains("didn't respond", ex.Message);
+        }
+        finally
+        {
+            WordInterop.Timeout = previous;
+        }
+
+        await AssertNoNewWordProcess(before);
+        Assert.Empty(Directory.GetFileSystemEntries(tmp.Path, "*.shiftvert-tmp"));
+    }
+
+    [SkipIfNoCapability(nameof(Capabilities.WordCom))]
+    public async Task Word_conversion_honours_cancellation_and_kills_its_Word()
+    {
+        using var tmp = new TempDir();
+        var doc = tmp.WriteFile("legacy.doc", Encoding.ASCII.GetBytes(Fixtures.RtfSample()));
+        var before = WordPids();
+        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            DocumentConverter.ToFormatAsync(doc, DocFormat.Txt, Capabilities.Current, cts.Token));
+
+        await AssertNoNewWordProcess(before);
+    }
+
+    private static async Task AssertNoNewWordProcess(HashSet<int> before)
+    {
+        for (var i = 0; i < 50; i++)
+        {
+            if (!WordPids().Except(before).Any()) return;
+            await Task.Delay(100);
+        }
+        Assert.Empty(WordPids().Except(before));
+    }
 }

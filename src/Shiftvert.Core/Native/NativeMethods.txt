@@ -1,3 +1,4 @@
 SHGetKnownFolderPath
 FOLDERID_Downloads
 CoTaskMemFree
+GetWindowThreadProcessId
