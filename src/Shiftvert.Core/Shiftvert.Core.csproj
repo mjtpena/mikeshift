@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Shiftvert.Core</RootNamespace>
+    <AssemblyName>Shiftvert.Core</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Every converter package depends on these; they are all referenced up front so that
+         W2a-W2d never have to edit this file. -->
+    <PackageReference Include="PDFsharp" />
+    <PackageReference Include="PdfPig" />
+    <PackageReference Include="DocumentFormat.OpenXml" />
+    <PackageReference Include="SkiaSharp" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Win32" />
+    <PackageReference Include="Microsoft.Windows.CsWin32" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- CsWin32: every NativeMethods.txt anywhere in the project is an AdditionalFile. -->
+    <AdditionalFiles Include="**/NativeMethods.txt" Exclude="bin/**;obj/**" />
+    <AdditionalFiles Include="NativeMethods.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Shiftvert.Core.Tests" />
+    <InternalsVisibleTo Include="Shiftvert.Cli.Tests" />
+  </ItemGroup>
+
+</Project>

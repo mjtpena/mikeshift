@@ -1,0 +1,54 @@
+## .NET / Visual Studio
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.rsuser
+*.DotSettings.user
+launchSettings.json
+TestResults/
+*.trx
+*.binlog
+msbuild.log
+msbuild.err
+msbuild.wrn
+
+## NuGet
+*.nupkg
+*.snupkg
+.nuget/
+packages/
+
+## MSIX / WinUI packaging
+AppPackages/
+BundleArtifacts/
+*.msix
+*.msixbundle
+*.msixupload
+*.appx
+*.appxbundle
+*.pfx
+*.cer
+*.snk
+Generated Files/
+*.appxsym
+
+## Project output
+/fixtures/
+/artifacts/
+/dist/
+
+## OS
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+## Claude Code local settings
+.claude/settings.local.json
