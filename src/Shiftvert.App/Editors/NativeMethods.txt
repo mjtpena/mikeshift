@@ -1,0 +1,9 @@
+MessageBeep
+GetForegroundWindow
+GetWindowThreadProcessId
+AttachThreadInput
+BringWindowToTop
+SetForegroundWindow
+GetCurrentThreadId
+GetCursorPos
+GetDpiForWindow
