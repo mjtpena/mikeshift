@@ -4,6 +4,7 @@ using Microsoft.UI.Xaml;
 using Shiftvert.App.FirstRun;
 using Shiftvert.App.Settings;
 using Shiftvert.App.Tray;
+using Shiftvert.App.Wheel;
 using Shiftvert.Core;
 
 namespace Shiftvert.App;
@@ -15,6 +16,7 @@ namespace Shiftvert.App;
 public partial class App : Application
 {
     private readonly bool _smokeTest;
+    private DragCoordinator? _drag;
 
     public App()
     {
@@ -44,6 +46,8 @@ public partial class App : Application
         // Smoke test hook: `Shiftvert.exe --smoke-test` starts, builds the tray and exits cleanly.
         if (_smokeTest)
         {
+            // W3: also bring up the wheel (window, Win2D, drop target) without the global hooks, so the smoke test covers it.
+            _drag = DragCoordinator.Start(Services, installHooks: false);
             Quit();
             return;
         }
@@ -54,7 +58,9 @@ public partial class App : Application
         // Probe optional codecs now (MF/WIC probes can take a moment) instead of on the first drag.
         _ = Task.Run(() => Capabilities.Current);
 
-        // W3 wiring: create the input monitor + wheel here and attach Tray.ConvertFilesRequested.
+        // W3 wiring: the input monitor + wheel thread, and the click-mode wheel for Convert Files….
+        _drag = DragCoordinator.Start(Services);
+        if (_drag is not null) Tray.ConvertFilesRequested += _drag.ShowClickMode;
         // W4a wiring: Services.Interaction.CropEditor / TrimEditor.
 
         var args2 = Environment.GetCommandLineArgs();
@@ -79,6 +85,8 @@ public partial class App : Application
     /// <summary>Stops running jobs, removes the tray icon and exits the process.</summary>
     public void Quit()
     {
+        _drag?.Dispose();
+        _drag = null;
         Services.Jobs.Shutdown();
         Services.Hud.Dispose();
         Tray.Dispose();
