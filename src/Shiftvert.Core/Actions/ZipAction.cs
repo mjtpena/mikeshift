@@ -8,8 +8,9 @@ namespace Shiftvert.Core.Actions;
 /// <item>One item: <c>name.zip</c> (file: name without extension; folder: the folder name) beside the item.</item>
 /// <item>Several items: <c>Archive.zip</c> beside the first item. Folders are stored under their own name.</item>
 /// <item>Entry timestamps are the files' UTC last-write times (DOS time cannot carry a zone, so UTC is stored as the clock value).</item>
-/// <item>Named pipes, sockets, devices and WSL special files are refused; reparse-point directories (symlinks, junctions)
-/// inside a folder are not followed, so link loops cannot recurse forever.</item>
+/// <item>Named pipes, sockets, devices and WSL special files are refused; name-surrogate directories (symlinks, junctions)
+/// inside a folder are not followed, so link loops cannot recurse forever. Other reparse points (OneDrive/Dropbox cloud
+/// placeholders, dedup, ...) are ordinary folders and are included.</item>
 /// </list>
 /// </summary>
 public static class ZipAction
@@ -56,6 +57,7 @@ public static class ZipAction
     private static async Task WriteArchiveAsync(IReadOnlyList<string> paths, string tempPath, CancellationToken ct)
     {
         var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var tempFull = Path.GetFullPath(tempPath);
 
         await using var fs = new FileStream(tempPath, FileMode.Create, FileAccess.ReadWrite, FileShare.None, 81920, useAsync: true);
@@ -68,7 +70,7 @@ public static class ZipAction
             if (Directory.Exists(full))
             {
                 var root = UniqueEntryName(names, Path.GetFileName(full), isDirectory: true);
-                await AddDirectoryAsync(zip, new DirectoryInfo(full), root, tempFull, ct).ConfigureAwait(false);
+                await AddDirectoryAsync(zip, new DirectoryInfo(full), root, tempFull, visited, ct).ConfigureAwait(false);
             }
             else
             {
@@ -78,8 +80,12 @@ public static class ZipAction
         }
     }
 
-    private static async Task AddDirectoryAsync(ZipArchive zip, DirectoryInfo dir, string entryPrefix, string tempFull, CancellationToken ct)
+    private static async Task AddDirectoryAsync(ZipArchive zip, DirectoryInfo dir, string entryPrefix, string tempFull, HashSet<string> visited, CancellationToken ct)
     {
+        // Loop protection: each real directory is archived once per run (symlinks/junctions are also skipped below).
+        var final = FinalPath(dir);
+        if (!visited.Add(final)) return;
+
         // Entry for the directory itself keeps empty folders and their timestamps.
         var dirEntry = zip.CreateEntry(entryPrefix + "/");
         dirEntry.LastWriteTime = ClampTime(dir.LastWriteTimeUtc);
@@ -99,8 +105,9 @@ public static class ZipAction
             if ((child.Attributes & FileAttributes.Directory) != 0)
             {
                 // Never follow symlinks/junctions below the selected root: that is how link loops happen.
-                if ((child.Attributes & FileAttributes.ReparsePoint) != 0) continue;
-                await AddDirectoryAsync(zip, (DirectoryInfo)child, childEntry, tempFull, ct).ConfigureAwait(false);
+                // Cloud placeholders (OneDrive, Dropbox, ...) are reparse points too but are real folders: keep them.
+                if ((child.Attributes & FileAttributes.ReparsePoint) != 0 && IsLink(child)) continue;
+                await AddDirectoryAsync(zip, (DirectoryInfo)child, childEntry, tempFull, visited, ct).ConfigureAwait(false);
             }
             else
             {
@@ -109,6 +116,18 @@ public static class ZipAction
                 await AddFileAsync(zip, (FileInfo)child, childEntry, ct).ConfigureAwait(false);
             }
         }
+    }
+
+    private static bool IsLink(FileSystemInfo child)
+    {
+        var tag = SpecialFiles.ReparseTag(child.FullName);
+        return SpecialFiles.IsNameSurrogate(tag) || (tag == 0 && child.LinkTarget is not null);
+    }
+
+    private static string FinalPath(DirectoryInfo dir)
+    {
+        try { return dir.ResolveLinkTarget(returnFinalTarget: true)?.FullName ?? dir.FullName; }
+        catch (IOException) { return dir.FullName; }
     }
 
     private static async Task AddFileAsync(ZipArchive zip, FileInfo file, string entryName, CancellationToken ct)
