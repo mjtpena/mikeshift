@@ -2,9 +2,9 @@
 <!--
   Two Application entries in one package:
     "App"  - the tray app (MikeShift.exe, GUI subsystem): Open at Login startup task.
-    "Cli"  - the console CLI (cli\mikeshift.exe), hidden from the Start menu, owner of the `mikeshift.exe` execution alias.
-  The CLI is a separate, self-contained copy in the cli\ folder (see "Packaging (W4b)" in MikeShift.App.csproj); it cannot sit next to
-  MikeShift.exe because Windows file names are case-insensitive (MikeShift.exe / mikeshift.exe, MikeShift.dll / mikeshift.dll).
+    "Cli"  - the console CLI (MikeShift.Cli.exe), hidden from the Start menu, owner of the `mikeshift.exe` execution alias.
+  The CLI sits next to MikeShift.exe and runs on the same bundled .NET runtime (see "Packaging (W4b)" in MikeShift.App.csproj). It is called
+  MikeShift.Cli.exe, not mikeshift.exe, because Windows file names are case-insensitive; the alias name is independent of the file name.
   Publisher must match the signing certificate: packaging\make-dev-cert.ps1 creates "CN=MikeShift Dev".
 -->
 <Package
@@ -56,7 +56,7 @@
       </Extensions>
     </Application>
 
-    <Application Id="Cli" Executable="cli\mikeshift.exe" EntryPoint="Windows.FullTrustApplication" desktop4:Subsystem="console" desktop4:SupportsMultipleInstances="true">
+    <Application Id="Cli" Executable="MikeShift.Cli.exe" EntryPoint="Windows.FullTrustApplication" desktop4:Subsystem="console" desktop4:SupportsMultipleInstances="true">
       <uap:VisualElements
         DisplayName="MikeShift command line"
         Description="Convert files from a terminal: mikeshift --list / --run."
@@ -67,7 +67,7 @@
 
       <Extensions>
         <!-- `mikeshift.exe` on PATH (%LOCALAPPDATA%\Microsoft\WindowsApps), console subsystem so stdout/stderr/exit code reach the terminal. -->
-        <uap5:Extension Category="windows.appExecutionAlias" Executable="cli\mikeshift.exe" EntryPoint="Windows.FullTrustApplication">
+        <uap5:Extension Category="windows.appExecutionAlias" Executable="MikeShift.Cli.exe" EntryPoint="Windows.FullTrustApplication">
           <uap5:AppExecutionAlias desktop4:Subsystem="console">
             <uap5:ExecutionAlias Alias="mikeshift.exe" />
           </uap5:AppExecutionAlias>

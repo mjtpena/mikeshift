@@ -23,12 +23,14 @@ public sealed partial class NoticeWindow : Window
     private const int ClientWidthDip = 480;
     private const int MaxClientHeightDip = 640;
     private const uint IdleActivateMs = 2500;
+    private static readonly TimeSpan RevealFallback = TimeSpan.FromMilliseconds(400);
     private static int s_open;
 
-    private readonly DialogContent _content;
+    private DialogContent _content;
     private readonly Action<DialogButton> _onCommand;
     private Button? _defaultButton;
     private bool _fanned;
+    private bool _closed;
 
     public NoticeWindow(DialogContent content, Action<DialogButton> onCommand)
     {
@@ -46,7 +48,28 @@ public sealed partial class NoticeWindow : Window
 
         Fill(content);
         s_open++;
-        Closed += (_, _) => s_open--;
+        Closed += (_, _) =>
+        {
+            _closed = true;
+            s_open--;
+        };
+    }
+
+    /// <summary>True until the window has been closed.</summary>
+    internal bool IsOpen => !_closed;
+
+    /// <summary>Replaces what the open dialog says (several failed jobs merged into one, see <see cref="DialogMerge"/>) and resizes it to fit.</summary>
+    internal void Update(DialogContent content)
+    {
+        if (_closed) return;
+        _content = content;
+        ButtonBar.Children.Clear();
+        MessageText.Visibility = Visibility.Collapsed;
+        ItemsScroll.Visibility = Visibility.Collapsed;
+        FooterText.Visibility = Visibility.Collapsed;
+        _defaultButton = null;
+        Fill(content);
+        PlaceOnScreen();
     }
 
     /// <summary>The dialog's buttons, left to right (tests and automation).</summary>
@@ -64,12 +87,26 @@ public sealed partial class NoticeWindow : Window
         Cloak(hwnd, true);
         PlaceOnScreen();
         var activate = UserIdleMilliseconds() >= IdleActivateMs;
-        Root.Loaded += (_, _) => DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
+
+        var revealed = false;
+        var fallback = DispatcherQueue.CreateTimer();
+        void Reveal()
         {
+            fallback.Stop();
+            if (revealed || _closed) return;
+            revealed = true;
             PlaceOnScreen();
             Cloak(hwnd, false);
             if (activate) _defaultButton?.Focus(FocusState.Programmatic);
-        });
+        }
+
+        Root.Loaded += (_, _) => DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, Reveal);
+        // If Loaded never arrives (a XAML failure, a window that was never really shown) the dialog must not stay cloaked: it is the only
+        // way the user learns that a job failed. Same fallback as the toast's.
+        fallback.IsRepeating = false;
+        fallback.Interval = RevealFallback;
+        fallback.Tick += (_, _) => Reveal();
+        fallback.Start();
         AppWindow.Show(activate);
     }
 

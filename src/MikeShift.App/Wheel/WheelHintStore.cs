@@ -1,11 +1,12 @@
+using MikeShift.App.Settings;
 using MikeShift.Core.Interaction;
 
 namespace MikeShift.App.Wheel;
 
 /// <summary>
 /// Remembers how many wheels have been shown, so the key hints (UX review W-04) are drawn as loud keycaps for the first
-/// <see cref="WheelHints.ProminentWheels"/> wheels and quietly afterwards. One integer in <c>%LOCALAPPDATA%\MikeShift\wheel-hints.txt</c>
-/// (override with <c>MIKESHIFT_HINTS_FILE</c>, dev/test only); deliberately not part of the preferences class. Past the limit nothing is read or
+/// <see cref="WheelHints.ProminentWheels"/> wheels and quietly afterwards. One integer in <c>wheel-hints.txt</c>
+/// in <see cref="AppData.Folder"/> (the dev switch <c>MIKESHIFT_HINTS_FILE</c> overrides it); deliberately not part of the preferences class. Past the limit nothing is read or
 /// written again. Every failure (read-only profile, damaged file) just means "assume the hints are still needed" or "forget the count".
 /// </summary>
 internal sealed class WheelHintStore
@@ -15,9 +16,7 @@ internal sealed class WheelHintStore
 
     public WheelHintStore(string? path = null)
     {
-        _path = path
-                ?? Environment.GetEnvironmentVariable("MIKESHIFT_HINTS_FILE")
-                ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MikeShift", "wheel-hints.txt");
+        _path = path ?? DevSwitches.HintsFile ?? AppData.FilePath("wheel-hints.txt");
     }
 
     /// <summary>Wheels shown so far (capped at <see cref="WheelHints.ProminentWheels"/>).</summary>

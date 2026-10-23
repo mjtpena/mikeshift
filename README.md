@@ -80,7 +80,7 @@ Add-AppxPackage -Path .\artifacts\MikeShift_0.1.0.0.msixbundle
 
 Uninstall: `Get-AppxPackage MikeShift | Remove-AppxPackage`. Verify a download: compare `Get-FileHash <bundle> -Algorithm SHA256` with `artifacts\SHA256SUMS.txt`.
 
-The bundle is about 257 MB for both architectures: each architecture carries the .NET 10 runtime, the Windows App SDK components the app uses, and a second self-contained copy of the command-line tool (about 51 MB), so nothing else needs installing. Release signing for public distribution (Store, Azure Trusted Signing or a purchased certificate) is a separate decision that is not made yet.
+The bundle is about 158 MB for both architectures (about 80 MB per architecture): each architecture carries the .NET 10 runtime and the Windows App SDK components the app uses, and the command-line tool runs on that same runtime, so nothing else needs installing. Release signing for public distribution (Store, Azure Trusted Signing or a purchased certificate) is a separate decision that is not made yet.
 
 ## Build from source
 
@@ -101,7 +101,7 @@ or directly: `dotnet build MikeShift.sln`, `dotnet test MikeShift.sln`. CI (GitH
 * Originals are never modified or moved: every conversion writes a new file (via a temporary file in the same folder, then a rename, so a failure never leaves a half-written output).
 * The input hook sees only mouse movement, the left button, the wheel and the Shift/Ctrl/Alt/Esc keys, and only to run the gesture. No other key is read or stored.
 * While the wheel is up, a small screenshot of the pixels under it is blurred to make the glass effect; it stays in memory and is discarded when the wheel hides.
-* Settings (sound, message, tools key, show in folder) are stored locally in the app's settings; Open at login is Windows' own startup-task switch. A small diagnostic log (`%LOCALAPPDATA%\MikeShift\log.txt`) records start-up and errors (never file contents) and is trimmed at 1 MB.
+* Settings (sound, message, tools key, show in folder) are stored locally in the app's settings; Open at login is Windows' own startup-task switch. A small diagnostic log (`log.txt`; Settings, About, "Open the log folder" opens it, which for the installed app is `%LOCALAPPDATA%\Packages\<MikeShift package>\LocalCache\Local\MikeShift`) records start-up and errors (never file contents) and is cut to its newest half when it passes 1 MB.
 
 ## More
 

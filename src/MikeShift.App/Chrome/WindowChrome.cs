@@ -19,8 +19,8 @@ namespace MikeShift.App.Chrome;
 /// </summary>
 internal static class WindowChrome
 {
-    /// <summary>Dev/test knob: <c>MIKESHIFT_THEME=light|dark</c> forces the XAML theme (never changes the OS theme).</summary>
-    public static ApplicationTheme? ForcedTheme => Environment.GetEnvironmentVariable("MIKESHIFT_THEME")?.ToLowerInvariant() switch
+    /// <summary>Dev switch: <c>MIKESHIFT_THEME=light|dark</c> forces the XAML theme (never changes the OS theme).</summary>
+    public static ApplicationTheme? ForcedTheme => DevSwitches.Theme switch
     {
         "light" => ApplicationTheme.Light,
         "dark" => ApplicationTheme.Dark,

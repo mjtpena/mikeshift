@@ -6,11 +6,11 @@ using MikeShift.Core.Feedback;
 namespace MikeShift.App;
 
 /// <summary>
-/// Dev/test hook: <c>MikeShift.exe --scene &lt;name&gt;</c> shows one UI state with canned data (no files are touched) so screenshots and
+/// Dev/test hook (dev switches only, see <see cref="DevSwitches"/>): <c>MikeShift.exe --dev --scene &lt;name&gt;</c> shows one UI state with canned data (no files are touched) so screenshots and
 /// UI Automation checks can be taken of it. Run with <c>MIKESHIFT_NO_SINGLE_INSTANCE=1 MIKESHIFT_NO_HOOKS=1</c> to leave a real running
 /// instance and the global input hooks alone, and <c>MIKESHIFT_THEME=light|dark</c> to force the XAML theme.
 /// Scenes: <c>toast-progress</c>, <c>toast-progress-batch</c>, <c>toast-success</c>, <c>toast-success-many</c>, <c>toast-downloads</c>,
-/// <c>toast-partial</c>, <c>toast-already</c>, <c>toast-long</c>, <c>dialog-single</c>, <c>dialog-partial</c>, <c>dialog-all</c>,
+/// <c>toast-partial</c>, <c>toast-already</c>, <c>toast-long</c>, <c>dialog-single</c>, <c>dialog-partial</c>, <c>dialog-all</c>, <c>dialog-merged</c>,
 /// <c>dialog-elevated</c>, <c>tray-menu</c>, <c>picker</c>.
 /// </summary>
 internal static class DevScenes
@@ -23,6 +23,7 @@ internal static class DevScenes
     /// <summary>Runs the scene named after <c>--scene</c>, if any. UI thread. True when a scene was requested.</summary>
     public static bool TryRun(string[] args, AppServices services, TrayController tray)
     {
+        if (!DevSwitches.Enabled) return false;
         var at = Array.IndexOf(args, "--scene");
         if (at < 0 || at + 1 >= args.Length) return false;
         Run(args[at + 1], services, tray);
@@ -101,6 +102,17 @@ internal static class DevScenes
                         new ActionFailure(@"C:\Samples\corrupt.png", "Couldn't read this image. The file may be damaged or in a format Windows can't open."),
                         new ActionFailure(@"C:\Samples\locked.png", "Couldn't read \"locked.png\" because another program is using it."),
                     ],
+                })!);
+                break;
+            case "dialog-merged":
+                // Three failed jobs in a row: one dialog ("3 jobs had problems"), not three windows.
+                services.Dialogs.Show(FeedbackPlan.DialogFor(ActionResult.Failed(1, @"C:\Samples\corrupt.pdf", "This PDF is damaged and can't be read."))!);
+                services.Dialogs.Show(FeedbackPlan.DialogFor(ActionResult.Failed(1, @"C:\Samples\broken.png", "This image is damaged."))!);
+                services.Dialogs.Show(FeedbackPlan.DialogFor(new ActionResult
+                {
+                    Total = 2,
+                    Outputs = [Out(@"C:\Samples\a.heic", @"C:\Samples\a.png")],
+                    Failures = [new ActionFailure(@"C:\Samples\b.heic", "This image is damaged.")],
                 })!);
                 break;
             case "dialog-elevated":

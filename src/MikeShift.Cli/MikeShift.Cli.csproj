@@ -2,7 +2,10 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <AssemblyName>mikeshift</AssemblyName>
+    <!-- Not "mikeshift": in the MSIX this exe, its dll and its runtimeconfig/deps files sit in the same folder as the tray app's MikeShift.exe,
+         and Windows file names are case-insensitive. The `mikeshift.exe` command on PATH is an execution alias (Package.appxmanifest), so its
+         name does not depend on the file name. -->
+    <AssemblyName>MikeShift.Cli</AssemblyName>
     <RootNamespace>MikeShift.Cli</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>../MikeShift.App/Assets/MikeShift.ico</ApplicationIcon>
@@ -14,7 +17,8 @@
 
   <!-- Packaging (W4b) -->
   <PropertyGroup>
-    <!-- MikeShift.App publishes this project self-contained for the MSIX (package\cli\mikeshift.exe); plain builds stay framework-dependent. -->
+    <!-- MikeShift.App publishes this project self-contained for the MSIX and takes only its four own files (MikeShift.Cli.exe, .dll,
+         .runtimeconfig.json, .deps.json) into the package root, where they use the tray app's runtime; plain builds stay framework-dependent. -->
     <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
   </PropertyGroup>
 

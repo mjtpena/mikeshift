@@ -152,15 +152,16 @@ public sealed partial class SettingsWindow : Window
         }
     }
 
-    private void OnRestartClicked(object sender, RoutedEventArgs e)
+    // Same shutdown as Exit in the tray menu (input hooks, tray icon, running jobs), then Windows starts the app again.
+    private async void OnRestartClicked(object sender, RoutedEventArgs e)
     {
         try
         {
-            var result = Microsoft.Windows.AppLifecycle.AppInstance.Restart(string.Empty);
-            if (result.ToString() != "RestartPending") throw new InvalidOperationException(result.ToString());
+            await ((App)Application.Current).RestartAsync();
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            Wheel.WheelLog.Error("restart failed", ex);
             RestartNote.Message = "MikeShift could not restart itself. Exit it from the tray menu and open it again.";
         }
     }
@@ -230,7 +231,9 @@ public sealed partial class SettingsWindow : Window
     {
         try
         {
-            var folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MikeShift");
+            // The real folder: packaged, writes under %LOCALAPPDATA%\MikeShift are redirected into the package's LocalCache, and Explorer would
+            // show the unredirected (empty or missing) one.
+            var folder = AppData.Folder;
             Directory.CreateDirectory(folder);
             using var _ = Process.Start(new ProcessStartInfo("explorer.exe", $"\"{folder}\"") { UseShellExecute = false });
         }

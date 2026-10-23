@@ -137,6 +137,11 @@ public sealed record FeedbackPlan(ToastContent? Toast, DialogContent? Dialog, bo
     public static DialogContent? DialogFor(ActionResult result)
     {
         ArgumentNullException.ThrowIfNull(result);
+        return BuildDialog(result) is { } dialog ? dialog with { JobProblem = true } : null;
+    }
+
+    private static DialogContent? BuildDialog(ActionResult result)
+    {
 
         if (result.AllFailed)
         {

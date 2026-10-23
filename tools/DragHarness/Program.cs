@@ -252,6 +252,8 @@ internal sealed class ScenarioRun
     private void StartApp(IReadOnlyList<string>? convert)
     {
         var psi = new ProcessStartInfo(_appPath) { UseShellExecute = false, WorkingDirectory = Path.GetDirectoryName(_appPath)! };
+        // The app honours MIKESHIFT_* switches (below) only in Debug builds or when started unpackaged with --dev (see DevSwitches).
+        psi.ArgumentList.Add("--dev");
         if (convert is not null)
         {
             // Dev hook of the app: behaves like Convert Files... with these paths.

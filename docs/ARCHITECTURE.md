@@ -11,10 +11,10 @@ Directory.Packages.props   every NuGet version, pinned centrally (PDFsharp stays
 src/
   MikeShift.Core/          no UI. Everything that converts, classifies, names and decides.
   MikeShift.App/           WinUI 3 tray app, packaged as MSIX (assembly MikeShift.exe)
-  MikeShift.Cli/           console exe (mikeshift.exe), a thin Main around Core's CliRunner
+  MikeShift.Cli/           console exe (MikeShift.Cli.exe; the `mikeshift` command is an execution alias for it), a thin Main around Core's CliRunner
 tests/
   MikeShift.Core.Tests/    xUnit; fixtures are generated at test time
-  MikeShift.Cli.Tests/     launches the real mikeshift.exe as a child process
+  MikeShift.Cli.Tests/     launches the real MikeShift.Cli.exe as a child process
 tools/IconGen/            build-time icon generator: renders assets/brand/mikeshift.svg into every MSIX logo, .ico and docs/screenshots/brand/icon-sheet.png (not shipped)
 tools/DragHarness/         scripted Shift-drags (real mouse/keyboard input + an OLE drag source) against a running MikeShift.exe
 packaging/make-dev-cert.ps1   self-signed signing certificate for sideloading
@@ -36,6 +36,7 @@ assets/brand/mikeshift.svg  hand-written source of the app mark
 | `Interaction/` | pure, UI-free state machines for the gesture: `DragSession`, `ModifierTracker`, `WheelGeometry`, `WheelPlacement`, `WheelModel`, `WheelAnimation`, `Easing` | built, unit-tested |
 | `Editing/` | the rules of the editors: `CropBoxModel` (aspect presets, scale, pixel boxes, drag handles) and `TimeRangeModel` (trim range) | built, unit-tested |
 | `Feedback/` | `FeedbackPlan` (the `ToastContent` and `DialogContent` a finished job produces), `FeedbackCopy` (the sentence-case wording), `CodecSummary` (Settings rows: text state, Store link), `FileTypeFilters` (the Convert files picker's title and type list), `JobLedger` ("N more in progress" bookkeeping) | built, unit-tested |
+| `Hosting/` | small decisions of the tray app that need tests but no UI: `DevSwitchPolicy` (when the dev switches are honoured), `AppDataPaths` (the real data folder, packaged or not), `LogTrimmer`, `FailureBackoff`, `WelcomePolicy`, `UnhandledPolicy` | built, unit-tested |
 | `Cli/CliRunner.cs` | the whole command line, callable in-process | built |
 
 **MikeShift.App** folders: `Chrome/` (`WindowChrome`: Mica, the app icon, an extended title bar that follows the app theme, placement clamped to the work area; every XAML window uses it), `Styles/` (tray header, settings card and keycap styles), `Tray/` (tray icon, `TrayFlyoutHost` and the Fluent menu flyout, Convert files… picker, a plain action list used only if the wheel could not start), `Jobs/` (`JobRunner`, `UiInteraction`), `Hud/` (the toast window, chime, `NoticeWindow` failure dialogs, `ShellReveal` for "Show in folder"), `Settings/` (preferences, Open at login, settings window made of `SettingsCard`s), `FirstRun/` (welcome window and its XAML wheel illustration), `Input/` (low-level input monitor), `Wheel/` (the wheel window, renderer, drop target, controller, UI Automation, `DragCoordinator`), `Editors/` (Crop editor, Trim dialog, media probe for the preview), `DevScenes.cs` (`--scene <name>` shows one canned UI state for screenshots), `MemoryTrim.cs`, `Program.cs` (single-instance entry point). The tray icon is monochrome and follows the taskbar theme: `tray-dark-taskbar.ico` (white glyph) or `tray-light-taskbar.ico` (dark glyph), switched live from `UISettings.ColorValuesChanged` (`Tray/TaskbarTheme.cs`, which reads `SystemUsesLightTheme`). Regenerate all icons with `scripts/make-icons.ps1`; the preview sheet is `docs/screenshots/brand/icon-sheet.png`.
@@ -132,9 +133,44 @@ Every converter writes through `Naming` (a hidden `.name.guid.mikeshift-tmp` fol
 
 * **MSIX**, built by the Windows App SDK tooling (`WindowsPackageType=MSIX`), one package per architecture (x64, ARM64), **self-contained**: the .NET 10 runtime and the Windows App SDK ship inside the package, so there is nothing to install first. `scripts/release.ps1` combines both into one `.msixbundle` with `makeappx bundle` ([MakeAppx](https://learn.microsoft.com/en-us/windows/msix/package/create-app-package-with-makeappx-tool)) and signs with `signtool` if given a certificate.
 * **Windows App SDK by component.** The app references `Microsoft.WindowsAppSDK.Base`, `.Foundation`, `.InteractiveExperiences` and `.WinUI` (2.5.1 line) instead of the `Microsoft.WindowsAppSDK` metapackage, which also drags in the on-device AI, ML (ONNX Runtime + DirectML), Search, Widgets and DWrite components that MikeShift never calls. `H.NotifyIcon.WinUI` depends on the metapackage, so it stays in the restore graph; the metapackage and those components are referenced with `ExcludeAssets="all"` (see the comment in `MikeShift.App.csproj`), which keeps them out of the output and the MSIX. Effect: bundle 304.8 MB → 256.8 MB, per-architecture package 154.6 → 130.3 MB. When bumping the Windows App SDK, update the component versions in `Directory.Packages.props` to what the new metapackage's `.nuspec` lists, and check that no `onnxruntime.dll`/`DirectML.dll` reappears in the output.
-* **Two `Application` entries** in `Package.appxmanifest`: `App` (the tray app, `MikeShift.exe`) and `Cli` (`cli\mikeshift.exe`, hidden from the Start menu). The `mikeshift.exe` command on PATH is an app execution alias ([uap5:AppExecutionAlias](https://learn.microsoft.com/en-us/uwp/schemas/appxpackage/uapmanifestschema/element-uap5-appexecutionalias)) owned by the `Cli` entry with `desktop4:Subsystem="console"`, so stdout, stderr and the exit code reach the terminal.
-* **Why the CLI lives in `cli\` as its own self-contained copy:** file names on Windows are case-insensitive, and the tray app's `MikeShift.exe`/`MikeShift.dll` would collide with the CLI's `mikeshift.exe`/`mikeshift.dll`. The app project publishes the CLI (`BundleMikeShiftCli` target in `MikeShift.App.csproj`, under the "Packaging (W4b)" comment) and adds it to the package as content. It costs about 51 MB per architecture (a second copy of the .NET runtime, SkiaSharp and the Windows SDK projection); opt out with `-p:BundleCli=false` for faster inner-loop builds. Sharing one runtime between the two would roughly halve this but needs a framework-dependent or single-host design that is not done.
+* **Two `Application` entries** in `Package.appxmanifest`: `App` (the tray app, `MikeShift.exe`) and `Cli` (`MikeShift.Cli.exe`, hidden from the Start menu). The `mikeshift.exe` command on PATH is an app execution alias ([uap5:AppExecutionAlias](https://learn.microsoft.com/en-us/uwp/schemas/appxpackage/uapmanifestschema/element-uap5-appexecutionalias)) owned by the `Cli` entry with `desktop4:Subsystem="console"`, so stdout, stderr and the exit code reach the terminal.
+* **The CLI shares the tray app's runtime.** Both executables sit in the package root. The CLI's assembly is called `MikeShift.Cli` (not `mikeshift`) because file names on Windows are case-insensitive and the tray app's `MikeShift.exe`/`MikeShift.dll`/`MikeShift.runtimeconfig.json` would collide with `mikeshift.*`; the `mikeshift.exe` command is only the alias name, which does not have to match the file. The app project (`BundleMikeShiftCli` target in `MikeShift.App.csproj`, under the "Packaging (W4b)" comment) publishes the CLI self-contained, which yields four files that make an exe a self-contained app (`MikeShift.Cli.exe`, `.dll`, `.runtimeconfig.json`, `.deps.json`), and puts only those four into the package. Every other file of that publish (the .NET runtime, Core, PdfSharp, SkiaSharp, the Windows SDK projection...) is byte-identical to the one the app already ships, so the target `VerifyBundledCliSharesRuntime` hashes all 214 of them against the app output on every build and fails the build if one ever differs (for example after a package version drift). A separate self-contained copy had cost about 51 MB per architecture; sharing took the bundle from 258.5 MB to 157.9 MB (x64 package 131.3 to 80.1 MB, ARM64 127.2 to 77.8 MB). Opt out with `-p:BundleCli=false` for faster inner-loop builds.
+* **Size options measured and not taken.** Trimming (`PublishTrimmed`) only runs in the publish pipeline, and the MSIX is packaged from the build output; making ILLink part of the build for a WinUI/CsWinRT app with COM interop (Windows App SDK projections, hand-written UI Automation and OLE interfaces) would trade a few tens of MB for reflection-shaped failures that no unit test sees, so it is not done. ReadyToRun would make the package larger. Satellite resource languages are already limited to English (`SatelliteResourceLanguages`, `Directory.Build.props`), PDBs are not packaged, and each package carries the native assets of its own architecture only. Remaining dead weight is small: the runtime pack's `Microsoft.DiaSymReader.Native`, `msquic` and the standalone GC libraries are about 1.9 MB compressed per architecture, and the debugger/dump DLLs (`mscordaccore`, `mscordbi`) about 1.7 MB, which are kept so crash dumps stay analysable.
 * **Open at Login:** the manifest's `windows.startupTask` (`MikeShiftStartup`, disabled by default), driven by [`StartupTask`](https://learn.microsoft.com/en-us/uwp/api/windows.applicationmodel.startuptask); it appears in Settings → Apps → Startup, where the user can also turn it off. Unpackaged dev runs use the HKCU Run key instead.
 * **Single instance:** [`AppInstance`](https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/winrt/microsoft.windows.applifecycle.appinstance) (see §2).
 * **Signing:** the manifest Publisher is `CN=MikeShift Dev`; `packaging/make-dev-cert.ps1` creates a matching self-signed certificate ([creating a signing certificate](https://learn.microsoft.com/en-us/windows/msix/package/create-certificate-package-signing)). Long paths are enabled by the application manifests.
 * **CI:** `.github/workflows/ci.yml` builds and tests on `windows-latest`, then runs `scripts/release.ps1` and uploads the unsigned bundle and `SHA256SUMS.txt`.
+
+## 8. Developer and test switches
+
+The tray app has a set of switches that exist for the drag harness, the screenshot scripts and manual testing. Some of them weaken the product (`MIKESHIFT_ACCEPT_INJECTED` lets any program's `SendInput` drive the wheel), so they are all read through one class, `MikeShift.App/DevSwitches.cs`, and honoured only when **`DevSwitchPolicy.IsEnabled`** says so:
+
+| Build | Honoured? |
+|---|---|
+| Debug | always |
+| Release, unpackaged, started with `--dev` | yes |
+| Release, unpackaged, no `--dev` | no |
+| Release, packaged (MSIX) | never, even with `--dev` |
+
+So an installed MikeShift ignores every `MIKESHIFT_*` variable and every dev flag; `--smoke-test` is not a dev switch (CI uses it) and always works. A Release build under test is started as `MikeShift.exe --dev ...`; `tools/DragHarness` and `scripts/capture-scene.ps1` pass `--dev` themselves. Note that the drag harness therefore only works against a Debug build, or an unpackaged Release build, not against an installed package.
+
+| Switch | Effect |
+|---|---|
+| `MIKESHIFT_ACCEPT_INJECTED=1` | input synthesised by `SendInput` counts as real (the harness drives drags with it) |
+| `MIKESHIFT_NO_HOOKS=1` | no global input hooks (dev scenes next to a real instance) |
+| `MIKESHIFT_NO_SINGLE_INSTANCE=1` | skip the single-instance redirect |
+| `MIKESHIFT_SETTINGS_PATH` | another settings file (unpackaged runs) |
+| `MIKESHIFT_LOG`, `MIKESHIFT_TRACE=1` | another log file; interaction stage lines in the log (always on in Debug) |
+| `MIKESHIFT_HINTS_FILE` | another file for the wheel-hint counter |
+| `MIKESHIFT_PICKER_FOLDER` | Convert files… starts in this folder |
+| `MIKESHIFT_THEME=light\|dark\|hc` | force the theme (`hc` only for the wheel) |
+| `MIKESHIFT_ANIMATIONS=0` | behave as if animation effects were off |
+| `MIKESHIFT_DPI_SCALE=1.5`, `MIKESHIFT_TEXT_SCALE=1.4` | pretend every monitor's scale, or the OS text size |
+| `MIKESHIFT_TRIM_MS` | how long the wheel idles before it releases its graphics device (default 15000) |
+| `--scene <name>` | show one canned UI state (`DevScenes.cs`) |
+| `--show-welcome`, `--show-settings` | open that window at start |
+| `--convert <path>...` | behave like Convert files… with those paths |
+| `--crop <image>`, `--trim <media>` | open that editor on its own |
+| `--render-wheel <scenario\|all\|list> <out>` | render the wheel offscreen over a synthetic desktop and exit (`WheelPreview.cs`) |
+
+The app's own data (log, wheel-hint counter, the settings file of an unpackaged run) lives in `AppData.Folder`: `%LOCALAPPDATA%\MikeShift` unpackaged, and when packaged the *real* folder `%LOCALAPPDATA%\Packages\<family>\LocalCache\Local\MikeShift`. MSIX file-system virtualisation redirects writes to the first path into the second; the app reads its files back through the same redirection, but Explorer does not, so everything that shows or opens the folder (Settings, About, "Open the log folder") uses the real path.

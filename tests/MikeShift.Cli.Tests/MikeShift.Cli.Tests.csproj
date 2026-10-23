@@ -17,7 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The CLI exe (mikeshift.exe) is copied next to the test assembly by this reference and launched as a child process. -->
+    <!-- The CLI exe (MikeShift.Cli.exe) is copied next to the test assembly by this reference and launched as a child process. -->
     <ProjectReference Include="..\..\src\MikeShift.Cli\MikeShift.Cli.csproj" />
     <!-- Shared test infrastructure (TempDir, OriginalsGuard, Fixtures) lives in Core.Tests. -->
     <ProjectReference Include="..\MikeShift.Core.Tests\MikeShift.Core.Tests.csproj" />

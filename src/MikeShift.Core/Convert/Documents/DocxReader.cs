@@ -46,7 +46,8 @@ public static partial class DocxReader
         public string? BasedOn;
         public int? OutlineLevel;
         public (int NumId, int Level)? Numbering;
-        public bool Bold, Italic, Underline;
+        /// <summary>Character formatting this style sets itself; null = not set here, so the style it is based on decides.</summary>
+        public bool? Bold, Italic, Underline;
     }
 
     private sealed class Context
@@ -81,9 +82,9 @@ public static partial class DocxReader
                 var rp = s.StyleRunProperties;
                 if (rp is not null)
                 {
-                    info.Bold = IsOn(rp.Bold);
-                    info.Italic = IsOn(rp.Italic);
-                    info.Underline = rp.Underline is { } u && u.Val?.Value != W.UnderlineValues.None;
+                    if (rp.Bold is not null) info.Bold = IsOn(rp.Bold);
+                    if (rp.Italic is not null) info.Italic = IsOn(rp.Italic);
+                    if (rp.Underline is { } u) info.Underline = u.Val?.Value != W.UnderlineValues.None;
                 }
                 _styles[id] = info;
             }
@@ -125,6 +126,17 @@ public static partial class DocxReader
                 yield return s;
                 id = s.BasedOn;
             }
+        }
+
+        /// <summary>
+        /// A character property resolved along the style chain: the most-derived style that sets it wins, so <c>&lt;w:b w:val="0"/&gt;</c> or
+        /// <c>&lt;w:u w:val="none"/&gt;</c> in a derived style cancels what the style it is based on turned on. Null if no style in the chain sets it.
+        /// </summary>
+        private bool? Resolve(string? styleId, Func<StyleInfo, bool?> property)
+        {
+            foreach (var s in Chain(styleId))
+                if (property(s) is { } value) return value;
+            return null;
         }
 
         private int? HeadingLevel(string? styleId, W.ParagraphProperties? pp)
@@ -253,9 +265,9 @@ public static partial class DocxReader
             if (pp?.PageBreakBefore is { } pb && IsOn(pb))
                 into.Add(new DocPageBreak());
 
-            var chainBold = Chain(styleId).Any(s => s.Bold);
-            var chainItalic = Chain(styleId).Any(s => s.Italic);
-            var chainUnderline = Chain(styleId).Any(s => s.Underline);
+            var chainBold = Resolve(styleId, s => s.Bold) ?? false;
+            var chainItalic = Resolve(styleId, s => s.Italic) ?? false;
+            var chainUnderline = Resolve(styleId, s => s.Underline) ?? false;
             var current = NewParagraph();
             var emittedAny = false;
 
@@ -337,12 +349,9 @@ public static partial class DocxReader
             if (rp is not null)
             {
                 var rstyle = rp.RunStyle?.Val?.Value;
-                foreach (var s in Chain(rstyle))
-                {
-                    bold |= s.Bold;
-                    italic |= s.Italic;
-                    underline |= s.Underline;
-                }
+                bold = Resolve(rstyle, s => s.Bold) ?? bold;
+                italic = Resolve(rstyle, s => s.Italic) ?? italic;
+                underline = Resolve(rstyle, s => s.Underline) ?? underline;
                 if (rp.Bold is not null) bold = IsOn(rp.Bold);
                 if (rp.Italic is not null) italic = IsOn(rp.Italic);
                 if (rp.Underline is { } u) underline = u.Val?.Value != W.UnderlineValues.None;

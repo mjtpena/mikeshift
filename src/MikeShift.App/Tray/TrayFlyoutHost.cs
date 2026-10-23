@@ -1,3 +1,4 @@
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -19,12 +20,21 @@ namespace MikeShift.App.Tray;
 /// window with the system acrylic, shadow, rounded corners and open animation, and it follows light, dark and high contrast like any
 /// other Windows 11 menu. It opens above the pointer when the pointer is in the lower half of its monitor (a bottom taskbar) and below
 /// it otherwise. It takes keyboard focus (Esc, arrows, Enter, Space) and closes on any click outside, Esc or a switch to another window.
+/// <para>
+/// The light dismiss depends on the host window being the foreground (and then losing it). When Windows refuses the foreground (an
+/// elevated window in front of a second launch, a foreground lock) the host is never activated and would never be deactivated, so the flyout
+/// could stay open for good. In that case a short watchdog timer closes the flyout as soon as the foreground belongs to another program.
+/// </para>
 /// </summary>
 internal sealed class TrayFlyoutHost : IDisposable
 {
     private Window? _window;
     private Grid? _anchor;
     private MenuFlyout? _flyout;
+    private DispatcherQueueTimer? _watchdog;
+
+    /// <summary>How often the watchdog looks at the foreground window.</summary>
+    internal static readonly TimeSpan WatchdogInterval = TimeSpan.FromMilliseconds(250);
 
     /// <summary>True while the flyout is open.</summary>
     public bool IsOpen => _flyout?.IsOpen == true;
@@ -46,7 +56,7 @@ internal sealed class TrayFlyoutHost : IDisposable
         // The window itself is invisible; it only has to exist at the pointer and be the foreground window so the flyout is light-dismissed.
         window.AppWindow.MoveAndResize(new RectInt32(cursor.X, cursor.Y, 2, 2));
         window.AppWindow.Show(activateWindow: false);
-        TakeForeground(window);
+        var foreground = TakeForeground(window);
 
         if (_flyout is not null) _flyout.Closed -= OnClosed;
         _flyout = flyout;
@@ -62,23 +72,79 @@ internal sealed class TrayFlyoutHost : IDisposable
                 : (alignRight ? FlyoutPlacementMode.TopEdgeAlignedRight : FlyoutPlacementMode.TopEdgeAlignedLeft),
         };
 
+        void Open()
+        {
+            flyout.ShowAt(_anchor, options);
+            // Without the foreground the host is never deactivated, so nothing would light-dismiss the flyout: watch for it ourselves.
+            if (!foreground) StartWatchdog();
+        }
+
         // The very first time, the anchor is not in a live visual tree yet (flyouts cannot open from such an element): wait for it.
         if (_anchor!.IsLoaded)
         {
-            flyout.ShowAt(_anchor, options);
+            Open();
             return;
         }
 
         void OnLoaded(object sender, RoutedEventArgs e)
         {
             _anchor.Loaded -= OnLoaded;
-            flyout.ShowAt(_anchor, options);
+            Open();
         }
         _anchor.Loaded += OnLoaded;
     }
 
     /// <summary>Closes the flyout if it is open.</summary>
     public void Hide() => _flyout?.Hide();
+
+    // ---- watchdog (only when the host could not become the foreground window) ----
+
+    private void StartWatchdog()
+    {
+        if (_window is null) return;
+        _watchdog ??= CreateWatchdog();
+        _watchdog.Start();
+    }
+
+    private DispatcherQueueTimer CreateWatchdog()
+    {
+        var timer = _window!.DispatcherQueue.CreateTimer();
+        timer.Interval = WatchdogInterval;
+        timer.IsRepeating = true;
+        timer.Tick += (_, _) => CheckForeground();
+        return timer;
+    }
+
+    private void StopWatchdog() => _watchdog?.Stop();
+
+    /// <summary>Closes the flyout when the foreground window is neither the host nor one of the flyout's own popup windows.</summary>
+    private void CheckForeground()
+    {
+        if (_flyout?.IsOpen != true || _window is null)
+        {
+            StopWatchdog();
+            return;
+        }
+        var host = new HWND(WindowNative.GetWindowHandle(_window));
+        var foreground = PInvoke.GetForegroundWindow();
+        if (!BelongsToFlyout(foreground, host)) _flyout.Hide();
+    }
+
+    /// <summary>
+    /// The host window, or a window of this process that is not an ordinary app window: the flyout's acrylic popup is a separate top-level
+    /// window of another class than the <c>WinUIDesktopWin32WindowClass</c> windows (Settings, the toast, dialogs) that must close it.
+    /// </summary>
+    private static unsafe bool BelongsToFlyout(HWND foreground, HWND host)
+    {
+        if (foreground == host) return true;
+        if (foreground == HWND.Null) return true; // nothing is foreground for a moment (windows are switching): look again at the next tick
+        _ = PInvoke.GetWindowThreadProcessId(foreground, out var processId);
+        if (processId != Environment.ProcessId) return false;
+        Span<char> name = stackalloc char[64];
+        int length;
+        fixed (char* p = name) length = PInvoke.GetClassName(foreground, p, name.Length);
+        return length > 0 && !name[..length].SequenceEqual("WinUIDesktopWin32WindowClass");
+    }
 
     /// <summary>
     /// Makes <paramref name="window"/> the foreground window. The process that handles a tray callback may take the foreground with a
@@ -87,12 +153,13 @@ internal sealed class TrayFlyoutHost : IDisposable
     /// (which closes when its window is deactivated) never closed on a switch to another app. The trick stays as the fallback for when
     /// the process has no foreground rights (a second launch forwarding to this instance, dev scenes).
     /// </summary>
-    private static void TakeForeground(Window window)
+    private static bool TakeForeground(Window window)
     {
         window.Activate();
         var hwnd = new HWND(WindowNative.GetWindowHandle(window));
         PInvoke.SetForegroundWindow(hwnd);
         if (PInvoke.GetForegroundWindow() != hwnd) EditorWindows.ShowInForeground(window);
+        return PInvoke.GetForegroundWindow() == hwnd;
     }
 
     private void EnsureWindow()
@@ -123,10 +190,16 @@ internal sealed class TrayFlyoutHost : IDisposable
         _window = window;
     }
 
-    private void OnClosed(object? sender, object e) => _window?.AppWindow.Hide();
+    private void OnClosed(object? sender, object e)
+    {
+        StopWatchdog();
+        _window?.AppWindow.Hide();
+    }
 
     public void Dispose()
     {
+        StopWatchdog();
+        _watchdog = null;
         if (_flyout is not null) _flyout.Closed -= OnClosed;
         _window?.Close();
         _window = null;
