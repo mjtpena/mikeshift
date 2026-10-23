@@ -74,13 +74,16 @@ internal static class WheelPreview
                 return 0;
             }
 
-            var scenario = Scenarios.FirstOrDefault(s => s.Name == args[0]);
+            // "twice:<scenario>": render the scenario twice in one process, so the second timing line is the warm-device, right-DPI cost.
+            var repeat = args[0].StartsWith("twice:", StringComparison.Ordinal);
+            var scenario = Scenarios.FirstOrDefault(s => s.Name == (repeat ? args[0][6..] : args[0]));
             if (scenario is null)
             {
                 Console.Error.WriteLine("unknown scenario: " + args[0]);
                 return 2;
             }
             using var one = new WheelRenderer();
+            if (repeat) Render(one, scenario, args[1]);
             Render(one, scenario, args[1]);
             return 0;
         }
