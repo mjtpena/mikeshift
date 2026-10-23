@@ -185,6 +185,8 @@ internal static partial class Anger
                 Thread.Sleep(900);
                 var l = s.LogNew;
                 Rec.Check("log: classified as virtual files", l.Contains("kind=VirtualFiles"), Regex.Match(l, @"DragEnter.*").Value);
+                // UX review W-02: the shell's own drag image must say "Save the file first, then drag it" (DROPIMAGE_NONE).
+                Rec.Check("log: shell drop description set for the virtual-file drag", l.Contains("virtual files: drop description set: True"), Regex.Match(l, @"virtual files.*").Value);
                 var c = WheelInfo.Centre(s.Log)!.Value;
                 Pointer.Glide(c.X + 170, c.Y + 150, 6, 8); Thread.Sleep(400);
                 Shot(s, "x4d-zip-save-first", c, 300);

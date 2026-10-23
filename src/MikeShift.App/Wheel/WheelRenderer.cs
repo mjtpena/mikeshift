@@ -19,7 +19,7 @@ namespace MikeShift.App.Wheel;
 /// <summary>Everything the renderer needs to draw one frame.</summary>
 internal sealed class WheelScene
 {
-    /// <summary>Output bitmap edge in physical px (380·dpi normally; larger while collapsing).</summary>
+    /// <summary>Output bitmap edge in physical px (380·dpi).</summary>
     public required int SizePx { get; init; }
     public required double DpiScale { get; init; }
     public required WheelTheme Theme { get; init; }
@@ -29,19 +29,26 @@ internal sealed class WheelScene
     public required IReadOnlyList<ActionDef> Tiles { get; init; }
     /// <summary>The previous page's tiles while a page switch is playing.</summary>
     public IReadOnlyList<ActionDef> Outgoing { get; init; } = [];
+    /// <summary>Hub text: the page title ("Convert to", "Tools") or the hovered tile ("Convert to PNG").</summary>
     public string CentreText { get; init; } = "";
     public bool CentreBold { get; init; }
+    /// <summary>The key hint under the hub title ("Ctrl  Tools"); empty for none.</summary>
     public string HubHint { get; init; } = "";
-    /// <summary>A message shown in the hub instead of the pill ("Save the file first").</summary>
-    public string? Message { get; init; }
+    /// <summary>The drag carries virtual files: the hub shows the Info glyph, the rim turns caution-coloured and no tiles are drawn.</summary>
+    public bool VirtualFiles { get; init; }
     /// <summary>The hub shows nothing (pending state: the disc only).</summary>
     public bool HubEmpty { get; init; }
+    /// <summary>The pill(s) in the window's margin.</summary>
+    public WheelCallouts Callouts { get; init; } = WheelCallouts.None;
+    /// <summary>Which margin <see cref="WheelCallouts.Main"/> is drawn in (drag mode: away from the pointer; click mode: above).</summary>
+    public CalloutSide MainSide { get; init; } = CalloutSide.Top;
 }
 
 /// <summary>
 /// Draws the wheel with Win2D into a premultiplied-BGRA <see cref="CanvasRenderTarget"/> and hands back the pixels
-/// (PLAN §3.2). Geometry constants come from <see cref="WheelGeometry"/>, animation values from <see cref="WheelAnimation"/>. The drawing is in
-/// logical (DIP) units: the render target's DPI is 96·scale, so 1 unit = 1 logical px.
+/// (PLAN §3.2). Geometry constants come from <see cref="WheelGeometry"/>, animation values from <see cref="WheelAnimation"/>, colours from
+/// <see cref="WheelPalette"/> (dark/light) or the system colours (high contrast). The drawing is in logical (DIP) units: the render target's
+/// DPI is 96·scale, so 1 unit = 1 logical px.
 /// </summary>
 internal sealed class WheelRenderer : IDisposable
 {
@@ -52,12 +59,15 @@ internal sealed class WheelRenderer : IDisposable
     private CanvasRenderTarget? _target;
     private CanvasRenderTarget? _glass;
     private int _glassPx;
+    private CanvasBitmap? _noise;
+    private double _noiseDpi;
     private byte[] _pixels = [];
     private Windows.Storage.Streams.IBuffer? _pixelBuffer;
     private readonly Dictionary<(int N, int I), TileShape> _shapes = [];
     private readonly string _textFont;
     private readonly string _iconFont;
     private readonly Dictionary<string, CanvasTextFormat> _formats = [];
+    private readonly Dictionary<(string Text, float Size, int Weight), float> _widths = [];
 
     private sealed record TileShape(CanvasGeometry Geometry, Rect Bounds);
 
@@ -129,17 +139,24 @@ internal sealed class WheelRenderer : IDisposable
         _target = null;
         _glass?.Dispose();
         _glass = null;
+        _noise?.Dispose();
+        _noise = null;
         foreach (var shape in _shapes.Values) shape.Geometry.Dispose();
         _shapes.Clear();
         foreach (var f in _formats.Values) f.Dispose();
         _formats.Clear();
+        _widths.Clear();
     }
 
     // ------------------------------------------------------------------ glass
 
-    /// <summary>Blurs the screen snapshot (<paramref name="bgra"/>, <paramref name="sizePx"/> square) once; every frame then just draws it.</summary>
-    public void SetGlass(byte[] bgra, int sizePx, double dpiScale)
+    /// <summary>
+    /// Bakes the acrylic backdrop from the screen snapshot (<paramref name="bgra"/>, <paramref name="sizePx"/> square) once; every frame then just
+    /// draws it: Gaussian blur, a saturation boost, then the tint's luminosity cross-faded in (so a bright wallpaper cannot wash the glass out).
+    /// </summary>
+    public void SetGlass(byte[] bgra, int sizePx, double dpiScale, WheelPalette? palette = null)
     {
+        palette ??= WheelPalette.Dark;
         ClearGlass();
         var dpi = (float)(96 * dpiScale);
         using var bitmap = CanvasBitmap.CreateFromBytes(Device, bgra, sizePx, sizePx, DirectXPixelFormat.B8G8R8A8UIntNormalized, dpi, CanvasAlphaMode.Ignore);
@@ -148,11 +165,15 @@ internal sealed class WheelRenderer : IDisposable
         using var blur = new GaussianBlurEffect
         {
             Source = bitmap,
-            BlurAmount = 9f,
+            BlurAmount = 12f,
             BorderMode = EffectBorderMode.Hard,
         };
+        using var saturated = new SaturationEffect { Source = blur, Saturation = 1.25f };
+        using var tintSource = new ColorSourceEffect { Color = WheelTheme.FromRgb(palette.SurfaceTint) };
+        using var luminosity = new BlendEffect { Background = saturated, Foreground = tintSource, Mode = BlendEffectMode.Luminosity };
+        using var mixed = new CrossFadeEffect { Source1 = saturated, Source2 = luminosity, CrossFade = (float)palette.LuminosityAlpha };
         using var ds = _glass.CreateDrawingSession();
-        ds.DrawImage(blur);
+        ds.DrawImage(mixed);
         _glassPx = sizePx;
     }
 
@@ -165,6 +186,28 @@ internal sealed class WheelRenderer : IDisposable
 
     public bool HasGlass => _glass is not null;
 
+    /// <summary>A 128 px tile of black/white noise (random alpha), one bitmap pixel per device pixel, drawn at 2 % over the glass.</summary>
+    private CanvasBitmap Noise(double dpiScale)
+    {
+        if (_noise is not null && Math.Abs(_noiseDpi - dpiScale) < 0.001) return _noise;
+        _noise?.Dispose();
+        const int size = 128;
+        var bytes = new byte[size * size * 4];
+        var rng = new Random(0x5EED);
+        for (var i = 0; i < size * size; i++)
+        {
+            var a = (byte)rng.Next(256);
+            var v = rng.Next(2) == 0 ? a : (byte)0; // premultiplied: white = (a,a,a,a), black = (0,0,0,a)
+            bytes[i * 4] = v;
+            bytes[i * 4 + 1] = v;
+            bytes[i * 4 + 2] = v;
+            bytes[i * 4 + 3] = a;
+        }
+        _noise = CanvasBitmap.CreateFromBytes(Device, bytes, size, size, DirectXPixelFormat.B8G8R8A8UIntNormalized, (float)(96 * dpiScale), CanvasAlphaMode.Premultiplied);
+        _noiseDpi = dpiScale;
+        return _noise;
+    }
+
     // ------------------------------------------------------------------ frame
 
     /// <summary>Draws <paramref name="scene"/>; the returned span is valid until the next call. Size is <c>SizePx × SizePx</c>.</summary>
@@ -172,7 +215,7 @@ internal sealed class WheelRenderer : IDisposable
     {
         var size = scene.SizePx;
         var dpi = (float)(96 * scene.DpiScale);
-        if (_target is null || _target.SizeInPixels.Width != size)
+        if (_target is null || _target.SizeInPixels.Width != size || Math.Abs(_target.Dpi - dpi) > 0.01f)
         {
             _target?.Dispose();
             var dips = (float)(size / scene.DpiScale);
@@ -191,7 +234,6 @@ internal sealed class WheelRenderer : IDisposable
 
     private void Draw(CanvasDrawingSession ds, WheelScene s)
     {
-        var theme = s.Theme;
         var anim = s.Animation;
         var now = s.Now;
         ds.Antialiasing = CanvasAntialiasing.Antialiased;
@@ -211,16 +253,17 @@ internal sealed class WheelRenderer : IDisposable
         using var layer = ds.CreateLayer(opacity);
         ds.Transform = discToWorld;
 
-        DrawDisc(ds, s, centre, scale, discToWorld);
-        DrawHub(ds, s, centre);
-
         var tiles = s.Tiles;
         var n = tiles.Count;
-        if (n > 0 || s.Outgoing.Count > 0)
+        var single = n == 1 && !s.VirtualFiles;
+
+        DrawDisc(ds, s, centre, discToWorld);
+        if (!single || anim.PageSwitching(now)) DrawHub(ds, s, centre);
+
+        if (!s.VirtualFiles && (n > 0 || s.Outgoing.Count > 0))
         {
             var toWorld = Matrix3x2.CreateTranslation(centre) * discToWorld;
-            var switching = anim.PageSwitching(now);
-            if (switching)
+            if (anim.PageSwitching(now))
             {
                 var outOpacity = anim.OutgoingOpacity(now);
                 if (outOpacity > 0.001 && s.Outgoing.Count > 0)
@@ -237,11 +280,12 @@ internal sealed class WheelRenderer : IDisposable
         }
 
         ds.Transform = Matrix3x2.Identity;
+        DrawCallouts(ds, s, logical);
     }
 
     // ------------------------------------------------------------------ disc and hub
 
-    private void DrawDisc(CanvasDrawingSession ds, WheelScene s, Vector2 centre, float scale, Matrix3x2 discToWorld)
+    private void DrawDisc(CanvasDrawingSession ds, WheelScene s, Vector2 centre, Matrix3x2 discToWorld)
     {
         var t = s.Theme;
         var r = (float)WheelGeometry.DiscRadius;
@@ -250,93 +294,127 @@ internal sealed class WheelRenderer : IDisposable
         {
             ds.FillCircle(centre, r, t.HcWindow);
             ds.DrawCircle(centre, r - 1, t.HcWindowText, 2);
+            if (s.VirtualFiles) ds.DrawCircle(centre, r - 4, t.HcHighlight, 3);
             return;
         }
+
+        var p = t.Palette;
 
         // Soft shadow under the disc.
         using (var commands = new CanvasCommandList(ds))
         {
             using (var cds = commands.CreateDrawingSession())
                 cds.FillCircle(centre, r, Colors.Black);
-            using var shadow = new ShadowEffect { Source = commands, BlurAmount = 10f, ShadowColor = Color.FromArgb(t.Dark ? (byte)110 : (byte)70, 0, 0, 0) };
+            using var shadow = new ShadowEffect { Source = commands, BlurAmount = 10f, ShadowColor = Color.FromArgb(t.Dark ? (byte)110 : (byte)60, 0, 0, 0) };
             ds.DrawImage(shadow, 0, 4);
         }
 
-        using (var disc = CanvasGeometry.CreateEllipse(ds, centre, r, r))
+        using var disc = CanvasGeometry.CreateEllipse(ds, centre, r, r);
+        if (_glass is not null)
         {
-            if (_glass is not null)
-            {
-                using var clip = ds.CreateLayer(1f, disc);
-                var saved = ds.Transform;
-                ds.Transform = Matrix3x2.Identity;
-                var offset = (float)((s.SizePx - _glassPx) / 2.0 / s.DpiScale);
-                ds.DrawImage(_glass, offset, offset);
-                ds.Transform = saved;
-            }
-            else
-            {
-                ds.FillGeometry(disc, t.Dark ? Color.FromArgb(255, 32, 32, 36) : Color.FromArgb(255, 236, 236, 240));
-            }
+            using var clip = ds.CreateLayer(1f, disc);
+            var saved = ds.Transform;
+            ds.Transform = Matrix3x2.Identity;
+            var offset = (float)((s.SizePx - _glassPx) / 2.0 / s.DpiScale);
+            ds.DrawImage(_glass, offset, offset);
+            ds.Transform = saved;
+        }
+        else
+        {
+            ds.FillGeometry(disc, WheelTheme.FromRgb(p.SurfaceTint));
         }
 
-        // Darken in dark theme so light backdrops do not wash the white tiles out; then the spec'd tint (dark 5 % white, light 45 % white).
-        if (t.Dark) ds.FillCircle(centre, r, Color.FromArgb(140, 0, 0, 0));
-        ds.FillCircle(centre, r, WheelTheme.WithAlpha(Colors.White, t.Dark ? 0.05 : 0.45));
-        ds.DrawCircle(centre, r - 0.5f, t.Dark ? Color.FromArgb(46, 255, 255, 255) : Color.FromArgb(40, 0, 0, 0), 1f);
+        // The acrylic tint, 2 % noise and the 1 px stroke.
+        ds.FillGeometry(disc, WheelTheme.FromRgb(p.SurfaceTint, p.SurfaceTintAlpha * (_glass is null ? 0 : 1)));
+        if (_glass is not null)
+        {
+            using var brush = new CanvasImageBrush(ds, Noise(s.DpiScale))
+            {
+                ExtendX = CanvasEdgeBehavior.Wrap,
+                ExtendY = CanvasEdgeBehavior.Wrap,
+                Opacity = (float)p.NoiseAlpha,
+                Interpolation = CanvasImageInterpolation.NearestNeighbor,
+            };
+            ds.FillGeometry(disc, brush);
+        }
+        ds.DrawCircle(centre, r - 0.5f, WheelTheme.FromRgb(p.DiscStroke, p.DiscStrokeAlpha), 1f);
+
+        if (s.VirtualFiles)
+        {
+            // A caution-coloured rim: this drag cannot be converted in place.
+            ds.DrawCircle(centre, r - 1.5f, WheelTheme.FromRgb(p.CautionGlyph, 0.8), 2f);
+        }
     }
 
     private void DrawHub(CanvasDrawingSession ds, WheelScene s, Vector2 centre)
     {
         var t = s.Theme;
         var hub = (float)WheelGeometry.HubRadius;
+        var scaleText = t.TextScale;
 
+        Color text, secondary;
         if (t.HighContrast)
         {
             ds.FillCircle(centre, hub, t.HcWindow);
             ds.DrawCircle(centre, hub - 1, t.HcWindowText, 2);
+            text = t.HcWindowText;
+            secondary = t.HcWindowText;
         }
         else
         {
-            ds.FillCircle(centre, hub, t.Dark ? Color.FromArgb(18, 255, 255, 255) : Color.FromArgb(120, 255, 255, 255));
-            ds.DrawCircle(centre, hub - 0.5f, t.Dark ? Color.FromArgb(36, 255, 255, 255) : Color.FromArgb(30, 0, 0, 0), 1f);
+            var p = t.Palette;
+            ds.FillCircle(centre, hub, WheelTheme.FromRgb(p.HubFill, p.HubFillAlpha));
+            ds.DrawCircle(centre, hub - 0.5f, WheelTheme.FromRgb(p.HubStroke, p.HubStrokeAlpha), 1f);
+            text = WheelTheme.FromRgb(p.HubText);
+            secondary = WheelTheme.FromRgb(p.HubSecondary);
         }
 
-        var text = t.HighContrast ? t.HcWindowText : t.Dark ? Color.FromArgb(235, 255, 255, 255) : Color.FromArgb(220, 20, 20, 20);
-        var secondary = t.HighContrast ? t.HcWindowText : t.Dark ? Color.FromArgb(140, 255, 255, 255) : Color.FromArgb(135, 0, 0, 0);
-
-        if (s.HubEmpty) return;
-
-        if (s.Message is { } message)
+        if (s.VirtualFiles)
         {
-            DrawCentred(ds, message, centre.X, centre.Y, 84, 40, text, Format(11, FontWeights.SemiBold, wrap: true));
+            DrawCentred(ds, WheelCallout.InfoGlyph, centre.X, centre.Y, 40, 40,
+                t.HighContrast ? t.HcHighlight : WheelTheme.FromRgb(t.Palette.CautionGlyph), IconFormat(28));
             return;
         }
+        if (s.HubEmpty) return;
 
-        var hasHint = s.HubHint.Length > 0;
-        var pillY = centre.Y + (hasHint ? -6 : 0);
+        var hasHint = s.HubHint.Length > 0 && !s.CentreBold && WheelTypography.HubHintFits(scaleText);
+        var size = (float)(WheelTypography.Body * scaleText);
         var weight = s.CentreBold ? FontWeights.Bold : FontWeights.SemiBold;
-        var format = Format(11, weight);
-        using var layout = new CanvasTextLayout(ds, s.CentreText, format, 200, 30);
-        layout.SetCharacterSpacing(0, s.CentreText.Length, s.CentreBold ? 0.2f : 1.0f, s.CentreBold ? 0.2f : 1.0f, 0f);
-        var textWidth = (float)layout.LayoutBounds.Width;
-        var pillWidth = Math.Min(92f, textWidth + 20f);
-        if (textWidth > 80f)
-        {
-            // Long action names: shrink to fit the hub.
-            layout.SetFontSize(0, s.CentreText.Length, 11f * 80f / textWidth);
-            textWidth = (float)layout.LayoutBounds.Width;
-            pillWidth = Math.Min(92f, textWidth + 20f);
-        }
 
-        if (!t.HighContrast)
-        {
-            var pill = new Rect(centre.X - pillWidth / 2, pillY - 11, pillWidth, 22);
-            ds.FillRoundedRectangle(pill, 11, 11, t.Dark ? Color.FromArgb(28, 255, 255, 255) : Color.FromArgb(18, 0, 0, 0));
-        }
-        ds.DrawTextLayout(layout, centre.X - 100, pillY - 15, text); // the layout is 200x30 with centred alignment
+        // The title wraps inside the hub (two lines: "Convert to" / "PNG") and shrinks only if even that does not fit.
+        var boxWidth = 84f;
+        var boxHeight = hasHint ? 22f : 46f;
+        using var layout = FitLayout(ds, s.CentreText, size, weight, boxWidth, boxHeight);
+        var titleY = hasHint ? centre.Y - 10 : centre.Y;
+        ds.DrawTextLayout(layout, centre.X - boxWidth / 2, titleY - (float)layout.LayoutBounds.Height / 2 - (float)layout.LayoutBounds.Y, text);
 
         if (hasHint)
-            DrawCentred(ds, s.HubHint, centre.X, centre.Y + 18, 90, 14, secondary, Format(9.5f, FontWeights.Normal));
+            DrawCentred(ds, s.HubHint, centre.X, centre.Y + 17, 96, 16, secondary,
+                Format((float)(WheelTypography.Caption * scaleText), FontWeights.Normal));
+    }
+
+    /// <summary>A wrapped, centred layout of <paramref name="text"/> in a box; the font size shrinks (never below Caption) until the height fits.</summary>
+    private CanvasTextLayout FitLayout(CanvasDrawingSession ds, string text, float size, FontWeight weight, float width, float maxHeight)
+    {
+        var current = size;
+        while (true)
+        {
+            var format = new CanvasTextFormat
+            {
+                FontFamily = _textFont,
+                FontSize = current,
+                FontWeight = weight,
+                HorizontalAlignment = CanvasHorizontalAlignment.Center,
+                VerticalAlignment = CanvasVerticalAlignment.Top,
+                WordWrapping = CanvasWordWrapping.Wrap,
+            };
+            var layout = new CanvasTextLayout(ds, text, format, width, 200);
+            format.Dispose();
+            if (layout.LayoutBounds.Height <= maxHeight || current <= WheelTypography.MinFitSize)
+                return layout;
+            layout.Dispose();
+            current = Math.Max((float)WheelTypography.MinFitSize, current - 1);
+        }
     }
 
     // ------------------------------------------------------------------ tiles
@@ -354,9 +432,17 @@ internal sealed class WheelRenderer : IDisposable
             var hl = (float)Math.Clamp(highlight(i), 0, 1);
             var tileAlpha = alpha * Math.Clamp(pop, 0, 1);
 
+            if (n == 1)
+            {
+                var single = Matrix3x2.CreateScale((float)(0.85 + 0.15 * pop)) * toWorld;
+                ds.Transform = single;
+                DrawSingleTile(ds, s, tiles[i], hl, tileAlpha);
+                continue;
+            }
+
             var radial = hl * WheelGeometry.HighlightPush + slide + (i == pulse ? s.Animation.PickPush(s.Now) : 0);
-            var push = n == 1 ? default : WheelGeometry.PushOffset(i, n, radial);
-            var popScale = (float)(0.55 + 0.45 * pop);
+            var push = WheelGeometry.PushOffset(i, n, radial);
+            var popScale = (float)(0.85 + 0.15 * pop);
             var tileToWorld = Matrix3x2.CreateScale(popScale)
                               * Matrix3x2.CreateTranslation((float)push.X, (float)push.Y)
                               * toWorld;
@@ -368,24 +454,41 @@ internal sealed class WheelRenderer : IDisposable
         }
     }
 
+    private static Color AccentFor(WheelTheme t) => t.HighContrast ? t.HcHighlight : t.AccentFill;
+
+    /// <summary>The label colour on the accent-filled (highlighted) tile: white or black, whichever reaches 4.5:1 against the fill.</summary>
+    private static Color LabelOnAccent(WheelTheme t)
+    {
+        if (t.HighContrast) return t.HcHighlightText;
+        var fill = WheelTheme.ToRgb(t.AccentFill);
+        return WheelTheme.FromRgb(Contrast.TextOnFill(t.Palette.OnAccentLight, t.Palette.OnAccentDark, [fill]));
+    }
+
+    private Color IdleLabel(WheelTheme t) => t.HighContrast ? t.HcButtonText : WheelTheme.FromRgb(t.Palette.TileText);
+
     private void DrawTileBody(CanvasDrawingSession ds, WheelTheme t, TileShape shape, float hl, double alpha)
     {
         Color top, bottom, rim;
+        float rimWidth = 1f;
         if (t.HighContrast)
         {
-            top = bottom = Lerp(t.HcWindow, t.HcHighlight, hl);
-            rim = t.HcWindowText;
+            top = bottom = Lerp(t.HcButtonFace, t.HcHighlight, hl);
+            rim = t.HcButtonText;
+            rimWidth = 1f + hl; // the selected tile also gets an inner outline below
         }
         else
         {
-            var accentTop = WheelTheme.Mix(t.Accent, Colors.White, 0.16);
-            var accentBottom = WheelTheme.Mix(t.Accent, Colors.Black, 0.22);
-            var normalTop = t.Dark ? Color.FromArgb((byte)(0.17 * 255), 255, 255, 255) : Color.FromArgb((byte)(0.97 * 255), 255, 255, 255);
-            var normalBottom = t.Dark ? Color.FromArgb((byte)(0.08 * 255), 255, 255, 255) : Color.FromArgb((byte)(0.92 * 255), 255, 255, 255);
+            var p = t.Palette;
+            var accent = t.AccentFill;
+            var normalTop = WheelTheme.FromRgb(p.TileFill, p.TileFillTopAlpha);
+            var normalBottom = WheelTheme.FromRgb(p.TileFill, p.TileFillBottomAlpha);
+            // Windows 11 accent fills are flat; a hint of light at the top keeps the tile from reading as a sticker.
+            var accentTop = WheelTheme.Mix(accent, Colors.White, t.Dark ? 0.04 : 0.0);
             top = Lerp(normalTop, accentTop, hl);
-            bottom = Lerp(normalBottom, accentBottom, hl);
-            var normalRim = t.Dark ? Color.FromArgb(56, 255, 255, 255) : Color.FromArgb(34, 0, 0, 0);
-            rim = Lerp(normalRim, Color.FromArgb(120, 255, 255, 255), hl);
+            bottom = Lerp(normalBottom, accent, hl);
+            var normalRim = WheelTheme.FromRgb(p.TileStroke, p.TileStrokeAlpha);
+            var accentRim = WheelTheme.WithAlpha(WheelTheme.Mix(accent, Colors.Black, 0.35), 0.9);
+            rim = Lerp(normalRim, accentRim, hl);
         }
 
         using var brush = new CanvasLinearGradientBrush(ds, Scale(top, alpha), Scale(bottom, alpha))
@@ -394,32 +497,100 @@ internal sealed class WheelRenderer : IDisposable
             EndPoint = new Vector2((float)shape.Bounds.X, (float)(shape.Bounds.Y + shape.Bounds.Height)),
         };
         ds.FillGeometry(shape.Geometry, brush);
-        ds.DrawGeometry(shape.Geometry, Scale(rim, alpha), t.HighContrast ? 2f : 1f);
+        ds.DrawGeometry(shape.Geometry, Scale(rim, alpha), rimWidth);
+
+        if (t.HighContrast && hl > 0.01f)
+        {
+            // High contrast: the selection must not be colour alone. A 3 px ButtonText outline around the Highlight-filled tile
+            // (HighlightText would vanish against the disc: it is the colour of the disc in most schemes).
+            ds.DrawGeometry(shape.Geometry, Scale(WheelTheme.WithAlpha(t.HcButtonText, hl), alpha), 3f);
+        }
     }
 
     private void DrawTileLabel(CanvasDrawingSession ds, WheelTheme t, ActionDef action, int index, int n, float hl, double alpha)
     {
-        var label = n == 1 ? new PointD(0, -WheelGeometry.LabelRadius) : WheelGeometry.LabelCentre(index, n);
+        var label = WheelGeometry.LabelCentre(index, n);
         float x = (float)label.X, y = (float)label.Y;
+        var color = Scale(Lerp(IdleLabel(t), LabelOnAccent(t), hl), alpha);
 
-        Color normal = t.HighContrast ? t.HcWindowText : t.Dark ? Color.FromArgb(235, 255, 255, 255) : Color.FromArgb(225, 24, 24, 24);
-        Color selected = t.HighContrast ? t.HcHighlightText : Colors.White;
-        var color = Scale(Lerp(normal, selected, hl), alpha);
+        var scale = t.TextScale;
+        var isFormat = action.Page == WheelPage.Format;
+        var glyph = isFormat ? Glyphs.ForFormat(action.Title) : action.Glyph;
 
-        var w = (float)WheelGeometry.LabelWidth;
-        var h = (float)WheelGeometry.LabelHeight;
+        // Room for the text: the tile is as wide as the chord at the label radius (minus the gap and some air), never more than the ring is thick.
+        var chord = 2 * WheelGeometry.LabelRadius * Math.Sin(Math.PI / n) - WheelGeometry.TileGap - 8;
+        var maxWidth = (float)Math.Clamp(chord, 30, 84);
 
-        if (action.Page == WheelPage.Format || action.Glyph is null)
+        var nominal = (float)((isFormat ? WheelTypography.Body : WheelTypography.Caption) * scale);
+        var weight = isFormat ? FontWeights.Bold : FontWeights.SemiBold;
+        var textWidth = TextWidth(ds, action.Title, nominal, weight);
+        var size = (float)WheelTypography.FitSize(nominal, textWidth, maxWidth);
+
+        var glyphSize = (float)(WheelTypography.TileGlyph * Math.Min(scale, 1.25));
+        if (glyph is null)
         {
-            var title = action.Title;
-            var size = title.Length > 4 ? 12f : 13.5f;
-            DrawCentred(ds, title, x, y, w, h, color, Format(size, FontWeights.Bold));
+            DrawCentred(ds, action.Title, x, y, maxWidth + 8, size * 1.6f, color, Format(size, weight));
+            return;
+        }
+
+        // Glyph above the label, the pair centred on the label point.
+        var textHeight = size * 1.25f;
+        const float gap = 3f;
+        var total = glyphSize + gap + textHeight;
+        var top = -total / 2;
+        DrawCentred(ds, glyph, x, y + top + glyphSize / 2, glyphSize + 8, glyphSize + 8, color, IconFormat(glyphSize));
+        DrawCentred(ds, action.Title, x, y + top + glyphSize + gap + textHeight / 2, maxWidth + 8, textHeight + 2, color, Format(size, weight));
+    }
+
+    /// <summary>A wheel with one tile: no ring, the hub itself is the button (glyph, label, accent fill on hover).</summary>
+    private void DrawSingleTile(CanvasDrawingSession ds, WheelScene s, ActionDef action, float hl, double alpha)
+    {
+        var t = s.Theme;
+        var r = (float)WheelGeometry.SingleHubRadius;
+        var centre = Vector2.Zero;
+        var scale = t.TextScale;
+
+        Color fillIdle, fillHot, rim;
+        if (t.HighContrast)
+        {
+            fillIdle = t.HcButtonFace;
+            fillHot = t.HcHighlight;
+            rim = t.HcButtonText;
         }
         else
         {
-            DrawCentred(ds, action.Glyph, x, y - 8, w, 20, color, IconFormat(15));
-            DrawCentred(ds, action.Title, x, y + 11, w, 14, color, Format(8.5f, FontWeights.SemiBold));
+            var p = t.Palette;
+            // Over the hub well, not the glass: idle looks like a raised button, hover is the accent fill.
+            fillIdle = WheelTheme.FromRgb(p.HubFill, p.HubFillAlpha);
+            fillHot = t.AccentFill;
+            rim = WheelTheme.FromRgb(p.HubStroke, 0.18);
         }
+
+        var fill = Lerp(fillIdle, fillHot, hl);
+        ds.FillCircle(centre, r, Scale(fill, alpha));
+        ds.DrawCircle(centre, r - 0.5f, Scale(Lerp(rim, t.HighContrast ? t.HcHighlightText : WheelTheme.WithAlpha(WheelTheme.Mix(t.AccentFill, Colors.Black, 0.35), 0.9), hl), alpha), t.HighContrast ? 2f : 1f);
+        if (t.HighContrast && hl > 0.01f)
+        {
+            ds.DrawCircle(centre, r, Scale(WheelTheme.WithAlpha(t.HcButtonText, hl), alpha), 3f);
+        }
+
+        var color = Scale(Lerp(t.HighContrast ? t.HcButtonText : WheelTheme.FromRgb(t.Palette.HubText), LabelOnAccent(t), hl), alpha);
+        var glyph = action.Page == WheelPage.Format ? Glyphs.ForFormat(action.Title) : action.Glyph;
+        var labelSize = (float)(WheelTypography.Body * scale);
+        var labelWidth = TextWidth(ds, action.Title, labelSize, FontWeights.SemiBold);
+        labelSize = (float)WheelTypography.FitSize(labelSize, labelWidth, 2 * r - 24);
+
+        if (glyph is null)
+        {
+            DrawCentred(ds, action.Title, 0, 0, 2 * r - 16, labelSize * 1.6f, color, Format(labelSize, FontWeights.SemiBold));
+            return;
+        }
+        var glyphSize = (float)(WheelTypography.SingleGlyph * Math.Min(scale, 1.25));
+        var textHeight = labelSize * 1.25f;
+        var total = glyphSize + 4 + textHeight;
+        var top = -total / 2;
+        DrawCentred(ds, glyph, 0, top + glyphSize / 2, glyphSize + 8, glyphSize + 8, color, IconFormat(glyphSize));
+        DrawCentred(ds, action.Title, 0, top + glyphSize + 4 + textHeight / 2, 2 * r - 16, textHeight + 2, color, Format(labelSize, FontWeights.SemiBold));
     }
 
     private TileShape ShapeFor(CanvasDrawingSession ds, int index, int n)
@@ -461,21 +632,139 @@ internal sealed class WheelRenderer : IDisposable
 
     private static Vector2 P(PointD p) => new((float)p.X, (float)p.Y);
 
+    // ------------------------------------------------------------------ callout pills (the window's transparent margin)
+
+    private void DrawCallouts(CanvasDrawingSession ds, WheelScene s, float logical)
+    {
+        if (s.Callouts.Main is { IsEmpty: false } main) DrawCallout(ds, s, main, s.MainSide, logical);
+        if (s.Callouts.Secondary is { IsEmpty: false } second)
+            DrawCallout(ds, s, second, s.MainSide == CalloutSide.Top ? CalloutSide.Bottom : CalloutSide.Top, logical);
+    }
+
+    /// <summary>
+    /// One pill in the top or bottom margin: [glyph] [text] | [keycap label]… on an opaque surface, so its contrast never depends on the wallpaper.
+    /// Prominent hints get keycap outlines; quiet ones are plain secondary-colour text (still 4.5:1).
+    /// </summary>
+    private void DrawCallout(CanvasDrawingSession ds, WheelScene s, CalloutContent c, CalloutSide side, float logical)
+    {
+        var t = s.Theme;
+        var p = t.Palette;
+        var fontSize = (float)(WheelTypography.Caption * t.TextScale);
+        var height = (float)WheelTypography.PillHeight(fontSize);
+        const float padX = 10, itemGap = 10, keyGap = 5, maxWidth = 364;
+        var keyPad = 6f;
+
+        bool caution = c.Tone == CalloutTone.Caution;
+        bool prominent = c.Emphasis == HintEmphasis.Prominent;
+
+        Color fill, stroke, text, secondary, glyphColor;
+        float strokeWidth = 1f;
+        if (t.HighContrast)
+        {
+            fill = t.HcButtonFace; stroke = t.HcButtonText; text = t.HcButtonText; secondary = t.HcButtonText; glyphColor = t.HcButtonText;
+            strokeWidth = caution ? 2f : 1f;
+        }
+        else if (caution)
+        {
+            fill = WheelTheme.FromRgb(p.CautionFill);
+            stroke = WheelTheme.FromRgb(p.CautionGlyph, 0.55);
+            text = WheelTheme.FromRgb(p.CautionText);
+            secondary = text;
+            glyphColor = WheelTheme.FromRgb(p.CautionGlyph);
+        }
+        else
+        {
+            fill = WheelTheme.FromRgb(p.PillFill);
+            stroke = WheelTheme.FromRgb(p.PillStroke, p.PillStrokeAlpha);
+            text = WheelTheme.FromRgb(p.PillText);
+            secondary = WheelTheme.FromRgb(p.PillSecondary);
+            glyphColor = text;
+        }
+
+        // Measure.
+        var textFormatWeight = FontWeights.SemiBold;
+        var glyphWidth = c.Glyph is null ? 0f : fontSize * 1.25f;
+        var available = maxWidth - 2 * padX;
+        float textWidth = 0;
+        if (!string.IsNullOrEmpty(c.Text)) textWidth = TextWidth(ds, c.Text!, fontSize, textFormatWeight);
+
+        float KeyWidth(KeyHint h) => TextWidth(ds, h.Key, fontSize, FontWeights.SemiBold) + (prominent ? 2 * keyPad : 0);
+        double HintWidth(KeyHint h) => KeyWidth(h) + keyGap + TextWidth(ds, h.Label, fontSize, FontWeights.Normal);
+
+        var used = glyphWidth + (glyphWidth > 0 && textWidth > 0 ? 6 : 0);
+        var textRoom = (float)available - used;
+        // Hints give way first; the text is only ellipsised if it alone does not fit.
+        var hintsRoom = (float)available - used - textWidth - (textWidth > 0 ? itemGap * 2 : 0);
+        var hints = c.KeyHints.Count == 0 ? c.KeyHints : WheelCallout.FitHints(c.KeyHints, hintsRoom, HintWidth, itemGap);
+        var hintsWidth = hints.Count == 0 ? 0f : (float)(hints.Sum(HintWidth) + (hints.Count - 1) * itemGap);
+        var shownTextWidth = Math.Min(textWidth, textRoom);
+
+        var contentWidth = used + shownTextWidth + (shownTextWidth > 0 && hintsWidth > 0 ? itemGap * 2 : 0) + hintsWidth;
+        var width = (float)Math.Min(maxWidth, contentWidth + 2 * padX);
+        var cx = logical / 2;
+        var band = (float)WheelGeometry.WindowMargin - 5 - height / 2;
+        var cy = side == CalloutSide.Top ? band : logical - band;
+        var rect = new Rect(cx - width / 2, cy - height / 2, width, height);
+        var radius = height / 2;
+
+        // A faint contact shadow, then the pill.
+        ds.FillRoundedRectangle(new Rect(rect.X - 1, rect.Y + 1, rect.Width + 2, rect.Height + 2), radius + 1, radius + 1,
+            Color.FromArgb(t.Dark ? (byte)70 : (byte)26, 0, 0, 0));
+        ds.FillRoundedRectangle(rect, radius, radius, fill);
+        ds.DrawRoundedRectangle(new Rect(rect.X + 0.5, rect.Y + 0.5, rect.Width - 1, rect.Height - 1), radius - 0.5f, radius - 0.5f, stroke, strokeWidth);
+
+        var x = (float)rect.X + padX + (width - 2 * padX - contentWidth) / 2;
+        if (c.Glyph is not null)
+        {
+            DrawLeft(ds, c.Glyph, x, cy, glyphWidth, height, glyphColor, IconFormat(fontSize * 1.05f));
+            x += glyphWidth + (textWidth > 0 ? 6 : 0);
+        }
+        if (shownTextWidth > 0)
+        {
+            DrawLeft(ds, c.Text!, x, cy, shownTextWidth + 1, height, text, Format(fontSize, textFormatWeight, trim: true));
+            x += shownTextWidth;
+            if (hintsWidth > 0)
+            {
+                x += itemGap;
+                ds.DrawLine(x, cy - height * 0.25f, x, cy + height * 0.25f, WheelTheme.WithAlpha(secondary, 0.5), 1f);
+                x += itemGap;
+            }
+        }
+
+        foreach (var (hint, i) in hints.Select((h, i) => (h, i)))
+        {
+            var keyW = KeyWidth(hint);
+            if (prominent)
+            {
+                var keyRect = new Rect(x + 0.5, cy - (height - 8) / 2 + 0.5, keyW - 1, height - 9);
+                ds.FillRoundedRectangle(keyRect, 4, 4, WheelTheme.WithAlpha(secondary, 0.14));
+                ds.DrawRoundedRectangle(keyRect, 4, 4, WheelTheme.WithAlpha(secondary, 0.75), 1f);
+            }
+            DrawLeft(ds, hint.Key, x, cy, keyW, height, prominent ? text : secondary, Format(fontSize, FontWeights.SemiBold)); // centred in the keycap
+            x += keyW + keyGap;
+            var labelW = TextWidth(ds, hint.Label, fontSize, FontWeights.Normal);
+            DrawLeft(ds, hint.Label, x, cy, labelW + 1, height, prominent ? text : secondary, Format(fontSize, FontWeights.Normal));
+            x += labelW + itemGap;
+        }
+    }
+
     // ------------------------------------------------------------------ text helpers
 
-    private CanvasTextFormat Format(float size, FontWeight weight, bool wrap = false)
+    private CanvasTextFormat Format(float size, FontWeight weight, bool wrap = false, bool trim = false, bool leftAligned = false)
     {
-        var key = $"t{size}/{weight.Weight}/{wrap}";
+        var key = $"t{size}/{weight.Weight}/{wrap}/{trim}/{leftAligned}";
         if (_formats.TryGetValue(key, out var existing)) return existing;
-        return _formats[key] = new CanvasTextFormat
+        var format = new CanvasTextFormat
         {
             FontFamily = _textFont,
             FontSize = size,
             FontWeight = weight,
-            HorizontalAlignment = CanvasHorizontalAlignment.Center,
+            HorizontalAlignment = leftAligned ? CanvasHorizontalAlignment.Left : CanvasHorizontalAlignment.Center,
             VerticalAlignment = CanvasVerticalAlignment.Center,
             WordWrapping = wrap ? CanvasWordWrapping.Wrap : CanvasWordWrapping.NoWrap,
         };
+        if (trim) { format.TrimmingGranularity = CanvasTextTrimmingGranularity.Character; format.TrimmingSign = CanvasTrimmingSign.Ellipsis; }
+        return _formats[key] = format;
     }
 
     private CanvasTextFormat IconFormat(float size)
@@ -492,8 +781,23 @@ internal sealed class WheelRenderer : IDisposable
         };
     }
 
+    private float TextWidth(CanvasDrawingSession ds, string text, float size, FontWeight weight)
+    {
+        var key = (text, size, (int)weight.Weight);
+        if (_widths.TryGetValue(key, out var w)) return w;
+        using var layout = new CanvasTextLayout(ds, text, Format(size, weight, leftAligned: true), 1000, 100);
+        w = (float)Math.Ceiling(layout.LayoutBounds.Width);
+        return _widths[key] = w;
+    }
+
     private static void DrawCentred(CanvasDrawingSession ds, string text, float cx, float cy, float width, float height, Color color, CanvasTextFormat format) =>
         ds.DrawText(text, cx - width / 2, cy - height / 2, width, height, color, format);
+
+    private void DrawLeft(CanvasDrawingSession ds, string text, float x, float cy, float width, float height, Color color, CanvasTextFormat format)
+    {
+        // The formats are centre-aligned (shared with the tiles); a box exactly as wide as the measured text puts it where x says.
+        ds.DrawText(text, x, cy - height / 2, width, height, color, format);
+    }
 
     // ------------------------------------------------------------------ colour helpers
 
