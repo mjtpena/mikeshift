@@ -110,7 +110,7 @@ internal static class Native
     public struct INPUT { public uint type; public InputUnion u; }
 
     public const uint INPUT_MOUSE = 0, INPUT_KEYBOARD = 1;
-    public const uint MOUSEEVENTF_MOVE = 1, MOUSEEVENTF_LEFTDOWN = 2, MOUSEEVENTF_LEFTUP = 4, MOUSEEVENTF_WHEEL = 0x800,
+    public const uint MOUSEEVENTF_MOVE = 1, MOUSEEVENTF_LEFTDOWN = 2, MOUSEEVENTF_LEFTUP = 4, MOUSEEVENTF_RIGHTDOWN = 8, MOUSEEVENTF_RIGHTUP = 0x10, MOUSEEVENTF_WHEEL = 0x800,
         MOUSEEVENTF_ABSOLUTE = 0x8000, MOUSEEVENTF_VIRTUALDESK = 0x4000;
     public const uint KEYEVENTF_KEYUP = 2;
 
@@ -216,6 +216,8 @@ internal static class Pointer
 
     public static void LeftDown() => Send(Mouse(Native.MOUSEEVENTF_LEFTDOWN));
     public static void LeftUp() => Send(Mouse(Native.MOUSEEVENTF_LEFTUP));
+    public static void RightDown() => Send(Mouse(Native.MOUSEEVENTF_RIGHTDOWN));
+    public static void RightUp() => Send(Mouse(Native.MOUSEEVENTF_RIGHTUP));
     public static void Wheel(int delta) => Send(new Native.INPUT
     {
         type = Native.INPUT_MOUSE,

@@ -13,6 +13,7 @@ internal sealed class Sess
     public Point Dest;
     public long LatencyMs = -1;
     public int LogMark;
+    public DateTime ShiftAt;
 
     public static int KeyOf(string k) => k switch { "shift" => Native.VK_LSHIFT, "ctrl" => Native.VK_LCONTROL, "alt" => 0xA4, _ => throw new ArgumentException(k) };
 
@@ -55,6 +56,7 @@ internal sealed class Sess
         var shiftPre = pre.Contains("shift");
         Pointer.Glide(Dest.X, Dest.Y, 8, 6);
         var sw = Stopwatch.StartNew();
+        ShiftAt = DateTime.Now;
         if (during.Length > 0) Keys(during, true);
         var seen = Wait(() => firstSeen[0] >= 0, 2500);
         LatencyMs = shiftPre ? 0 : sw.ElapsedMilliseconds;
@@ -172,8 +174,9 @@ internal static partial class Anger
     {
         AppExe = appExe;
         RepoRoot = repo;
-        Root = Path.Combine(Path.GetTempPath(), "mikeshift-anger");
+        Root = Path.GetFullPath(Environment.GetEnvironmentVariable("MIKESHIFT_ANGER_ROOT") is { Length: > 0 } r ? r : Path.Combine(Path.GetTempPath(), "mikeshift-anger"));
         Directory.CreateDirectory(Root);
+        MakeFixtures();
         ShotDir = Path.Combine(Root, "shots");
         Directory.CreateDirectory(ShotDir);
         Rec.File = Path.Combine(Root, "results.txt");
@@ -245,6 +248,30 @@ internal static partial class Anger
 
     private static void Shot2(string path, Point c, int half) => DragHarness.Shot.Around(c, half, path);
 
+    /// <summary>A minimal valid one-page PDF at Root\fx\minimal.pdf (used by the image + PDF scenarios).</summary>
+    private static void MakeFixtures()
+    {
+        var fx = Path.Combine(Root, "fx");
+        Directory.CreateDirectory(fx);
+        var pdf = Path.Combine(fx, "minimal.pdf");
+        if (File.Exists(pdf)) return;
+        var objs = new[]
+        {
+            "<< /Type /Catalog /Pages 2 0 R >>",
+            "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+            "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] /Contents 4 0 R >>",
+            "<< /Length 0 >>\nstream\n\nendstream",
+        };
+        var sb = new System.Text.StringBuilder("%PDF-1.4\n");
+        var offsets = new List<int>();
+        for (var i = 0; i < objs.Length; i++) { offsets.Add(sb.Length); sb.Append($"{i + 1} 0 obj\n{objs[i]}\nendobj\n"); }
+        var xref = sb.Length;
+        sb.Append($"xref\n0 {objs.Length + 1}\n0000000000 65535 f \n");
+        foreach (var o in offsets) sb.Append($"{o:0000000000} 00000 n \n");
+        sb.Append($"trailer\n<< /Size {objs.Length + 1} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n");
+        File.WriteAllBytes(pdf, System.Text.Encoding.ASCII.GetBytes(sb.ToString()));
+    }
+
     public static Dictionary<string, Action> Tests()
     {
         var d = new Dictionary<string, Action>();
@@ -254,6 +281,7 @@ internal static partial class Anger
         RegisterTests4(d);
         RegisterTests5(d);
         RegisterTests6(d);
+        RegisterTests7(d);
         return d;
     }
 }

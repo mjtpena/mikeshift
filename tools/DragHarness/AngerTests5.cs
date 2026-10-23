@@ -11,14 +11,17 @@ internal static class TrayKit
     private static AutomationElement? ByClass(string cls) =>
         Root.FindFirst(TreeScope.Children, new PropertyCondition(AutomationElement.ClassNameProperty, cls));
 
+    /// <summary>The tray button whose name starts with "MikeShift" (the tooltip is "MikeShift - Shift-drag files to convert").</summary>
+    private static AutomationElement? FindMikeShiftButton(AutomationElement root) =>
+        root.FindAll(TreeScope.Descendants, new PropertyCondition(AutomationElement.ClassNameProperty, "SystemTray.NormalButton"))
+            .Cast<AutomationElement>().FirstOrDefault(b => { try { return b.Current.Name.StartsWith("MikeShift", StringComparison.Ordinal); } catch (Exception) { return false; } });
+
     /// <summary>Finds the MikeShift tray button in the visible taskbar or, after opening "Show Hidden Icons", in the overflow flyout.</summary>
     public static (AutomationElement? Button, string Where) FindIcon()
     {
         var tray = ByClass("Shell_TrayWnd");
         if (tray is null) return (null, "no taskbar");
-        var direct = tray.FindFirst(TreeScope.Descendants, new AndCondition(
-            new PropertyCondition(AutomationElement.NameProperty, "MikeShift"),
-            new PropertyCondition(AutomationElement.ClassNameProperty, "SystemTray.NormalButton")));
+        var direct = FindMikeShiftButton(tray);
         if (direct is not null) return (direct, "taskbar notification area");
         var chevron = tray.FindFirst(TreeScope.Descendants, new AndCondition(
             new PropertyCondition(AutomationElement.ClassNameProperty, "SystemTray.NormalButton"),
@@ -32,9 +35,7 @@ internal static class TrayKit
         while (sw.ElapsedMilliseconds < 4000)
         {
             var over = ByClass("TopLevelWindowForOverflowXamlIsland");
-            var b = over?.FindFirst(TreeScope.Descendants, new AndCondition(
-                new PropertyCondition(AutomationElement.NameProperty, "MikeShift"),
-                new PropertyCondition(AutomationElement.ClassNameProperty, "SystemTray.NormalButton")));
+            var b = over is null ? null : FindMikeShiftButton(over);
             if (b is not null && !b.Current.BoundingRectangle.IsEmpty && !b.Current.IsOffscreen) { Thread.Sleep(400); return (b, "overflow flyout (Show Hidden Icons)"); }
             Thread.Sleep(100);
         }
@@ -80,41 +81,48 @@ internal static class TrayKit
         return (null, []);
     }
 
+    [System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+    private static extern int GetClassNameW(IntPtr hwnd, System.Text.StringBuilder sb, int max);
+
+    /// <summary>
+    /// The app's visible common dialog (#32770). It is owned by the picker's invisible helper window, so UI Automation lists it under that
+    /// owner rather than under the desktop: find the window with EnumWindows and wrap its handle.
+    /// </summary>
     public static AutomationElement? AppDialog(int pid, int ms = 8000)
     {
         var sw = Stopwatch.StartNew();
         while (sw.ElapsedMilliseconds < ms)
         {
-            var d = Root.FindFirst(TreeScope.Children, new AndCondition(
-                new PropertyCondition(AutomationElement.ClassNameProperty, "#32770"),
-                new PropertyCondition(AutomationElement.ProcessIdProperty, pid)));
-            if (d is not null) return d;
+            IntPtr found = IntPtr.Zero;
+            AngerNative.EnumWindows((h, _) =>
+            {
+                var sb = new System.Text.StringBuilder(64);
+                GetClassNameW(h, sb, 64);
+                AngerNative.GetWindowThreadProcessId(h, out var p);
+                if (p == (uint)pid && sb.ToString() == "#32770" && Native.IsWindowVisible(h)) { found = h; return false; }
+                return true;
+            }, IntPtr.Zero);
+            if (found != IntPtr.Zero) { Thread.Sleep(500); return AutomationElement.FromHandle(found); }
             Thread.Sleep(150);
         }
         return null;
     }
 
-    /// <summary>Tray icon -> menu -> Convert Files… -> file dialog -> the given file. Returns a description of what happened.</summary>
+    /// <summary>Tray icon left click (Convert files... is the primary action) -> file dialog -> the given file. Returns a description of what happened.</summary>
     public static bool ConvertViaTray(AngerApp app, string file, out string detail, bool cancelDialog = false)
     {
         string where = "";
-        AutomationElement? menu = null;
-        var items = new List<(string Name, AutomationElement El)>();
-        for (var attempt = 0; attempt < 3 && menu is null; attempt++)
+        AutomationElement? dlg = null;
+        for (var attempt = 0; attempt < 3 && dlg is null; attempt++)
         {
             AutomationElement? btn;
             (btn, where) = FindIcon();
             if (btn is null) { detail = "tray icon not found: " + where; return false; }
             Click(btn);
-            (menu, items) = WaitMenu(attempt == 0 ? 3000 : 4000);
-            if (menu is null) { CloseOverflow(); Thread.Sleep(800); }
+            dlg = AppDialog(app.Proc.Id, attempt == 0 ? 6000 : 8000);
+            if (dlg is null) { CloseOverflow(); Thread.Sleep(800); }
         }
-        if (menu is null) { detail = "tray menu did not open (3 attempts)"; return false; }
-        var conv = items.FirstOrDefault(i => i.Name.StartsWith("Convert Files"));
-        if (conv.El is null) { detail = "no Convert Files… item in: " + string.Join(" | ", items.Select(i => i.Name)); return false; }
-        Click(conv.El);
-        var dlg = AppDialog(app.Proc.Id);
-        if (dlg is null) { detail = "file dialog did not appear"; return false; }
+        if (dlg is null) { detail = "file dialog did not appear after a left click on the tray icon (3 attempts)"; return false; }
         if (cancelDialog)
         {
             Pointer.KeyDown(Native.VK_ESCAPE); Pointer.KeyUp(Native.VK_ESCAPE);
@@ -127,12 +135,16 @@ internal static class TrayKit
         edit ??= dlg.FindFirst(TreeScope.Descendants, new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Edit));
         if (edit is null) { detail = "no file name box in the dialog"; return false; }
         ((ValuePattern)edit.GetCurrentPattern(ValuePattern.Pattern)).SetValue(file);
-        var open = dlg.FindFirst(TreeScope.Descendants, new AndCondition(
-            new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Button),
-            new PropertyCondition(AutomationElement.AutomationIdProperty, "1")));
-        if (open is null) { detail = "no Open button"; return false; }
-        ((InvokePattern)open.GetCurrentPattern(InvokePattern.Pattern)).Invoke();
-        detail = "tray icon found in the " + where + "; menu items: " + string.Join(" | ", items.Select(i => i.Name));
+        // The dialog's button is "Choose" now (it was "Open"); a split button, so match by name and fall back to Enter in the file name box.
+        var open = dlg.FindAll(TreeScope.Descendants, new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Button))
+            .Cast<AutomationElement>().FirstOrDefault(b => { try { var n = b.Current.Name; return n == "Choose" || n == "Open" || n.StartsWith("Choose", StringComparison.Ordinal); } catch (Exception) { return false; } });
+        if (open is not null && open.TryGetCurrentPattern(InvokePattern.Pattern, out var inv)) ((InvokePattern)inv).Invoke();
+        else
+        {
+            edit.SetFocus(); Thread.Sleep(150);
+            Pointer.KeyDown(0x0D); Thread.Sleep(30); Pointer.KeyUp(0x0D);
+        }
+        detail = "tray icon found in the " + where + "; left click opened the picker";
         return true;
     }
 }
@@ -145,7 +157,7 @@ internal static partial class Anger
         {
             var file = Path.Combine(s.Work, "photo.jpg");
             body(s, file);
-        });
+        }, env: new Dictionary<string, string> { ["MIKESHIFT_PICKER_FOLDER"] = Root });
     }
 
     /// <summary>Last "highlight: X" stage line (drag mode appends a "(drop description ...)" suffix, click mode does not).</summary>
