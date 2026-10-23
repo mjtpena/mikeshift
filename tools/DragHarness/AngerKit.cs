@@ -101,9 +101,9 @@ internal sealed class ExplorerWin
     public AutomationElement Win = null!;
     public string Folder = "";
 
-    public static ExplorerWin Open(string folder, Rectangle bounds)
+    public static ExplorerWin Open(string folder, Rectangle bounds, string? match = null)
     {
-        var leaf = Path.GetFileName(folder.TrimEnd('\\'));
+        var leaf = match ?? Path.GetFileName(folder.TrimEnd('\\'));
         Process.Start(new ProcessStartInfo("explorer.exe", "\"" + folder + "\"") { UseShellExecute = true });
         AutomationElement? win = null;
         var sw = Stopwatch.StartNew();

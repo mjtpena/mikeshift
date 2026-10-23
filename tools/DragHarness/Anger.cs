@@ -226,6 +226,7 @@ internal static partial class Anger
         finally
         {
             Sess.Keys("shift+ctrl", false);
+            TrayKit.CloseOverflow();
             Pointer.LeftUp();
             try { s.Ex?.Close(); } catch (Exception) { }
             s.App?.Kill();
@@ -250,6 +251,9 @@ internal static partial class Anger
         RegisterTests(d);
         RegisterTests2(d);
         RegisterTests3(d);
+        RegisterTests4(d);
+        RegisterTests5(d);
+        RegisterTests6(d);
         return d;
     }
 }
