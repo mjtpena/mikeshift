@@ -12,10 +12,10 @@ public class WheelAnimationTests
     }
 
     [Fact]
-    public void OpensFromSixtyPercentAndSettlesAtOne()
+    public void OpensFromNinetyFourPercentAndSettlesAtOne()
     {
         var a = Shown();
-        Assert.Equal(0.6, a.Scale(0), 3);
+        Assert.Equal(0.94, a.Scale(0), 3);
         Assert.Equal(0, a.Opacity(0), 3);
         Assert.True(a.IsAnimating(0.1));
 
@@ -25,16 +25,36 @@ public class WheelAnimationTests
     }
 
     [Fact]
-    public void OpenOvershootsButOpacityNeverExceedsOne()
+    public void OpenNeverOvershootsScaleOrOpacity()
     {
         var a = Shown();
-        var maxScale = 0.0;
-        for (var t = 0.0; t <= 0.3; t += 0.005)
+        for (var t = 0.0; t <= 0.3; t += 0.002)
         {
-            maxScale = Math.Max(maxScale, a.Scale(t));
+            Assert.InRange(a.Scale(t), 0.94 - 1e-9, 1.0 + 1e-9);
             Assert.InRange(a.Opacity(t), 0, 1);
         }
-        Assert.True(maxScale > 1.0, "the open curve overshoots");
+    }
+
+    [Fact]
+    public void TheWheelIsAlreadyMostlyOpaqueWellInsideTheHundredMillisecondBudget()
+    {
+        var a = Shown();
+        Assert.True(a.Opacity(0.05) > 0.6);
+        Assert.True(a.Opacity(0.10) > 0.85);
+    }
+
+    [Fact]
+    public void NothingEverScalesPastOneDuringCollapseOrDismiss()
+    {
+        var picked = Shown();
+        picked.Pick(0, 1);
+        var dismissed = Shown();
+        dismissed.Dismiss(0);
+        for (var t = 0.0; t <= 0.3; t += 0.002)
+        {
+            Assert.InRange(picked.Scale(t), 0.96 - 1e-9, 1.0 + 1e-9);
+            Assert.InRange(dismissed.Scale(t), 0.96 - 1e-9, 1.0 + 1e-9);
+        }
     }
 
     [Fact]
@@ -98,9 +118,9 @@ public class WheelAnimationTests
 
         Assert.True(a.PageSwitching(1.05));
         Assert.Equal(1.0, a.OutgoingOpacity(1.0), 6);
-        Assert.Equal(0.0, a.OutgoingOpacity(1.12), 6);
-        Assert.Equal(0.0, a.IncomingOpacity(1.1), 6);
-        Assert.Equal(-16, a.IncomingOffset(1.1), 6);
+        Assert.Equal(0.0, a.OutgoingOpacity(1.0 + WheelTimings.PageFadeSeconds), 6);
+        Assert.Equal(0.0, a.IncomingOpacity(1.0 + WheelTimings.PageFadeSeconds), 6);
+        Assert.Equal(-12, a.IncomingOffset(1.0 + WheelTimings.PageFadeSeconds), 6);
 
         Assert.Equal(1.0, a.IncomingOpacity(1.5), 6);
         Assert.Equal(0.0, a.IncomingOffset(1.5), 6);
@@ -119,13 +139,13 @@ public class WheelAnimationTests
         Assert.Equal(1.0, a.Scale(1.0), 6);
         Assert.Equal(1.0, a.Opacity(1.0), 6);
         Assert.Equal(0, a.PickPush(1.0), 6);
-        Assert.False(a.IsFinished(1.1));
-        Assert.True(a.IsAnimating(1.1));
+        Assert.False(a.IsFinished(1.05));
+        Assert.True(a.IsAnimating(1.05));
 
-        Assert.Equal(WheelGeometry.PickPulse, a.PickPush(1.2), 6);
-        Assert.Equal(WheelTimings.CollapseScaleTo, a.Scale(1.2), 6);
-        Assert.Equal(0.0, a.Opacity(1.2), 6);
-        Assert.True(a.IsFinished(1.21));
+        Assert.Equal(WheelGeometry.PickPulse, a.PickPush(1.14), 6);
+        Assert.Equal(WheelTimings.CollapseScaleTo, a.Scale(1.14), 6);
+        Assert.Equal(0.0, a.Opacity(1.14), 6);
+        Assert.True(a.IsFinished(1.141));
     }
 
     [Fact]
@@ -135,9 +155,12 @@ public class WheelAnimationTests
         a.Dismiss(2.0);
         Assert.Equal(WheelPhase.Dismissing, a.Phase);
         Assert.Equal(1.0, a.Opacity(2.0), 6);
-        Assert.InRange(a.Opacity(2.1), 0.01, 0.99);
-        Assert.Equal(0.0, a.Opacity(2.2), 6);
-        Assert.True(a.IsFinished(2.21));
+        Assert.InRange(a.Opacity(2.07), 0.01, 0.99);
+        Assert.Equal(0.0, a.Opacity(2.0 + WheelTimings.DismissSeconds), 6);
+        Assert.True(a.IsFinished(2.0 + WheelTimings.DismissSeconds + 0.001));
+        // the wheel settles slightly (96 %) while it fades, it never grows
+        Assert.Equal(1.0, a.Scale(2.0), 6);
+        Assert.Equal(0.96, a.Scale(2.0 + WheelTimings.DismissSeconds), 6);
     }
 
     [Fact]

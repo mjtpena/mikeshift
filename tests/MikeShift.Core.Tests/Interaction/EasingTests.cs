@@ -52,20 +52,35 @@ public class EasingTests
     }
 
     [Fact]
-    public void OpenCurveOvershootsThenSettles()
+    public void FluentCurvesNeverOvershoot()
     {
-        var max = 0.0;
-        for (var t = 0.0; t <= 1; t += 0.005) max = Math.Max(max, Easing.Open.Evaluate(t));
-        Assert.True(max > 1.02, $"expected overshoot, max was {max}");
-        Assert.True(max < 1.25);
-        Assert.Equal(1, Easing.Open.Evaluate(1));
-        Assert.True(Easing.Open.Evaluate(0.9) < 1.05);
+        foreach (var curve in new[] { Easing.Decelerate, Easing.Accelerate, Easing.Open })
+        {
+            for (var t = 0.0; t <= 1; t += 0.005)
+            {
+                var v = curve.Evaluate(t);
+                Assert.InRange(v, 0, 1);
+            }
+            Assert.Equal(1, curve.Evaluate(1));
+        }
+        Assert.Same(Easing.Decelerate, Easing.Open);
+    }
+
+    [Fact]
+    public void DecelerateStartsFastAndAccelerateStartsSlow()
+    {
+        // cubic-bezier(0,0,0,1): most of the distance is covered early; cubic-bezier(1,0,1,1): most of it late.
+        Assert.True(Easing.Decelerate.Evaluate(0.25) > 0.6);
+        Assert.True(Easing.Decelerate.Evaluate(0.5) > 0.85);
+        Assert.True(Easing.Accelerate.Evaluate(0.25) < 0.1);
+        Assert.True(Easing.Accelerate.Evaluate(0.5) < 0.4);
+        for (var t = 0.05; t < 1; t += 0.05) Assert.True(Easing.Decelerate.Evaluate(t) > Easing.Accelerate.Evaluate(t));
     }
 
     [Fact]
     public void MonotonicCurvesNeverDecrease()
     {
-        foreach (var curve in new[] { Easing.EaseIn, Easing.EaseOut, Easing.EaseInOut })
+        foreach (var curve in new[] { Easing.EaseIn, Easing.EaseOut, Easing.EaseInOut, Easing.Decelerate, Easing.Accelerate })
         {
             var prev = 0.0;
             for (var t = 0.0; t <= 1; t += 0.01)
@@ -103,87 +118,115 @@ public class EasingTests
     }
 
     [Fact]
-    public void TimingConstantsMatchTheSpec()
+    public void TimingConstantsFollowFluentMotion()
     {
-        Assert.Equal(0.28, WheelTimings.OpenSeconds);
-        Assert.Equal(0.60, WheelTimings.OpenScaleFrom);
-        Assert.Equal(0.010, WheelTimings.StaggerSeconds);
-        Assert.Equal(0.12, WheelTimings.PageFadeSeconds);
-        Assert.Equal(0.30, WheelTimings.PageSlideSeconds);
-        Assert.Equal(16, WheelTimings.PageSlideDistance);
-        Assert.Equal(0.20, WheelTimings.CollapseSeconds);
-        Assert.Equal(1.70, WheelTimings.CollapseScaleTo);
-        Assert.Equal(0.16, WheelTimings.PickPulseSeconds);
-        Assert.Equal(0.20, WheelTimings.DismissSeconds);
+        // Entrances 167-250 ms (decelerate), exits 83-167 ms (accelerate).
+        Assert.InRange(WheelTimings.OpenSeconds, 0.167, 0.250);
+        Assert.InRange(WheelTimings.PageSlideSeconds, 0.167, 0.250);
+        Assert.InRange(WheelTimings.PageFadeSeconds, 0.083, 0.167);
+        Assert.InRange(WheelTimings.DismissSeconds, 0.083, 0.167);
+        Assert.InRange(WheelTimings.CollapseSeconds, 0.083, 0.167);
+        Assert.Equal(0.008, WheelTimings.StaggerSeconds);
+        Assert.Equal(12, WheelTimings.PageSlideDistance);
+        Assert.Equal(0.12, WheelTimings.PickPulseSeconds);
     }
 
     [Fact]
-    public void OpenAnimationRunsFromSixtyToOneHundredPercent()
+    public void NothingEverGrowsPastItsSizeAndNothingZoomsOut()
     {
-        Assert.Equal(0.6, WheelTimings.OpenScale(0), 9);
-        Assert.Equal(1.0, WheelTimings.OpenScale(0.28), 9);
+        Assert.InRange(WheelTimings.OpenScaleFrom, 0.9, 0.999);
+        Assert.InRange(WheelTimings.CollapseScaleTo, 0.9, 1.0);
+        Assert.InRange(WheelTimings.DismissScaleTo, 0.9, 1.0);
+        for (var t = 0.0; t <= 0.5; t += 0.002)
+        {
+            Assert.InRange(WheelTimings.OpenScale(t), WheelTimings.OpenScaleFrom - 1e-9, 1.0 + 1e-9);
+            Assert.InRange(WheelTimings.OpenOpacity(t), 0, 1);
+            Assert.InRange(WheelTimings.TilePop(3, t), 0, 1);
+            Assert.InRange(WheelTimings.CollapseScale(t), WheelTimings.CollapseScaleTo - 1e-9, 1.0 + 1e-9);
+            Assert.InRange(WheelTimings.DismissScale(t), WheelTimings.DismissScaleTo - 1e-9, 1.0 + 1e-9);
+        }
+    }
+
+    [Fact]
+    public void OpenAnimationDeceleratesFromNinetyFourToOneHundredPercent()
+    {
+        Assert.Equal(0.94, WheelTimings.OpenScale(0), 9);
+        Assert.Equal(1.0, WheelTimings.OpenScale(WheelTimings.OpenSeconds), 9);
         Assert.Equal(1.0, WheelTimings.OpenScale(5), 9);
-        Assert.True(WheelTimings.OpenScale(0.14) > 0.6);
+        Assert.Equal(0.0, WheelTimings.OpenOpacity(0), 9);
+        Assert.Equal(1.0, WheelTimings.OpenOpacity(WheelTimings.OpenSeconds), 9);
+        // decelerating: three quarters of the way there after a quarter of the time, so the wheel is readable well inside the 100 ms budget
+        Assert.True(WheelTimings.OpenOpacity(0.05) > 0.6);
+        Assert.True(WheelTimings.OpenOpacity(0.1) > 0.85);
     }
 
     [Fact]
-    public void TilesPopOutStaggeredByTenMilliseconds()
+    public void TilesAppearStaggeredByEightMilliseconds()
     {
-        Assert.Equal(0, WheelTimings.TilePop(3, 0.029), 9);
+        Assert.Equal(0, WheelTimings.TilePop(3, 0.023), 9);
         Assert.True(WheelTimings.TilePop(3, 0.05) > 0);
         Assert.True(WheelTimings.TilePop(0, 0.05) > WheelTimings.TilePop(3, 0.05));
         Assert.Equal(1.0, WheelTimings.TilePop(3, 1), 9);
-        Assert.Equal(0.28 + 0.07, WheelTimings.OpenTotalSeconds(8), 9);
-        Assert.Equal(0.28, WheelTimings.OpenTotalSeconds(1), 9);
-        Assert.Equal(0.28, WheelTimings.OpenTotalSeconds(0), 9);
+        Assert.Equal(0.20 + 7 * 0.008, WheelTimings.OpenTotalSeconds(8), 9);
+        Assert.Equal(0.20, WheelTimings.OpenTotalSeconds(1), 9);
+        Assert.Equal(0.20, WheelTimings.OpenTotalSeconds(0), 9);
     }
 
     [Fact]
-    public void CollapseGrowsToOneSeventyPercentWhileFading()
+    public void CollapseSettlesToNinetySixPercentWhileFadingOut()
     {
         Assert.Equal(1.0, WheelTimings.CollapseScale(0), 9);
-        Assert.Equal(1.7, WheelTimings.CollapseScale(0.2), 9);
+        Assert.Equal(0.96, WheelTimings.CollapseScale(WheelTimings.CollapseSeconds), 9);
         Assert.Equal(1.0, WheelTimings.CollapseOpacity(0), 9);
-        Assert.Equal(0.0, WheelTimings.CollapseOpacity(0.2), 9);
+        Assert.Equal(0.0, WheelTimings.CollapseOpacity(WheelTimings.CollapseSeconds), 9);
+        // accelerating: the picked tile stays clearly visible while it pulses
+        Assert.True(WheelTimings.CollapseOpacity(0.07) > 0.85);
     }
 
     [Fact]
-    public void PickPulseReachesEighteenPixels()
+    public void PickPulseReachesEighteenPixelsAndDecelerates()
     {
         Assert.Equal(0, WheelTimings.PickPulseOffset(0), 9);
-        Assert.Equal(18, WheelTimings.PickPulseOffset(0.16), 9);
+        Assert.Equal(18, WheelTimings.PickPulseOffset(0.12), 9);
         Assert.Equal(18, WheelTimings.PickPulseOffset(1), 9);
+        Assert.True(WheelTimings.PickPulseOffset(0.03) > 9);   // most of the movement happens early
+        for (var t = 0.0; t <= 0.2; t += 0.002) Assert.InRange(WheelTimings.PickPulseOffset(t), 0, 18 + 1e-9);   // no overshoot
     }
 
     [Fact]
-    public void PageSwitchFadesOutThenSlidesInFromSixteenPixels()
+    public void PageSwitchFadesOutQuicklyThenSlidesInFromTwelvePixels()
     {
         Assert.Equal(1.0, WheelTimings.PageOutOpacity(0), 9);
-        Assert.Equal(0.0, WheelTimings.PageOutOpacity(0.12), 9);
-        Assert.Equal(-16, WheelTimings.PageInOffset(0), 9);
-        Assert.Equal(0, WheelTimings.PageInOffset(0.3), 9);
+        Assert.Equal(0.0, WheelTimings.PageOutOpacity(WheelTimings.PageFadeSeconds), 9);
+        Assert.Equal(-12, WheelTimings.PageInOffset(0), 9);
+        Assert.Equal(0, WheelTimings.PageInOffset(WheelTimings.PageSlideSeconds), 9);
         Assert.Equal(0.0, WheelTimings.PageInOpacity(0), 9);
-        Assert.Equal(1.0, WheelTimings.PageInOpacity(0.3), 9);
+        Assert.Equal(1.0, WheelTimings.PageInOpacity(WheelTimings.PageSlideSeconds), 9);
+        for (var t = 0.0; t <= 0.3; t += 0.002) Assert.InRange(WheelTimings.PageInOffset(t), -12 - 1e-9, 1e-9);
     }
 
     [Fact]
-    public void DismissFadesOverTwoHundredMilliseconds()
+    public void DismissFadesAndSettlesOverOneHundredMilliseconds()
     {
         Assert.Equal(1.0, WheelTimings.DismissOpacity(0), 9);
-        Assert.Equal(0.0, WheelTimings.DismissOpacity(0.2), 9);
+        Assert.Equal(0.0, WheelTimings.DismissOpacity(WheelTimings.DismissSeconds), 9);
+        Assert.Equal(1.0, WheelTimings.DismissScale(0), 9);
+        Assert.Equal(0.96, WheelTimings.DismissScale(WheelTimings.DismissSeconds), 9);
     }
 
     [Fact]
     public void DisabledAnimationsJumpStraightToTheEndState()
     {
         Assert.Equal(1.0, WheelTimings.OpenScale(0, animationsEnabled: false));
+        Assert.Equal(1.0, WheelTimings.OpenOpacity(0, animationsEnabled: false));
         Assert.Equal(1.0, WheelTimings.TilePop(5, 0, animationsEnabled: false));
         Assert.Equal(WheelTimings.CollapseScaleTo, WheelTimings.CollapseScale(0, animationsEnabled: false));
         Assert.Equal(0.0, WheelTimings.CollapseOpacity(0, animationsEnabled: false));
         Assert.Equal(18, WheelTimings.PickPulseOffset(0, animationsEnabled: false));
         Assert.Equal(0.0, WheelTimings.DismissOpacity(0, animationsEnabled: false));
+        Assert.Equal(WheelTimings.DismissScaleTo, WheelTimings.DismissScale(0, animationsEnabled: false));
         Assert.Equal(0, WheelTimings.PageInOffset(0, animationsEnabled: false));
-        Assert.Equal(0, WheelTimings.Scaled(0.28, false));
-        Assert.Equal(0.28, WheelTimings.Scaled(0.28, true));
+        Assert.Equal(0, WheelTimings.Scaled(0.2, false));
+        Assert.Equal(0.2, WheelTimings.Scaled(0.2, true));
     }
 }

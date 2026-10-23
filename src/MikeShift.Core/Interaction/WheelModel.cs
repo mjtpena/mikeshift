@@ -67,10 +67,10 @@ public static class WheelKeys
 public sealed class WheelModel
 {
     /// <summary>Centre pill text when nothing is highlighted on the Format page.</summary>
-    public const string FormatTitle = "CONVERT";
+    public const string FormatTitle = WheelText.FormatTitle;
 
     /// <summary>Centre pill text when nothing is highlighted on the Tool page.</summary>
-    public const string ToolTitle = "TOOLS";
+    public const string ToolTitle = WheelText.ToolTitle;
 
     private IReadOnlyList<ActionDef> _formats = [];
     private IReadOnlyList<ActionDef> _tools = [];
@@ -134,27 +134,41 @@ public sealed class WheelModel
         }
     }
 
-    /// <summary>Centre pill text: the hovered action's title, else "CONVERT" / "TOOLS".</summary>
-    public string CentreTitle => HighlightedAction?.Title ?? (Page == WheelPage.Format ? FormatTitle : ToolTitle);
+    /// <summary>
+    /// Hub text: the hovered action as the shell says it ("Convert to PNG", "Compress"), else "Convert to" / "Tools". Sentence case,
+    /// the same words as <see cref="DropDescription"/> and the UI Automation names.
+    /// </summary>
+    public string CentreTitle => HighlightedAction?.DropDescription ?? WheelText.PageTitle(Page);
 
-    /// <summary>True when the pill shows a hovered action's name (drawn bold) instead of the page title.</summary>
+    /// <summary>True when the hub shows a hovered action's name (drawn bold) instead of the page title.</summary>
     public bool CentreIsActionName => HighlightedAction is not null;
 
-    /// <summary>Text under the pill: "Ctrl  tools" on the Format page, "Shift  formats" on the Tool page; empty if the other page has no tiles.</summary>
-    public string HubHint
+    /// <summary>True when the current page has exactly one tile: no ring, the hub itself is the button.</summary>
+    public bool IsSingleTile => CurrentActions.Count == 1;
+
+    /// <summary>
+    /// The key that switches to the other page, as keycap + label: ("Ctrl", "Tools") on the Format page, ("Shift", "Formats") on the Tool
+    /// page in drag mode; ("Tab", ...) in click mode. Empty if the other page has no tiles.
+    /// </summary>
+    public IReadOnlyList<KeyHint> KeyHints
     {
         get
         {
+            if (Mode == WheelMode.Click)
+                return !HasBothPages ? [] : [new KeyHint("Tab", Page == WheelPage.Format ? "Tools" : "Formats", 4)];
             if (Page == WheelPage.Format)
-                return _tools.Count == 0 ? "" : $"{ToolsKeyLabel(_toolsKey)}  tools";
-            return _formats.Count == 0 ? "" : "Shift  formats";
+                return _tools.Count == 0 ? [] : [new KeyHint(ToolsKeyLabel(_toolsKey), "Tools", 4)];
+            return _formats.Count == 0 ? [] : [new KeyHint("Shift", "Formats", 4)];
         }
     }
+
+    /// <summary>Text under the hub title: "Ctrl  Tools" on the Format page, "Shift  Formats" on the Tool page ("Tab  Tools" in click mode); empty if the other page has no tiles.</summary>
+    public string HubHint => string.Join("   ", KeyHints.Select(h => $"{h.Key}  {h.Label}"));
 
     /// <summary>The drop description for Explorer's drag image for the highlighted tile ("Convert to PNG", "Compress"), or null.</summary>
     public string? DropDescription => HighlightedAction?.DropDescription;
 
-    /// <summary>The label of the tools key as shown in the hub hint.</summary>
+    /// <summary>The keycap label of the tools key as shown in the hints ("Ctrl", "Alt", "Scroll").</summary>
     public static string ToolsKeyLabel(ToolsKey key) => key switch
     {
         ToolsKey.Alt => "Alt",
@@ -283,7 +297,11 @@ public sealed class WheelModel
     {
         if (_neutralCentre is { } neutral)
         {
-            if (point.DistanceTo(neutral) <= WheelGeometry.NeutralRadius * _lastDpi)
+            // The neutral zone exists so a pointer that enters ON the tiles does not instantly pick one. A pointer that entered outside the
+            // hit area (wheel anchored beside a taskbar: the pointer is ~186 px from the hub) has nothing to protect: it is already neutral
+            // until it moves into the ring, so the zone is dropped at once.
+            var entryOnTiles = WheelGeometry.HitTest(neutral, _lastCentre, CurrentActions.Count, _lastDpi) is not null;
+            if (entryOnTiles && point.DistanceTo(neutral) <= WheelGeometry.NeutralRadius * _lastDpi)
             {
                 SetHighlight(null);
                 return;

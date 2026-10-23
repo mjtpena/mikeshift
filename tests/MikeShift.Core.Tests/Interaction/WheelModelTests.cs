@@ -53,7 +53,7 @@ public class WheelModelTests
         var m = Create(actions: [Action("Zip", WheelPage.Tool)]);
         Assert.Equal(WheelPage.Tool, m.Page);
         Assert.False(m.HasBothPages);
-        Assert.Equal("TOOLS", m.CentreTitle);
+        Assert.Equal("Tools", m.CentreTitle);
         Assert.Equal("", m.HubHint);
     }
 
@@ -66,7 +66,7 @@ public class WheelModelTests
         Assert.False(m.HandleKey(WheelKey.Right) && m.HighlightedIndex is not null);
         m.PointerMoved(new PointPx(500, 400), Centre, 1.0);
         Assert.Null(m.HighlightedIndex);
-        Assert.Equal("CONVERT", m.CentreTitle);
+        Assert.Equal("Convert to", m.CentreTitle);
     }
 
     [Fact]
@@ -118,12 +118,12 @@ public class WheelModelTests
     // ------------------------------------------------------------------ hub texts
 
     [Theory]
-    [InlineData(ToolsKey.Ctrl, "Ctrl  tools")]
-    [InlineData(ToolsKey.Alt, "Alt  tools")]
-    [InlineData(ToolsKey.MouseWheelOnly, "Scroll  tools")]
+    [InlineData(ToolsKey.Ctrl, "Ctrl  Tools")]
+    [InlineData(ToolsKey.Alt, "Alt  Tools")]
+    [InlineData(ToolsKey.MouseWheelOnly, "Scroll  Tools")]
     public void HubHintOnTheFormatPageNamesTheConfiguredToolsKey(ToolsKey key, string expected)
     {
-        var m = Create(key: key);
+        var m = Create(WheelMode.Drag, key);
         Assert.Equal(expected, m.HubHint);
     }
 
@@ -133,19 +133,19 @@ public class WheelModelTests
     [InlineData(ToolsKey.MouseWheelOnly)]
     public void HubHintOnTheToolPageAlwaysSaysShiftFormats(ToolsKey key)
     {
-        var m = Create(key: key);
+        var m = Create(WheelMode.Drag, key);
         m.TogglePage();
-        Assert.Equal("Shift  formats", m.HubHint);
+        Assert.Equal("Shift  Formats", m.HubHint);
     }
 
     [Fact]
     public void ChangingTheToolsKeyUpdatesTheHintAndRaisesAnEvent()
     {
-        var m = Create();
+        var m = Create(WheelMode.Drag);
         WheelChange seen = WheelChange.None;
         m.Changed += c => seen |= c;
         m.ToolsKey = ToolsKey.Alt;
-        Assert.Equal("Alt  tools", m.HubHint);
+        Assert.Equal("Alt  Tools", m.HubHint);
         Assert.Equal(WheelChange.HubHint, seen);
         seen = WheelChange.None;
         m.ToolsKey = ToolsKey.Alt;
@@ -156,13 +156,13 @@ public class WheelModelTests
     public void CentreTitleIsThePageNameUntilATileIsHovered()
     {
         var m = Create();
-        Assert.Equal("CONVERT", m.CentreTitle);
+        Assert.Equal("Convert to", m.CentreTitle);
         Assert.False(m.CentreIsActionName);
         m.Highlight(1);
-        Assert.Equal("JPG", m.CentreTitle);
+        Assert.Equal("Convert to JPG", m.CentreTitle);
         Assert.True(m.CentreIsActionName);
         m.TogglePage();
-        Assert.Equal("TOOLS", m.CentreTitle);
+        Assert.Equal("Tools", m.CentreTitle);
         m.Highlight(1);
         Assert.Equal("Resize 50%", m.CentreTitle);
     }
