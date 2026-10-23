@@ -22,6 +22,8 @@ param(
     [int] $TimeoutMs = 15000,
     [string[]] $Invoke = @(),        # UIA: invoke (click/expand/toggle) the named elements, in order, before capturing
     [string[]] $Env = @(),           # extra NAME=VALUE environment variables for the process
+    [switch] $Backdrop,              # put a synthetic gradient window directly BEHIND the captured window (for acrylic popups) and screen-grab the area: no desktop pixels end up in the image
+    [switch] $Timeline,              # print when the window first exists, when it is uncloaked and what share of its pixels is pure black, every ~12 ms
     [switch] $FirstRun,              # keep the welcome window's first-run state (default: a scratch settings file with launched=true)
     [switch] $ScreenGrab,            # grab the screen rectangle instead of PrintWindow (shows DWM frame/corners/shadow; the pixels around the window are the user's desktop: inspect, do not commit)
     [int] $Zoom = 1,
@@ -31,6 +33,7 @@ param(
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Drawing
 Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
+Add-Type -AssemblyName System.Windows.Forms
 
 $refs = @([System.Drawing.Bitmap].Assembly.Location, [System.Reflection.Assembly]::Load('System.Private.Windows.GdiPlus').Location, [System.Reflection.Assembly]::Load('System.Drawing.Primitives').Location, [System.Reflection.Assembly]::Load('System.Private.Windows.Core').Location)
 Add-Type -TypeDefinition @'
@@ -47,6 +50,7 @@ public static class Cap
     [DllImport("user32.dll")] static extern bool GetWindowRect(IntPtr h, out RECT r);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetWindowText(IntPtr h, StringBuilder s, int n);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetClassName(IntPtr h, StringBuilder s, int n);
+    [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr h, IntPtr after, int x, int y, int cx, int cy, uint flags);
     [DllImport("user32.dll")] static extern bool PrintWindow(IntPtr h, IntPtr dc, uint flags);
     [DllImport("user32.dll")] static extern bool SetProcessDpiAwarenessContext(IntPtr v);
     [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW")] static extern IntPtr GetWindowLongPtr(IntPtr h, int i);
@@ -91,6 +95,21 @@ public static class Cap
             return true;
         }, IntPtr.Zero);
         return sb.ToString();
+    }
+
+    public static string Probe(uint pid)
+    {
+        var ws = Windows(pid, true);
+        if (ws.Length == 0) return null;
+        var w = ws[0];
+        int cloaked; DwmGetWindowAttribute(w.H, 14, out cloaked, 4);
+        long black = 0, total = 0;
+        using (var bmp = new Bitmap(w.W, w.Hh, System.Drawing.Imaging.PixelFormat.Format32bppArgb))
+        {
+            using (var g = Graphics.FromImage(bmp)) { IntPtr dc = g.GetHdc(); PrintWindow(w.H, dc, 2); g.ReleaseHdc(dc); }
+            for (int y = 2; y < w.Hh - 2; y += 3) for (int x = 2; x < w.W - 2; x += 3) { var c = bmp.GetPixel(x, y); total++; if (c.R < 6 && c.G < 6 && c.B < 6) black++; }
+        }
+        return w.W + "x" + w.Hh + " cloaked=" + (cloaked != 0) + " pureBlack=" + (total == 0 ? 0 : 100 * black / total) + "%";
     }
 
     public static bool SaveScreen(IntPtr h, string path, int margin, int zoom)
@@ -153,8 +172,45 @@ Set-Content -LiteralPath $settings -Value $(if ($FirstRun) { '{}' } else { '{"la
 $psi.Environment['MIKESHIFT_SETTINGS_PATH'] = $settings
 foreach ($e in $Env) { $k, $v = $e -split '=', 2; $psi.Environment[$k] = $v }
 
+if ($Backdrop) {
+    # A gradient with a few soft shapes, standing in for a wallpaper, shown (without taking over later windows) around the pointer BEFORE the
+    # app starts: popups open near the pointer, so their acrylic blurs this instead of whatever is on the real desktop, and no desktop
+    # pixels end up in the grab. It is closed at the end.
+    $pt = [System.Windows.Forms.Cursor]::Position
+    $form = New-Object System.Windows.Forms.Form
+    $form.FormBorderStyle = 'None'; $form.StartPosition = 'Manual'; $form.ShowInTaskbar = $false; $form.TopMost = $true
+    $form.Bounds = New-Object System.Drawing.Rectangle ($pt.X - 420), ($pt.Y - 480), 840, 960
+    $form.Add_Paint({
+        param($sender, $e)
+        $r = $sender.ClientRectangle
+        $lg = New-Object System.Drawing.Drawing2D.LinearGradientBrush $r, ([System.Drawing.Color]::FromArgb(255, 36, 70, 140)), ([System.Drawing.Color]::FromArgb(255, 120, 60, 130)), 35.0
+        $e.Graphics.FillRectangle($lg, $r)
+        $e.Graphics.SmoothingMode = 'AntiAlias'
+        $soft = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(70, 255, 190, 90))
+        $e.Graphics.FillEllipse($soft, -$r.Width * 0.1, $r.Height * 0.55, $r.Width * 0.8, $r.Height * 0.7)
+        $soft2 = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(60, 80, 220, 220))
+        $e.Graphics.FillEllipse($soft2, $r.Width * 0.45, -$r.Height * 0.2, $r.Width * 0.7, $r.Height * 0.55)
+    })
+    $form.Show()
+    for ($i = 0; $i -lt 6; $i++) { [System.Windows.Forms.Application]::DoEvents(); Start-Sleep -Milliseconds 30 }
+}
+
 $proc = [System.Diagnostics.Process]::Start($psi)
 try {
+    if ($Timeline) {
+        $sw = [System.Diagnostics.Stopwatch]::StartNew()
+        $first = $null
+        while ($sw.ElapsedMilliseconds -lt 9000) {
+            $line = [Cap]::Probe([uint32]$proc.Id)
+            if ($line) {
+                if (-not $first) { $first = $sw.ElapsedMilliseconds }
+                Write-Host ("t={0,5} ms  (+{1,4} since the window existed)  {2}" -f $sw.ElapsedMilliseconds, ($sw.ElapsedMilliseconds - $first), $line)
+                if ($sw.ElapsedMilliseconds - $first -gt 700) { break }
+            }
+            Start-Sleep -Milliseconds 5
+        }
+        return
+    }
     $deadline = [DateTime]::UtcNow.AddMilliseconds($TimeoutMs)
     $target = $null
     while ([DateTime]::UtcNow -lt $deadline) {
@@ -197,11 +253,16 @@ try {
     $full = [System.IO.Path]::GetFullPath($Out)
     $dir = Split-Path -Parent $full
     if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Force $dir | Out-Null }
-    if ($ScreenGrab) { [void][Cap]::SaveScreen($target.H, $full, 6, $Zoom) }
-    elseif (-not [Cap]::Save($target.H, $full)) { throw 'PrintWindow failed' }
-    Write-Host ("captured '{0}' [{1}] {2}x{3} -> {4}" -f $target.Title, $target.Class, $target.W, $target.Hh, $full)
+    if ($Backdrop) {
+        for ($i = 0; $i -lt 6; $i++) { [System.Windows.Forms.Application]::DoEvents(); Start-Sleep -Milliseconds 40 }
+        [void][Cap]::SaveScreen($target.H, $full, 14, $Zoom)
+    }
+    elseif ($ScreenGrab) { [void][Cap]::SaveScreen($target.H, $full, 6, $Zoom) }
+    if (-not $Backdrop -and -not $ScreenGrab -and -not [Cap]::Save($target.H, $full)) { throw 'PrintWindow failed' }
+    Write-Host ("captured '{0}' [{1}] {2}x{3} at {5},{6} (cursor {7}) -> {4}" -f $target.Title, $target.Class, $target.W, $target.Hh, $full, $target.X, $target.Y, [System.Windows.Forms.Cursor]::Position)
 }
 finally {
     if ($proc -and -not $proc.HasExited) { $proc.Kill($true); $proc.WaitForExit(3000) | Out-Null }
+    if ($form) { $form.Close() }
     if ($settings) { Remove-Item -LiteralPath $settings -Force -ErrorAction SilentlyContinue }
 }

@@ -97,9 +97,11 @@ internal sealed class TrayFlyoutHost : IDisposable
 
         var hwnd = new HWND(WindowNative.GetWindowHandle(window));
         var ex = (nint)PInvoke.GetWindowLongPtr(hwnd, WINDOW_LONG_PTR_INDEX.GWL_EXSTYLE);
-        ex |= (nint)(WINDOW_EX_STYLE.WS_EX_TOOLWINDOW | WINDOW_EX_STYLE.WS_EX_TOPMOST);
+        ex |= (nint)(WINDOW_EX_STYLE.WS_EX_TOOLWINDOW | WINDOW_EX_STYLE.WS_EX_TOPMOST | WINDOW_EX_STYLE.WS_EX_LAYERED);
         ex &= ~(nint)WINDOW_EX_STYLE.WS_EX_APPWINDOW;
         _ = PInvoke.SetWindowLongPtr(hwnd, WINDOW_LONG_PTR_INDEX.GWL_EXSTYLE, ex);
+        // Fully transparent: the window must exist (and be the foreground one) at the pointer, but nothing of it may be seen.
+        PInvoke.SetLayeredWindowAttributes(hwnd, new COLORREF(0), 0, LAYERED_WINDOW_ATTRIBUTES_FLAGS.LWA_ALPHA);
 
         _window = window;
     }

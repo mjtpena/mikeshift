@@ -15,3 +15,5 @@ SetWindowSubclass
 DefSubclassProc
 RemoveWindowSubclass
 WM_NCCALCSIZE
+SetLayeredWindowAttributes
+COLORREF

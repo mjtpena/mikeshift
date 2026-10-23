@@ -12,6 +12,10 @@ MikeShift is a Windows port of [Shiftvert](https://github.com/roiegold/shiftvert
 |:-:|:-:|:-:|:-:|
 | ![Click-mode wheel](docs/screenshots/wheel-click-mode-light.png) | ![The "Save the file first" hint](docs/screenshots/wheel-save-first-hint.png) | ![The crop editor](docs/screenshots/crop-editor.png) | ![The trim dialog](docs/screenshots/trim-dialog.png) |
 
+| Tray menu | Toast | Failure dialog | Settings |
+|:-:|:-:|:-:|:-:|
+| ![The tray menu](docs/screenshots/surfaces-v2/tray-flyout-dark.png) | ![The result toast](docs/screenshots/surfaces-v2/toast-success-dark.png) | ![A partial failure](docs/screenshots/surfaces-v2/dialog-partial-dark.png) | ![Settings](docs/screenshots/surfaces-v2/settings-dark.png) |
+
 > **Status.** Feature complete against [docs/PLAN.md](docs/PLAN.md); not yet run on real multi-monitor / touch / ARM64 hardware, and not signed for public distribution. [docs/TESTPLAN.md](docs/TESTPLAN.md) says exactly what has and has not been exercised.
 
 | Area | State |
@@ -21,7 +25,7 @@ MikeShift is a Windows port of [Shiftvert](https://github.com/roiegold/shiftvert
 | PDF conversions (pages to PNG/JPG, TXT, Compress, Split, Merge) | built |
 | Video conversions (MP4, M4V, WMV, GIF, extract M4A/MP3; Compress, Trim) and audio conversions (M4A, WAV, AIFF, FLAC*, MP3*; Compress, Trim) through Media Foundation | built |
 | Document conversions (PDF, DOCX, RTF, TXT, HTML, ODT; legacy `.doc` through Word) | built |
-| Tray app: menu, Convert Files…, toast, chime, settings, welcome window, Open at Login, single instance | built |
+| Tray app: Fluent flyout menu, Convert files…, toast with Show in folder, failure dialogs, settings cards, welcome window, Open at login, single instance | built |
 | Input monitor (low-level hooks), drag state machine, modifier tracking, wheel geometry | built (unit-tested) |
 | The wheel: layered Win32 window drawn with Win2D, OLE drop target, Explorer drag-image text ("Convert to PNG"), click mode, UI Automation, light/dark/high-contrast themes | built; driven end to end by `tools/DragHarness` |
 | Crop editor and Trim dialog | built |
@@ -33,11 +37,11 @@ MikeShift is a Windows port of [Shiftvert](https://github.com/roiegold/shiftvert
 
 * **Shift-drag**: begin dragging one or more files or folders in Explorer or on the Desktop, then hold Shift. Drop on a tile to convert. Release anywhere else (or press Esc) and Explorer's own drop proceeds as usual. MikeShift never cancels or changes the drag, and it always asks for a *copy*, so Shift-drag does not move your files.
 * **Ctrl** while the wheel is up switches between *formats* and *tools*; Shift switches back. A mouse-wheel tick toggles too. (Alt is not the default because Left Alt+Shift is Windows' input-language hotkey; it can be chosen in Settings.)
-* **Convert Files…** (tray menu, Ctrl+O): pick files in a dialog; the same wheel opens in the middle of the screen in *click mode* (arrow keys and Enter, or click a tile; Tab switches pages; Esc or clicking elsewhere closes it). Folders cannot be picked there (a Windows dialog limitation); drag them instead.
+* **Convert files…** (click the tray icon, or the tray menu): pick files in a dialog; the same wheel opens in the middle of the screen in *click mode* (arrow keys and Enter, or click a tile; Tab switches pages; Esc or clicking elsewhere closes it). Folders cannot be picked there (a Windows dialog limitation); drag them instead.
 * Several files of the same kind get that kind's tiles; a mixed selection or unknown files get **Zip** only. A drag from something that is not a real file on disk (an Outlook attachment, a file inside a `.zip`, a browser image) shows "Save the file first".
 * **Crop** (images) and **Trim** (video, audio) open a small editor window: aspect presets, scale slider and pixel boxes for Crop; a range slider with start/end boxes for Trim. Enter confirms, Esc cancels.
 * Outputs go next to the original: `photo.heic` becomes `photo.png` (`photo 2.png` if that exists). If that folder is not writable they go to Downloads and the toast says so.
-* Tray menu: Convert Files…, Open at Login, Settings…, Check for Updates… (opens the releases page in your browser; the app itself never goes online), Version, Quit. Settings: chime, toast, tools key.
+* **Tray icon**: left click opens Convert files…; right click opens the menu (Convert files…, Open at login, Settings, How it works, Check for updates, Exit; "Check for updates" opens the releases page in your browser, the app itself never goes online). **Settings**: open at login, a sound and a message when a file is converted (the sound is off by default), show the result in its folder, the tools key, which formats this PC supports (with links to the free Microsoft Store extensions), and About.
 
 ## Command line
 
@@ -97,7 +101,7 @@ or directly: `dotnet build MikeShift.sln`, `dotnet test MikeShift.sln`. CI (GitH
 * Originals are never modified or moved: every conversion writes a new file (via a temporary file in the same folder, then a rename, so a failure never leaves a half-written output).
 * The input hook sees only mouse movement, the left button, the wheel and the Shift/Ctrl/Alt/Esc keys, and only to run the gesture. No other key is read or stored.
 * While the wheel is up, a small screenshot of the pixels under it is blurred to make the glass effect; it stays in memory and is discarded when the wheel hides.
-* Settings (chime, toast, tools key) are stored locally in the app's settings; Open at Login is Windows' own startup-task switch. A small diagnostic log (`%LOCALAPPDATA%\MikeShift\log.txt`) records start-up and errors (never file contents) and is trimmed at 1 MB.
+* Settings (sound, message, tools key, show in folder) are stored locally in the app's settings; Open at login is Windows' own startup-task switch. A small diagnostic log (`%LOCALAPPDATA%\MikeShift\log.txt`) records start-up and errors (never file contents) and is trimmed at 1 MB.
 
 ## More
 

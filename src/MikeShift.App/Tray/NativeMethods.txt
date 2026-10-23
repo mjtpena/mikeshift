@@ -13,3 +13,10 @@ SetLayeredWindowAttributes
 ShowWindow
 WINDOW_STYLE
 WINDOW_EX_STYLE
+SetLayeredWindowAttributes
+COLORREF
+IFileDialogEvents
+IOleWindow
+GetWindowRect
+SetWindowPos
+IsWindowVisible

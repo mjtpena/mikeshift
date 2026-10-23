@@ -52,6 +52,13 @@ internal static unsafe class FilePicker
             SetFileTypes(dialog, specs);
             SetStartFolder(dialog);
 
+            // The common dialog ignores its owner for placement and opens at its remembered spot (the top-left of the primary monitor the
+            // first time); the first OnFolderChange, fired while it is being built, moves it to the middle of the monitor in use.
+            var events = new CentringEvents();
+            uint cookie = 0;
+            try { dialog.Advise(events, out cookie); }
+            catch (COMException) { /* placement is cosmetic */ }
+
             try
             {
                 dialog.Show(helper != HWND.Null ? helper : new HWND(owner));
@@ -59,6 +66,10 @@ internal static unsafe class FilePicker
             catch (COMException ex) when (ex.HResult == HResultCancelled)
             {
                 return [];
+            }
+            finally
+            {
+                if (cookie != 0) dialog.Unadvise(cookie);
             }
 
             dialog.GetResults(out var items);
@@ -130,6 +141,56 @@ internal static unsafe class FilePicker
             // the dialog opens wherever Windows likes
             Wheel.WheelLog.Error("picker start folder", ex);
         }
+    }
+
+    /// <summary>
+    /// Centres the dialog on the monitor under the cursor. It is built hidden at one size (OnFolderChange: moved to that monitor so it
+    /// never shows up on another one) and then grown to its remembered size as it appears (first OnSelectionChange: centred for real).
+    /// </summary>
+    private sealed unsafe class CentringEvents : IFileDialogEvents
+    {
+        private bool _movedEarly;
+        private bool _centred;
+
+        private static void Centre(IFileDialog pfd)
+        {
+            try
+            {
+                var window = (Windows.Win32.System.Ole.IOleWindow)pfd;
+                window.GetWindow(out var hwnd);
+                if (hwnd == HWND.Null) return;
+                PInvoke.GetWindowRect(hwnd, out var r);
+                var work = WindowChrome.WorkAreaUnderCursor();
+                var x = work.X + Math.Max(0, (work.Width - (r.right - r.left)) / 2);
+                var y = work.Y + Math.Max(0, (work.Height - (r.bottom - r.top)) / 2);
+                PInvoke.SetWindowPos(hwnd, HWND.Null, x, y, 0, 0,
+                    SET_WINDOW_POS_FLAGS.SWP_NOSIZE | SET_WINDOW_POS_FLAGS.SWP_NOZORDER | SET_WINDOW_POS_FLAGS.SWP_NOACTIVATE);
+            }
+            catch (Exception)
+            {
+                // placement is cosmetic
+            }
+        }
+
+        public void OnFolderChange(IFileDialog pfd)
+        {
+            if (_movedEarly) return;
+            _movedEarly = true;
+            Centre(pfd);
+        }
+
+        public void OnSelectionChange(IFileDialog pfd)
+        {
+            if (_centred) return;
+            _centred = true;
+            Centre(pfd);
+        }
+
+        public void OnFileOk(IFileDialog pfd) { }
+        public void OnFolderChanging(IFileDialog pfd, IShellItem psi) { }
+        public void OnShareViolation(IFileDialog pfd, IShellItem psi, FDE_SHAREVIOLATION_RESPONSE* pResponse) { }
+        public void OnTypeChange(IFileDialog pfd) { }
+        public void OnOverwrite(IFileDialog pfd, IShellItem psi, FDE_OVERWRITE_RESPONSE* pResponse) { }
     }
 
     private static IShellItem ItemFor(string path)

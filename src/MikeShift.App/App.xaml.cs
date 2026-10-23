@@ -68,6 +68,13 @@ public partial class App : Application
         Editors.EditorRegistration.Register(Services.Interaction);
         Editors.EditorRegistration.TryHandleDevArgs(Environment.GetCommandLineArgs());
 
+        // Build the (hidden) toast window a little after start-up so the first result does not wait for XAML to initialise.
+        var prewarm = dispatcher.CreateTimer();
+        prewarm.Interval = TimeSpan.FromSeconds(3);
+        prewarm.IsRepeating = false;
+        prewarm.Tick += (_, _) => Services.Hud.Prewarm();
+        prewarm.Start();
+
         var args2 = Environment.GetCommandLineArgs();
         dispatcher.TryEnqueue(() =>
         {

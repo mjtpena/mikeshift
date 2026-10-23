@@ -56,6 +56,7 @@ public sealed partial class ToastWindow : Window
         _hwnd = new HWND(WindowNative.GetWindowHandle(this));
 
         ApplyToolStyles();
+        SetAlpha(255);
         _subclass = SubclassProc;
         PInvoke.SetWindowSubclass(_hwnd, _subclass, 1, 0);
         PInvoke.SetWindowPos(_hwnd, HWND.Null, 0, 0, 0, 0,
@@ -76,6 +77,11 @@ public sealed partial class ToastWindow : Window
         _uncloakFallback.IsRepeating = false;
         _uncloakFallback.Interval = TimeSpan.FromMilliseconds(400);
         _uncloakFallback.Tick += (_, _) => Uncloak();
+
+        _fadeTimer = DispatcherQueue.CreateTimer();
+        _fadeTimer.IsRepeating = true;
+        _fadeTimer.Interval = TimeSpan.FromMilliseconds(15);
+        _fadeTimer.Tick += (_, _) => OnFadeTick();
 
         Root.PointerEntered += (_, _) => _hideTimer.Stop();
         Root.PointerExited += (_, _) => RestartHideTimer(TimeSpan.FromSeconds(1.5));
@@ -130,9 +136,64 @@ public sealed partial class ToastWindow : Window
         _visible = false;
         CompositionTarget.Rendering -= OnRendering;
         _uncloakFallback.Stop();
+        var wasHidden = _uncloakPending; // never revealed: nothing to fade out
         _uncloakPending = false;
-        PInvoke.ShowWindow(_hwnd, SHOW_WINDOW_CMD.SW_HIDE);
+        if (wasHidden || !Wheel.WheelTheme.ReadAnimationsEnabled())
+        {
+            FinishHide();
+            return;
+        }
+        Fade(1, 0, FadeOut, 0, FinishHide);
     }
+
+    private void FinishHide()
+    {
+        _fadeTimer.Stop();
+        PInvoke.ShowWindow(_hwnd, SHOW_WINDOW_CMD.SW_HIDE);
+        SetAlpha(255);
+    }
+
+    // ---- motion (UX review H-07): 167 ms decelerating fade in with an 8 px rise, 100 ms fade out; none when animations are off ----
+
+    private static readonly TimeSpan FadeIn = TimeSpan.FromMilliseconds(167);
+    private static readonly TimeSpan FadeOut = TimeSpan.FromMilliseconds(100);
+    private const int RisePixelsDip = 8;
+
+    private readonly DispatcherQueueTimer _fadeTimer;
+    private Action? _fadeDone;
+    private DateTime _fadeStart;
+    private double _fadeFrom, _fadeTo;
+    private TimeSpan _fadeLength;
+    private int _riseFrom;
+    private PointInt32 _restPosition;
+
+    /// <summary>Animates the window's opacity from <paramref name="from"/> to <paramref name="to"/> (0..1) and its top edge from <paramref name="rise"/> px below its resting place.</summary>
+    private void Fade(double from, double to, TimeSpan length, int rise, Action? done)
+    {
+        _fadeFrom = from;
+        _fadeTo = to;
+        _fadeLength = length;
+        _riseFrom = rise;
+        _fadeDone = done;
+        _fadeStart = DateTime.UtcNow;
+        SetAlpha((byte)Math.Round(from * 255));
+        _fadeTimer.Start();
+    }
+
+    private void OnFadeTick()
+    {
+        var t = Math.Clamp((DateTime.UtcNow - _fadeStart) / _fadeLength, 0, 1);
+        var eased = 1 - Math.Pow(1 - t, 3); // decelerate
+        SetAlpha((byte)Math.Round((_fadeFrom + (_fadeTo - _fadeFrom) * eased) * 255));
+        if (_riseFrom != 0)
+            AppWindow.Move(new PointInt32(_restPosition.X, _restPosition.Y + (int)Math.Round(_riseFrom * (1 - eased))));
+        if (t < 1) return;
+        _fadeTimer.Stop();
+        _fadeDone?.Invoke();
+    }
+
+    private void SetAlpha(byte alpha) =>
+        PInvoke.SetLayeredWindowAttributes(_hwnd, new COLORREF(0), alpha, LAYERED_WINDOW_ATTRIBUTES_FLAGS.LWA_ALPHA);
 
     /// <summary>
     /// A tool popup that takes no focus and has no taskbar or Alt+Tab entry. WinUI keeps WS_DLGFRAME and WS_EX_WINDOWEDGE on a window
@@ -143,7 +204,7 @@ public sealed partial class ToastWindow : Window
     private void ApplyToolStyles()
     {
         var ex = (nint)PInvoke.GetWindowLongPtr(_hwnd, WINDOW_LONG_PTR_INDEX.GWL_EXSTYLE);
-        ex |= (nint)(WINDOW_EX_STYLE.WS_EX_TOOLWINDOW | WINDOW_EX_STYLE.WS_EX_NOACTIVATE | WINDOW_EX_STYLE.WS_EX_TOPMOST);
+        ex |= (nint)(WINDOW_EX_STYLE.WS_EX_TOOLWINDOW | WINDOW_EX_STYLE.WS_EX_NOACTIVATE | WINDOW_EX_STYLE.WS_EX_TOPMOST | WINDOW_EX_STYLE.WS_EX_LAYERED);
         ex &= ~(nint)WINDOW_EX_STYLE.WS_EX_APPWINDOW;
         _ = PInvoke.SetWindowLongPtr(_hwnd, WINDOW_LONG_PTR_INDEX.GWL_EXSTYLE, ex);
     }
@@ -250,8 +311,20 @@ public sealed partial class ToastWindow : Window
         _uncloakFallback.Stop();
         if (!_uncloakPending) return;
         _uncloakPending = false;
-        SetCloak(false);
+        if (Wheel.WheelTheme.ReadAnimationsEnabled())
+        {
+            var rise = (int)Math.Round(RisePixelsDip * (PInvoke.GetDpiForWindow(_hwnd) / 96.0));
+            AppWindow.Move(new PointInt32(_restPosition.X, _restPosition.Y + rise));
+            SetAlpha(0);
+            SetCloak(false);
+            Fade(0, 1, FadeIn, rise, null);
+        }
+        else
+        {
+            SetCloak(false);
+        }
     }
+
 
     /// <summary>Sizes the client area to the content and puts the window at the bottom centre of the monitor under the cursor.</summary>
     private void Place()
@@ -277,6 +350,7 @@ public sealed partial class ToastWindow : Window
         var outer = AppWindow.Size;
         var x = work.X + (work.Width - outer.Width) / 2;
         var y = work.Y + work.Height - outer.Height - (int)(BottomMarginDip * scale);
-        AppWindow.Move(new PointInt32(x, y));
+        _restPosition = new PointInt32(x, y);
+        AppWindow.Move(_restPosition);
     }
 }
