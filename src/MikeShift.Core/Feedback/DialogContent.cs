@@ -53,6 +53,9 @@ public sealed record DialogContent(
     DialogSeverity Severity,
     IReadOnlyList<DialogButton> Buttons)
 {
+    /// <summary>The dialog reports a job that failed (fully or partly). While one is open, later ones are merged into it (<see cref="DialogMerge"/>) instead of opening more windows.</summary>
+    public bool JobProblem { get; init; }
+
     /// <summary>A one-button dialog ("Close").</summary>
     public static DialogContent Simple(string title, string message, DialogSeverity severity = DialogSeverity.Error) =>
         new(title, message, [], null, severity, [new DialogButton("Close", DialogCommand.Close)]);

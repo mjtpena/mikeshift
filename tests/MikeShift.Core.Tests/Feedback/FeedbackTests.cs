@@ -197,7 +197,8 @@ public class FeedbackTests
     public void Toast_lifetime_gives_actions_time_to_be_used()
     {
         Assert.True(FeedbackPlan.ToastFor(Ok(1)).Lifetime > TimeSpan.FromSeconds(4));
-        Assert.Equal(TimeSpan.FromSeconds(2.5), new ToastContent("Converting…", null, ToastKind.Progress).Lifetime);
+        Assert.Equal(ToastContent.ProgressLifetime, new ToastContent("Converting…", null, ToastKind.Progress).Lifetime);
+        Assert.True(ToastContent.ProgressLifetime >= TimeSpan.FromMinutes(1)); // stays while a long single-file job runs
     }
 
     [Fact]

@@ -32,6 +32,12 @@ public sealed record ToastContent(string Title, string? Detail = null, ToastKind
     /// <summary>Whether the toast has the "Show in folder" button.</summary>
     public bool HasAction => !string.IsNullOrEmpty(RevealPath);
 
-    /// <summary>How long the toast stays: progress hides soonest, results with an action stay longest so the button can be used.</summary>
-    public TimeSpan Lifetime => Kind == ToastKind.Progress ? TimeSpan.FromSeconds(2.5) : HasAction ? TimeSpan.FromSeconds(6) : TimeSpan.FromSeconds(3.5);
+    /// <summary>How long a progress toast may stay with nothing replacing it: the job's result (or the runner hiding the toast) normally ends it first.</summary>
+    public static readonly TimeSpan ProgressLifetime = TimeSpan.FromMinutes(10);
+
+    /// <summary>
+    /// How long the toast stays: progress stays while the job runs (<see cref="ProgressLifetime"/> is only a safety net, so a long single-file
+    /// conversion is not left looking idle), results with an action stay longest so the button can be used.
+    /// </summary>
+    public TimeSpan Lifetime => Kind == ToastKind.Progress ? ProgressLifetime : HasAction ? TimeSpan.FromSeconds(6) : TimeSpan.FromSeconds(3.5);
 }
