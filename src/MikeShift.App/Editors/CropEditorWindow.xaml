@@ -5,9 +5,9 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     Title="Crop">
 
-    <Grid x:Name="Root" Padding="16" RowSpacing="12" PreviewKeyDown="OnPreviewKeyDown">
+    <Grid x:Name="Root" Padding="16,8,16,16" RowSpacing="12" PreviewKeyDown="OnPreviewKeyDown">
         <Grid.RowDefinitions>
-            <RowDefinition Height="376" />
+            <RowDefinition Height="*" MinHeight="240" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -17,7 +17,11 @@
 
         <Border CornerRadius="8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
-            <Grid x:Name="SurfaceHost" HorizontalAlignment="Center" VerticalAlignment="Center">
+            <Grid Margin="8">
+                <!-- The picture is laid out at a fixed logical size and scaled to the room there is (the window can be resized). -->
+                <Viewbox Stretch="Uniform" StretchDirection="Both">
+                    <Grid x:Name="SurfaceHost" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Viewbox>
                 <TextBlock x:Name="ErrorText" Visibility="Collapsed" TextWrapping="Wrap" MaxWidth="500"
                            HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center"
                            Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
@@ -27,31 +31,16 @@
         <TextBlock Grid.Row="1" x:Name="SelectionText" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                    AutomationProperties.LiveSetting="Off" />
 
-        <Grid Grid.Row="2" x:Name="PresetButtons" ColumnSpacing="6" AutomationProperties.Name="Aspect ratio">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
-            <ToggleButton Grid.Column="0" Content="Free" Tag="Free" HorizontalAlignment="Stretch"
-                          AutomationProperties.Name="Aspect ratio Free" Click="OnPresetClicked" />
-            <ToggleButton Grid.Column="1" Content="Original" Tag="Original" HorizontalAlignment="Stretch"
-                          AutomationProperties.Name="Aspect ratio Original" Click="OnPresetClicked" />
-            <ToggleButton Grid.Column="2" Content="1:1" Tag="Square" HorizontalAlignment="Stretch"
-                          AutomationProperties.Name="Aspect ratio 1:1" Click="OnPresetClicked" />
-            <ToggleButton Grid.Column="3" Content="4:5" Tag="FourFive" HorizontalAlignment="Stretch"
-                          AutomationProperties.Name="Aspect ratio 4:5" Click="OnPresetClicked" />
-            <ToggleButton Grid.Column="4" Content="3:2" Tag="ThreeTwo" HorizontalAlignment="Stretch"
-                          AutomationProperties.Name="Aspect ratio 3:2" Click="OnPresetClicked" />
-            <ToggleButton Grid.Column="5" Content="16:9" Tag="SixteenNine" HorizontalAlignment="Stretch"
-                          AutomationProperties.Name="Aspect ratio 16:9" Click="OnPresetClicked" />
-            <ToggleButton Grid.Column="6" Content="9:16" Tag="NineSixteen" HorizontalAlignment="Stretch"
-                          AutomationProperties.Name="Aspect ratio 9:16" Click="OnPresetClicked" />
-        </Grid>
+        <SelectorBar Grid.Row="2" x:Name="PresetButtons" SelectionChanged="OnPresetChanged" HorizontalAlignment="Left"
+                     AutomationProperties.Name="Aspect ratio">
+            <SelectorBarItem Text="Free" Tag="Free" AutomationProperties.Name="Free" />
+            <SelectorBarItem Text="Original" Tag="Original" AutomationProperties.Name="Original" />
+            <SelectorBarItem Text="1:1" Tag="Square" AutomationProperties.Name="1 to 1" />
+            <SelectorBarItem Text="4:5" Tag="FourFive" AutomationProperties.Name="4 to 5" />
+            <SelectorBarItem Text="3:2" Tag="ThreeTwo" AutomationProperties.Name="3 to 2" />
+            <SelectorBarItem Text="16:9" Tag="SixteenNine" AutomationProperties.Name="16 to 9" />
+            <SelectorBarItem Text="9:16" Tag="NineSixteen" AutomationProperties.Name="9 to 16" />
+        </SelectorBar>
 
         <Grid Grid.Row="3" ColumnSpacing="12">
             <Grid.ColumnDefinitions>
@@ -59,10 +48,10 @@
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="56" />
             </Grid.ColumnDefinitions>
-            <TextBlock Text="Scale" VerticalAlignment="Center" />
+            <TextBlock Text="Output size" VerticalAlignment="Center" />
             <Slider Grid.Column="1" x:Name="ScaleSlider" Minimum="5" Maximum="100" Value="100"
-                    StepFrequency="1" SmallChange="1" LargeChange="10" TickFrequency="5"
-                    AutomationProperties.Name="Scale percent" ValueChanged="OnScaleChanged" />
+                    StepFrequency="1" SmallChange="1" LargeChange="10" TickPlacement="None"
+                    AutomationProperties.Name="Output size in percent" ValueChanged="OnScaleChanged" />
             <TextBlock Grid.Column="2" x:Name="PercentText" VerticalAlignment="Center" HorizontalTextAlignment="End" />
         </Grid>
 

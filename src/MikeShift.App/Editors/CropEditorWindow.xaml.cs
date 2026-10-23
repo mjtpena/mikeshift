@@ -17,7 +17,9 @@ namespace MikeShift.App.Editors;
 public sealed partial class CropEditorWindow : Window
 {
     private const int ClientWidth = 640;
-    private const int ClientHeight = 640;
+    private const int ClientHeight = 600;
+    private const int MinClientWidth = 560;
+    private const int MinClientHeight = 560;
     private const double MaxSurfaceWidth = 592;
     private const double MaxSurfaceHeight = 358;
 
@@ -28,7 +30,9 @@ public sealed partial class CropEditorWindow : Window
     private CropEditorWindow(string path, PreviewImage? preview, string? error)
     {
         InitializeComponent();
-        EditorWindows.Setup(this, $"Crop - {Path.GetFileName(path)}", ClientWidth, ClientHeight);
+        var (width, height) = EditorWindows.RememberedSize("crop", ClientWidth, ClientHeight, MinClientWidth, MinClientHeight);
+        EditorWindows.Setup(this, $"Crop - {Path.GetFileName(path)}", width, height, resizable: true, MinClientWidth, MinClientHeight);
+        Closed += (_, _) => EditorWindows.RememberSize(this, "crop");
 
         if (preview is null)
         {
@@ -36,7 +40,7 @@ public sealed partial class CropEditorWindow : Window
             ErrorText.Visibility = Visibility.Visible;
             SaveButton.IsEnabled = false;
             foreach (var control in new Control[] { ScaleSlider, WidthBox, HeightBox, ResetButton }) control.IsEnabled = false;
-            foreach (ToggleButton b in PresetButtons.Children) b.IsEnabled = false;
+            PresetButtons.IsEnabled = false;
             SelectionText.Text = string.Empty;
             return;
         }
@@ -109,10 +113,11 @@ public sealed partial class CropEditorWindow : Window
                 ? string.Create(CultureInfo.CurrentCulture, $"{Math.Round(percent):0} %")
                 : string.Create(CultureInfo.CurrentCulture, $"{percent:0.0} %");
             var r = _model.Rect;
-            SelectionText.Text = $"Selection {r.W} × {r.H} px at ({r.X}, {r.Y})  →  output {_model.OutputWidth} × {_model.OutputHeight} px";
+            SelectionText.Text = $"Crop {r.W} × {r.H} px, saved as {_model.OutputWidth} × {_model.OutputHeight} px";
 
-            foreach (ToggleButton b in PresetButtons.Children)
-                b.IsChecked = string.Equals((string)b.Tag, _model.Aspect.ToString(), StringComparison.Ordinal);
+            foreach (SelectorBarItem b in PresetButtons.Items)
+                if (string.Equals((string)b.Tag, _model.Aspect.ToString(), StringComparison.Ordinal))
+                    PresetButtons.SelectedItem = b;
         }
         finally
         {
@@ -122,12 +127,12 @@ public sealed partial class CropEditorWindow : Window
 
     // ---- Controls -> model ----
 
-    private void OnPresetClicked(object sender, RoutedEventArgs e)
+    private void OnPresetChanged(SelectorBar sender, SelectorBarSelectionChangedEventArgs args)
     {
-        if (_model is null) return;
-        if (sender is ToggleButton { Tag: string tag } && Enum.TryParse<CropAspect>(tag, out var aspect))
+        if (_syncing || _model is null) return;
+        if (PresetButtons.SelectedItem is SelectorBarItem { Tag: string tag } && Enum.TryParse<CropAspect>(tag, out var aspect))
             _model.SetAspect(aspect);
-        SyncControls(); // a clicked toggle flips itself: show the model's truth (one selected, never none)
+        SyncControls();
     }
 
     private void OnScaleChanged(object sender, RangeBaseValueChangedEventArgs e)

@@ -33,7 +33,7 @@ internal sealed class LocalSettingsStore : IPreferenceStore
         Windows.Storage.ApplicationData.Current.LocalSettings.Values[key] = value;
 }
 
-/// <summary>Unpackaged: <c>%LOCALAPPDATA%\MikeShift\settings.json</c> (flat string map).</summary>
+/// <summary>Unpackaged: <c>%LOCALAPPDATA%\MikeShift\settings.json</c> (flat string map); <c>MIKESHIFT_SETTINGS_PATH</c> points dev/test runs at another file.</summary>
 internal sealed class JsonFileStore : IPreferenceStore
 {
     private readonly string _path;
@@ -41,7 +41,7 @@ internal sealed class JsonFileStore : IPreferenceStore
     private Dictionary<string, string>? _cache;
 
     public JsonFileStore(string? path = null) =>
-        _path = path ?? System.IO.Path.Combine(
+        _path = path ?? Environment.GetEnvironmentVariable("MIKESHIFT_SETTINGS_PATH") ?? System.IO.Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MikeShift", "settings.json");
 
     public string? Get(string key)
@@ -152,6 +152,18 @@ public sealed class Preferences
         get => GetBool(LaunchedKey, false);
         set => SetBool(LaunchedKey, value);
     }
+
+    /// <summary>A remembered editor window size (client DIPs), or null.</summary>
+    public (int Width, int Height)? GetWindowSize(string name)
+    {
+        var parts = _store.Get("window." + name)?.Split('x');
+        return parts is { Length: 2 } && int.TryParse(parts[0], out var w) && int.TryParse(parts[1], out var h) && w is > 100 and < 10000 && h is > 100 and < 10000
+            ? (w, h)
+            : null;
+    }
+
+    /// <summary>Remembers an editor window size (client DIPs).</summary>
+    public void SetWindowSize(string name, int width, int height) => _store.Set("window." + name, $"{width}x{height}");
 
     private bool GetBool(string key, bool fallback) =>
         bool.TryParse(_store.Get(key), out var b) ? b : fallback;

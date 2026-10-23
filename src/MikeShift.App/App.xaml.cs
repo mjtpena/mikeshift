@@ -23,6 +23,7 @@ public partial class App : Application
     {
         InitializeComponent();
         Chrome.WindowChrome.ApplyForcedTheme(this);
+        UnhandledException += (_, e) => Wheel.WheelLog.Error("unhandled: " + e.Message, e.Exception);
         _smokeTest = Environment.GetCommandLineArgs().Contains("--smoke-test", StringComparer.Ordinal);
 
         // There is no main window: closing Settings or Welcome must never end the process.

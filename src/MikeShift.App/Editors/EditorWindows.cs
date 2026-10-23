@@ -36,6 +36,39 @@ internal static class EditorWindows
         WindowChrome.PlaceCentered(window, clientWidthDip, clientHeightDip + TitleBarDip, minWidthDip, minHeightDip + (minHeightDip > 0 ? TitleBarDip : 0));
     }
 
+    /// <summary>The window's last client size in DIPs for <paramref name="key"/> (clamped to the minimum), or the default.</summary>
+    public static (int Width, int Height) RememberedSize(string key, int defaultWidth, int defaultHeight, int minWidth, int minHeight)
+    {
+        try
+        {
+            if (App.Current.Services.Preferences.GetWindowSize(key) is { } size)
+                return (Math.Max(minWidth, size.Width), Math.Max(minHeight, size.Height));
+        }
+        catch (Exception)
+        {
+            // preferences unavailable (tests): use the default
+        }
+        return (defaultWidth, defaultHeight);
+    }
+
+    /// <summary>Remembers the window's current client size (DIPs, below the title bar) for <paramref name="key"/>.</summary>
+    public static void RememberSize(Window window, string key)
+    {
+        try
+        {
+            if (window.AppWindow.Presenter is OverlappedPresenter { State: not OverlappedPresenterState.Restored }) return; // maximised or minimised
+            var hwnd = new HWND(WindowNative.GetWindowHandle(window));
+            var dpi = PInvoke.GetDpiForWindow(hwnd);
+            var scale = dpi == 0 ? 1.0 : dpi / 96.0;
+            var client = window.AppWindow.ClientSize;
+            App.Current.Services.Preferences.SetWindowSize(key, (int)Math.Round(client.Width / scale), (int)Math.Round(client.Height / scale) - TitleBarDip);
+        }
+        catch (Exception)
+        {
+            // cosmetic
+        }
+    }
+
     /// <summary>Shows the window and takes the foreground even when the app was not the active one.</summary>
     public static void ShowInForeground(Window window)
     {

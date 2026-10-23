@@ -8,6 +8,7 @@ using MikeShift.Core.Feedback;
 using Windows.Graphics;
 using Windows.System;
 using Windows.Win32;
+using Windows.Win32.Foundation;
 
 namespace MikeShift.App.Hud;
 
@@ -27,6 +28,7 @@ public sealed partial class NoticeWindow : Window
     private readonly DialogContent _content;
     private readonly Action<DialogButton> _onCommand;
     private Button? _defaultButton;
+    private bool _fanned;
 
     public NoticeWindow(DialogContent content, Action<DialogButton> onCommand)
     {
@@ -56,10 +58,25 @@ public sealed partial class NoticeWindow : Window
     /// <summary>Shows the dialog without blocking. Takes the foreground only when the user has been idle for a moment.</summary>
     public void ShowDialog()
     {
+        // Templated controls (buttons, the list) only have their real size once they are in a live tree, so the window is shown
+        // cloaked, sized again from the first layout, and revealed afterwards: no flash at the wrong size.
+        var hwnd = new HWND(WinRT.Interop.WindowNative.GetWindowHandle(this));
+        Cloak(hwnd, true);
         PlaceOnScreen();
         var activate = UserIdleMilliseconds() >= IdleActivateMs;
+        Root.Loaded += (_, _) => DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
+        {
+            PlaceOnScreen();
+            Cloak(hwnd, false);
+            if (activate) _defaultButton?.Focus(FocusState.Programmatic);
+        });
         AppWindow.Show(activate);
-        if (activate) _defaultButton?.Focus(FocusState.Programmatic);
+    }
+
+    private static unsafe void Cloak(HWND hwnd, bool cloak)
+    {
+        uint value = cloak ? 1u : 0u;
+        _ = PInvoke.DwmSetWindowAttribute(hwnd, Windows.Win32.Graphics.Dwm.DWMWINDOWATTRIBUTE.DWMWA_CLOAK, &value, sizeof(uint));
     }
 
     private void Fill(DialogContent c)
@@ -132,8 +149,9 @@ public sealed partial class NoticeWindow : Window
         WindowChrome.PlaceCentered(this, ClientWidthDip, Math.Max(height, 160));
 
         // Several dialogs at once fan out instead of hiding each other.
-        if (s_open > 1)
+        if (s_open > 1 && !_fanned)
         {
+            _fanned = true;
             var offset = (s_open - 1) % 6 * 32;
             var p = AppWindow.Position;
             AppWindow.Move(new PointInt32(p.X + offset, p.Y + offset));

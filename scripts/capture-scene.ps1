@@ -22,6 +22,7 @@ param(
     [int] $TimeoutMs = 15000,
     [string[]] $Invoke = @(),        # UIA: invoke (click/expand/toggle) the named elements, in order, before capturing
     [string[]] $Env = @(),           # extra NAME=VALUE environment variables for the process
+    [switch] $FirstRun,              # keep the welcome window's first-run state (default: a scratch settings file with launched=true)
     [switch] $ScreenGrab,            # grab the screen rectangle instead of PrintWindow (shows DWM frame/corners/shadow; the pixels around the window are the user's desktop: inspect, do not commit)
     [int] $Zoom = 1,
     [switch] $Cloaked                # also accept cloaked windows (the toast reveals itself after its first frame)
@@ -146,6 +147,10 @@ foreach ($a in $AppArgs) { $psi.ArgumentList.Add($a) }
 $psi.Environment['MIKESHIFT_NO_SINGLE_INSTANCE'] = '1'
 $psi.Environment['MIKESHIFT_NO_HOOKS'] = '1'
 if ($Theme) { $psi.Environment['MIKESHIFT_THEME'] = $Theme }
+# A scratch settings file: the dev run never reads or writes the real preferences.
+$settings = Join-Path ([System.IO.Path]::GetTempPath()) ("mikeshift-capture-" + [guid]::NewGuid().ToString('N') + '.json')
+Set-Content -LiteralPath $settings -Value $(if ($FirstRun) { '{}' } else { '{"launched":"true"}' })
+$psi.Environment['MIKESHIFT_SETTINGS_PATH'] = $settings
 foreach ($e in $Env) { $k, $v = $e -split '=', 2; $psi.Environment[$k] = $v }
 
 $proc = [System.Diagnostics.Process]::Start($psi)
@@ -198,4 +203,5 @@ try {
 }
 finally {
     if ($proc -and -not $proc.HasExited) { $proc.Kill($true); $proc.WaitForExit(3000) | Out-Null }
+    if ($settings) { Remove-Item -LiteralPath $settings -Force -ErrorAction SilentlyContinue }
 }

@@ -34,7 +34,7 @@ public sealed class TrayHeader(string title, string hint, string iconUri)
 public sealed class TrayController : IDisposable
 {
     /// <summary>Where "Check for updates" goes. The app itself never touches the network; the browser does.</summary>
-    public const string ReleasesUrl = "https://github.com/mjtpena/mikeshift/releases";
+    public const string ReleasesUrl = AppLinks.Releases;
 
     /// <summary>The "last converted" menu entry is offered for this long after a job finished.</summary>
     public static readonly TimeSpan LastConvertedWindow = TimeSpan.FromSeconds(60);

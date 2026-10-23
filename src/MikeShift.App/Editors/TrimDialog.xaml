@@ -24,15 +24,15 @@
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="140" />
             </Grid.ColumnDefinitions>
-            <TextBox x:Name="StartBox" Header="Start (m:ss.f)" PlaceholderText="0:00.0" MaxLength="16"
-                     AutomationProperties.Name="Start time" LostFocus="OnStartLostFocus" />
+            <TextBox x:Name="StartBox" Header="Start" PlaceholderText="0:00.0" MaxLength="16"
+                     ToolTipService.ToolTip="Type a time such as 1:05.5, 65 or 0:01:05" AutomationProperties.Name="Start time" LostFocus="OnStartLostFocus" />
             <StackPanel Grid.Column="1" VerticalAlignment="Bottom" HorizontalAlignment="Center" Spacing="2">
                 <TextBlock x:Name="LengthText" Style="{StaticResource SubtitleTextBlockStyle}" HorizontalTextAlignment="Center"
                            AutomationProperties.Name="Selected length" />
                 <TextBlock x:Name="TotalText" Foreground="{ThemeResource TextFillColorSecondaryBrush}" HorizontalTextAlignment="Center" />
             </StackPanel>
-            <TextBox Grid.Column="2" x:Name="EndBox" Header="End (m:ss.f)" PlaceholderText="0:00.0" MaxLength="16"
-                     AutomationProperties.Name="End time" LostFocus="OnEndLostFocus" />
+            <TextBox Grid.Column="2" x:Name="EndBox" Header="End" PlaceholderText="0:00.0" MaxLength="16"
+                     ToolTipService.ToolTip="Type a time such as 1:05.5, 65 or 0:01:05" AutomationProperties.Name="End time" LostFocus="OnEndLostFocus" />
         </Grid>
 
         <TextBlock Grid.Row="3" x:Name="ErrorText" Visibility="Collapsed" TextWrapping="Wrap"
