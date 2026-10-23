@@ -15,7 +15,7 @@ namespace Shiftvert.App.Tray;
 public sealed class TrayController : IDisposable
 {
     /// <summary>Where "Check for Updates…" goes. The app itself never touches the network; the browser does.</summary>
-    public const string ReleasesUrl = "https://github.com/roiegold/shiftvert/releases";
+    public const string ReleasesUrl = "https://github.com/mjtpena/mikeshift/releases";
 
     private readonly AppServices _services;
     private TaskbarIcon? _icon;
