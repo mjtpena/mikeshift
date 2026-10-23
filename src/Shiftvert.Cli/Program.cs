@@ -1,3 +1,4 @@
+using Shiftvert.Cli;
 using System.Text;
 using Shiftvert.Core.Cli;
 
@@ -14,4 +15,8 @@ Console.CancelKeyPress += (_, e) =>
     cts.Cancel();
 };
 
-return await CliRunner.RunAsync(args, stdout, stderr, ct: cts.Token);
+var exitCode = await CliRunner.RunAsync(args, stdout, stderr, ct: cts.Token);
+
+// Skip native teardown (see FastExit); if the terminate call itself fails, fall back to a normal exit.
+FastExit.Now(exitCode, stdout, stderr);
+return exitCode;
