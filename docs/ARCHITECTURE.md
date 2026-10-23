@@ -36,6 +36,7 @@ assets/brand/mikeshift.svg  hand-written source of the app mark
 | `Interaction/` | pure, UI-free state machines for the gesture: `DragSession`, `ModifierTracker`, `WheelGeometry`, `WheelPlacement`, `WheelModel`, `WheelAnimation`, `Easing` | built, unit-tested |
 | `Editing/` | the rules of the editors: `CropBoxModel` (aspect presets, scale, pixel boxes, drag handles) and `TimeRangeModel` (trim range) | built, unit-tested |
 | `Feedback/` | `FeedbackPlan` (the `ToastContent` and `DialogContent` a finished job produces), `FeedbackCopy` (the sentence-case wording), `CodecSummary` (Settings rows: text state, Store link), `FileTypeFilters` (the Convert files picker's title and type list), `JobLedger` ("N more in progress" bookkeeping) | built, unit-tested |
+| `Hosting/` | small decisions of the tray app that need tests but no UI: `DevSwitchPolicy` (when the dev switches are honoured), `AppDataPaths` (the real data folder, packaged or not), `LogTrimmer`, `FailureBackoff`, `WelcomePolicy`, `UnhandledPolicy` | built, unit-tested |
 | `Cli/CliRunner.cs` | the whole command line, callable in-process | built |
 
 **MikeShift.App** folders: `Chrome/` (`WindowChrome`: Mica, the app icon, an extended title bar that follows the app theme, placement clamped to the work area; every XAML window uses it), `Styles/` (tray header, settings card and keycap styles), `Tray/` (tray icon, `TrayFlyoutHost` and the Fluent menu flyout, Convert files… picker, a plain action list used only if the wheel could not start), `Jobs/` (`JobRunner`, `UiInteraction`), `Hud/` (the toast window, chime, `NoticeWindow` failure dialogs, `ShellReveal` for "Show in folder"), `Settings/` (preferences, Open at login, settings window made of `SettingsCard`s), `FirstRun/` (welcome window and its XAML wheel illustration), `Input/` (low-level input monitor), `Wheel/` (the wheel window, renderer, drop target, controller, UI Automation, `DragCoordinator`), `Editors/` (Crop editor, Trim dialog, media probe for the preview), `DevScenes.cs` (`--scene <name>` shows one canned UI state for screenshots), `MemoryTrim.cs`, `Program.cs` (single-instance entry point). The tray icon is monochrome and follows the taskbar theme: `tray-dark-taskbar.ico` (white glyph) or `tray-light-taskbar.ico` (dark glyph), switched live from `UISettings.ColorValuesChanged` (`Tray/TaskbarTheme.cs`, which reads `SystemUsesLightTheme`). Regenerate all icons with `scripts/make-icons.ps1`; the preview sheet is `docs/screenshots/brand/icon-sheet.png`.
@@ -138,3 +139,37 @@ Every converter writes through `Naming` (a hidden `.name.guid.mikeshift-tmp` fol
 * **Single instance:** [`AppInstance`](https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/winrt/microsoft.windows.applifecycle.appinstance) (see §2).
 * **Signing:** the manifest Publisher is `CN=MikeShift Dev`; `packaging/make-dev-cert.ps1` creates a matching self-signed certificate ([creating a signing certificate](https://learn.microsoft.com/en-us/windows/msix/package/create-certificate-package-signing)). Long paths are enabled by the application manifests.
 * **CI:** `.github/workflows/ci.yml` builds and tests on `windows-latest`, then runs `scripts/release.ps1` and uploads the unsigned bundle and `SHA256SUMS.txt`.
+
+## 8. Developer and test switches
+
+The tray app has a set of switches that exist for the drag harness, the screenshot scripts and manual testing. Some of them weaken the product (`MIKESHIFT_ACCEPT_INJECTED` lets any program's `SendInput` drive the wheel), so they are all read through one class, `MikeShift.App/DevSwitches.cs`, and honoured only when **`DevSwitchPolicy.IsEnabled`** says so:
+
+| Build | Honoured? |
+|---|---|
+| Debug | always |
+| Release, unpackaged, started with `--dev` | yes |
+| Release, unpackaged, no `--dev` | no |
+| Release, packaged (MSIX) | never, even with `--dev` |
+
+So an installed MikeShift ignores every `MIKESHIFT_*` variable and every dev flag; `--smoke-test` is not a dev switch (CI uses it) and always works. A Release build under test is started as `MikeShift.exe --dev ...`; `tools/DragHarness` and `scripts/capture-scene.ps1` pass `--dev` themselves. Note that the drag harness therefore only works against a Debug build, or an unpackaged Release build, not against an installed package.
+
+| Switch | Effect |
+|---|---|
+| `MIKESHIFT_ACCEPT_INJECTED=1` | input synthesised by `SendInput` counts as real (the harness drives drags with it) |
+| `MIKESHIFT_NO_HOOKS=1` | no global input hooks (dev scenes next to a real instance) |
+| `MIKESHIFT_NO_SINGLE_INSTANCE=1` | skip the single-instance redirect |
+| `MIKESHIFT_SETTINGS_PATH` | another settings file (unpackaged runs) |
+| `MIKESHIFT_LOG`, `MIKESHIFT_TRACE=1` | another log file; interaction stage lines in the log (always on in Debug) |
+| `MIKESHIFT_HINTS_FILE` | another file for the wheel-hint counter |
+| `MIKESHIFT_PICKER_FOLDER` | Convert files… starts in this folder |
+| `MIKESHIFT_THEME=light\|dark\|hc` | force the theme (`hc` only for the wheel) |
+| `MIKESHIFT_ANIMATIONS=0` | behave as if animation effects were off |
+| `MIKESHIFT_DPI_SCALE=1.5`, `MIKESHIFT_TEXT_SCALE=1.4` | pretend every monitor's scale, or the OS text size |
+| `MIKESHIFT_TRIM_MS` | how long the wheel idles before it releases its graphics device (default 15000) |
+| `--scene <name>` | show one canned UI state (`DevScenes.cs`) |
+| `--show-welcome`, `--show-settings` | open that window at start |
+| `--convert <path>...` | behave like Convert files… with those paths |
+| `--crop <image>`, `--trim <media>` | open that editor on its own |
+| `--render-wheel <scenario\|all\|list> <out>` | render the wheel offscreen over a synthetic desktop and exit (`WheelPreview.cs`) |
+
+The app's own data (log, wheel-hint counter, the settings file of an unpackaged run) lives in `AppData.Folder`: `%LOCALAPPDATA%\MikeShift` unpackaged, and when packaged the *real* folder `%LOCALAPPDATA%\Packages\<family>\LocalCache\Local\MikeShift`. MSIX file-system virtualisation redirects writes to the first path into the second; the app reads its files back through the same redirection, but Explorer does not, so everything that shows or opens the folder (Settings, About, "Open the log folder") uses the real path.

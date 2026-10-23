@@ -1,21 +1,23 @@
 using System.Diagnostics;
 using System.Text;
+using MikeShift.App.Settings;
+using MikeShift.Core.Hosting;
 
 namespace MikeShift.App.Wheel;
 
 /// <summary>
-/// A tiny file logger for the drag/wheel layer: <c>%LOCALAPPDATA%\MikeShift\log.txt</c> (override with the <c>MIKESHIFT_LOG</c>
-/// environment variable, which the dev harness uses). <see cref="Error"/> and <see cref="Info"/> always write; <see cref="Stage"/>
-/// lines (one per interaction stage, for asserting from tests) are written in Debug builds or when <c>MIKESHIFT_TRACE=1</c>.
+/// A tiny file logger for the drag/wheel layer: <c>log.txt</c> in <see cref="AppData.Folder"/> (the real folder when packaged; a dev switch,
+/// <c>MIKESHIFT_LOG</c>, points the dev harness elsewhere). <see cref="Error"/> and <see cref="Info"/> always write; <see cref="Stage"/>
+/// lines (one per interaction stage, for asserting from tests) are written in Debug builds or when the dev switch <c>MIKESHIFT_TRACE=1</c> is on.
+/// The file is cut to its newest half when it passes 1 MB (checked at the first write and then every <see cref="LogTrimmer.CheckEveryWrites"/> writes).
 /// Never throws: logging must not be able to kill the hook or wheel thread. No file names or user content beyond what the caller passes.
 /// </summary>
 internal static class WheelLog
 {
-    private const long MaxBytes = 1_000_000;
     private static readonly object Gate = new();
     private static readonly string FilePath = ResolvePath();
     private static readonly bool TraceOn = ResolveTrace();
-    private static bool _trimChecked;
+    private static int _writesSinceTrimCheck = LogTrimmer.CheckEveryWrites; // the first write checks
 
     /// <summary>The log file's path.</summary>
     public static string Path => FilePath;
@@ -41,10 +43,10 @@ internal static class WheelLog
             {
                 var dir = System.IO.Path.GetDirectoryName(FilePath);
                 if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
-                if (!_trimChecked)
+                if (++_writesSinceTrimCheck >= LogTrimmer.CheckEveryWrites)
                 {
-                    _trimChecked = true;
-                    if (File.Exists(FilePath) && new FileInfo(FilePath).Length > MaxBytes) File.Delete(FilePath);
+                    _writesSinceTrimCheck = 0;
+                    LogTrimmer.TrimIfLarge(FilePath);
                 }
 
                 var line = $"{DateTime.Now:HH:mm:ss.fff} [{level}] [t{Environment.CurrentManagedThreadId}] {message}{Environment.NewLine}";
@@ -61,15 +63,12 @@ internal static class WheelLog
 
     private static string ResolvePath()
     {
-        var overridePath = Environment.GetEnvironmentVariable("MIKESHIFT_LOG");
-        if (!string.IsNullOrWhiteSpace(overridePath)) return overridePath;
-        return System.IO.Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MikeShift", "log.txt");
+        return DevSwitches.LogPath ?? AppData.FilePath("log.txt");
     }
 
     private static bool ResolveTrace()
     {
-        if (Environment.GetEnvironmentVariable("MIKESHIFT_TRACE") is { } v) return v is "1" or "true";
+        if (DevSwitches.Trace is { } trace) return trace;
 #if DEBUG
         return true;
 #else

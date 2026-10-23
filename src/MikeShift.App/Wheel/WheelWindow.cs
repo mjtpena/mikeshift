@@ -199,9 +199,8 @@ internal sealed unsafe class WheelWindow : IDisposable
 
     // ------------------------------------------------------------------ monitors
 
-    /// <summary>Dev/test knob: <c>MIKESHIFT_DPI_SCALE=1.5</c> makes the wheel behave as if every monitor ran at that scale (to exercise 125-200 % layouts on a 100 % machine).</summary>
-    private static readonly double? DpiOverride =
-        double.TryParse(Environment.GetEnvironmentVariable("MIKESHIFT_DPI_SCALE"), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v) && v is >= 0.75 and <= 4 ? v : null;
+    /// <summary>Dev switch (<see cref="DevSwitches.DpiScale"/>, <c>MIKESHIFT_DPI_SCALE=1.5</c>): the wheel behaves as if every monitor ran at that scale (to exercise 125-200 % layouts on a 100 % machine).</summary>
+    private static readonly double? DpiOverride = DevSwitches.DpiScale;
 
     /// <summary>The monitor containing <paramref name="point"/> (nearest if outside every monitor): bounds, work area and DPI scale (1.0 = 96 dpi).</summary>
     public static MonitorGeometry MonitorAt(PointPx point)

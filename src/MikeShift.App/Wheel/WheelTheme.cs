@@ -62,7 +62,7 @@ internal sealed class WheelTheme
             WheelLog.Error("UISettings unavailable", ex);
         }
 
-        var themeOverride = Environment.GetEnvironmentVariable("MIKESHIFT_THEME")?.ToLowerInvariant();
+        var themeOverride = DevSwitches.Theme;
         switch (themeOverride)
         {
             case "light": dark = false; break;
@@ -76,9 +76,7 @@ internal sealed class WheelTheme
             textScale = s_settings.TextScaleFactor;
         }
         catch (Exception) { accentFill = accent; }
-        if (double.TryParse(Environment.GetEnvironmentVariable("MIKESHIFT_TEXT_SCALE"), System.Globalization.NumberStyles.Float,
-                System.Globalization.CultureInfo.InvariantCulture, out var forcedScale))
-            textScale = forcedScale;
+        if (DevSwitches.TextScale is { } forcedScale) textScale = forcedScale;
 
         var highContrast = false;
         try { highContrast = new AccessibilitySettings().HighContrast; }
@@ -92,7 +90,7 @@ internal sealed class WheelTheme
             AccentFill = accentFill,
             TextScale = WheelTypography.ClampScale(textScale),
             HighContrast = highContrast,
-            AnimationsEnabled = Environment.GetEnvironmentVariable("MIKESHIFT_ANIMATIONS") == "0" ? false : ReadAnimationsEnabled(),
+            AnimationsEnabled = DevSwitches.AnimationsOff ? false : ReadAnimationsEnabled(),
         };
         return highContrast ? theme.WithSystemColours() : theme;
     }

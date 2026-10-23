@@ -5,8 +5,8 @@
 .DESCRIPTION
   No input is sent to any other program: the script only reads our own window's pixels (PrintWindow, PW_RENDERFULLCONTENT) and
   can drive our own controls through UI Automation patterns (-Invoke "Button name"). The process is started with
-  MIKESHIFT_NO_SINGLE_INSTANCE=1 (a running real instance is left alone) and MIKESHIFT_NO_HOOKS=1 (no global input hooks), and is always
-  killed at the end.
+  --dev (needed by a Release build, see DevSwitches in the app), MIKESHIFT_NO_SINGLE_INSTANCE=1 (a running real instance is left alone) and
+  MIKESHIFT_NO_HOOKS=1 (no global input hooks), and is always killed at the end.
 
 .EXAMPLE
   ./scripts/capture-scene.ps1 -AppArgs '--scene','toast-success' -Out docs/screenshots/surfaces-v2/toast-success-dark.png -Title 'MikeShift'
@@ -162,6 +162,7 @@ if (-not (Test-Path $Exe)) { throw "MikeShift.exe not found: $Exe (build first: 
 $psi = New-Object System.Diagnostics.ProcessStartInfo $Exe
 $psi.UseShellExecute = $false
 $psi.WorkingDirectory = Split-Path $Exe
+$psi.ArgumentList.Add('--dev')   # the MIKESHIFT_* switches and --scene/--show-* flags are honoured only in Debug builds or with --dev
 foreach ($a in $AppArgs) { $psi.ArgumentList.Add($a) }
 $psi.Environment['MIKESHIFT_NO_SINGLE_INSTANCE'] = '1'
 $psi.Environment['MIKESHIFT_NO_HOOKS'] = '1'

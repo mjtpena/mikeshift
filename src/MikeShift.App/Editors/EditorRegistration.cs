@@ -32,12 +32,13 @@ public static class EditorRegistration
     }
 
     /// <summary>
-    /// Dev/test hook: <c>--crop &lt;image&gt;</c> or <c>--trim &lt;media&gt;</c> opens that editor standalone. The result is
+    /// Dev/test hook (dev switches only, see <see cref="DevSwitches"/>): <c>--crop &lt;image&gt;</c> or <c>--trim &lt;media&gt;</c> opens that editor standalone. The result is
     /// written to <see cref="DevResultPath"/> and the app quits when the window closes (unless <paramref name="whenDone"/>
     /// says otherwise). Call on the UI thread. Returns true if a flag was found.
     /// </summary>
     public static bool TryHandleDevArgs(string[] args, Action? whenDone = null)
     {
+        if (!DevSwitches.Enabled) return false;
         var crop = ValueAfter(args, "--crop");
         var trim = ValueAfter(args, "--trim");
         if (crop is null && trim is null) return false;

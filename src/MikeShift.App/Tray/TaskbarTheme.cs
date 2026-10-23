@@ -8,7 +8,7 @@ namespace MikeShift.App.Tray;
 /// Whether the taskbar (and so the notification area) is light or dark right now. Windows 11 draws tray icons as-is on that surface, so a
 /// monochrome icon has to be white on a dark taskbar and dark on a light one. The taskbar follows "Choose your default Windows mode"
 /// (<c>SystemUsesLightTheme</c>), which can differ from the app mode that <see cref="UISettings"/> reports. Under high contrast the
-/// system window colour decides. <c>MIKESHIFT_THEME=light|dark</c> overrides it, like it does for the wheel.
+/// system window colour decides. the dev switch <c>MIKESHIFT_THEME=light|dark</c> overrides it, like it does for the wheel.
 /// </summary>
 internal static class TaskbarTheme
 {
@@ -17,7 +17,7 @@ internal static class TaskbarTheme
     /// <summary>True when the taskbar is light. Never throws; defaults to dark (the Windows 11 default).</summary>
     public static bool IsLight()
     {
-        switch (Environment.GetEnvironmentVariable("MIKESHIFT_THEME")?.ToLowerInvariant())
+        switch (DevSwitches.Theme)
         {
             case "light": return true;
             case "dark": return false;

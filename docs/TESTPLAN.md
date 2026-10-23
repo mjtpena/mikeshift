@@ -52,7 +52,7 @@ The script runs the `FixtureExport` test with `MIKESHIFT_FIXTURES_OUT` set, so t
 
 ## 2. The drag harness (`tools/DragHarness`)
 
-A console program that starts its own `MikeShift.exe` (with `MIKESHIFT_ACCEPT_INJECTED=1` and a private log), creates a backdrop window, and performs a scripted drag with injected mouse and keyboard input, using either an OLE drag source of its own (`DoDragDrop` with a real `CF_HDROP`, a text or a URL data object) or the **real Explorer** as the source. It then checks what appeared on disk, the window state, the drop effect (COPY, never MOVE), UI Automation names and the log's stage lines, and measures the time from Shift to a visible wheel.
+A console program that starts its own `MikeShift.exe` (with `--dev`, `MIKESHIFT_ACCEPT_INJECTED=1` and a private log; see ARCHITECTURE.md §8: only Debug builds and unpackaged `--dev` runs honour these), creates a backdrop window, and performs a scripted drag with injected mouse and keyboard input, using either an OLE drag source of its own (`DoDragDrop` with a real `CF_HDROP`, a text or a URL data object) or the **real Explorer** as the source. It then checks what appeared on disk, the window state, the drop effect (COPY, never MOVE), UI Automation names and the log's stage lines, and measures the time from Shift to a visible wheel.
 
 ```powershell
 dotnet build tools/DragHarness

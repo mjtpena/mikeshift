@@ -41,6 +41,7 @@ internal sealed class AngerApp : IDisposable
         var app = new AngerApp { Exe = exe, LogPath = logPath };
         try { File.Delete(logPath); } catch (IOException) { }
         var psi = new ProcessStartInfo(exe) { UseShellExecute = false, WorkingDirectory = Path.GetDirectoryName(exe)! };
+        psi.ArgumentList.Add("--dev"); // the MIKESHIFT_* switches below are honoured only in Debug builds or with --dev (see DevSwitches)
         foreach (var a in args) psi.ArgumentList.Add(a);
         psi.Environment["MIKESHIFT_LOG"] = logPath;
         psi.Environment["MIKESHIFT_TRACE"] = "1";

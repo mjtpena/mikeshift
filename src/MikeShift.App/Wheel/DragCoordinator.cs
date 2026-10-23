@@ -89,10 +89,10 @@ internal sealed class DragCoordinator : IDisposable
     }
 
     /// <summary>
-    /// Dev/test switch: with <c>MIKESHIFT_ACCEPT_INJECTED=1</c> events synthesised by <c>SendInput</c> count as real input, so the dev harness can
-    /// drive a drag. Never enabled in normal use (injected input is ignored by design: it is our own nudge, or another program's).
+    /// Dev switch (<see cref="DevSwitches.AcceptInjected"/>): events synthesised by <c>SendInput</c> count as real input, so the dev harness can
+    /// drive a drag. Honoured only by Debug builds and unpackaged <c>--dev</c> runs (injected input is ignored by design in a shipped build: it is our own nudge, or another program's).
     /// </summary>
-    private static readonly bool AcceptInjected = Environment.GetEnvironmentVariable("MIKESHIFT_ACCEPT_INJECTED") == "1";
+    private static readonly bool AcceptInjected = DevSwitches.AcceptInjected;
 
     private static async Task PumpEventsAsync(LowLevelInputMonitor monitor, WheelController controller, CancellationToken ct)
     {
