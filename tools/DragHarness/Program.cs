@@ -474,7 +474,9 @@ internal sealed class ScenarioRun
 
         if (_s.Edge)
         {
-            var m = Regex.Matches(Log(), @"wheel shown pending gen=\d+ at \((-?\d+),(-?\d+)\) rect=\((-?\d+),(-?\d+),(\d+)\)").LastOrDefault();
+            // The window can be on screen a few milliseconds before the app has written its "wheel shown" log line.
+            WaitFor(() => Regex.IsMatch(Log(), @"wheel shown pending gen=\d+ at \("), 1000);
+            var m = Regex.Matches(Log(),@"wheel shown pending gen=\d+ at \((-?\d+),(-?\d+)\) rect=\((-?\d+),(-?\d+),(\d+)\)").LastOrDefault();
             var rectLeft = m is null ? int.MinValue : int.Parse(m.Groups[3].Value);
             var cursorX = m is null ? 0 : int.Parse(m.Groups[1].Value);
             Check("wheel window was clamped to the monitor's work area", m is not null && rectLeft == area.Left && cursorX - 190 < area.Left, $"cursor x={cursorX}, window left={rectLeft}, work area left={area.Left}");

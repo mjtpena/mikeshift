@@ -586,21 +586,66 @@ internal sealed class WheelController : IDisposable
         _paths = paths;
 
         var generation = _anim.Generation;
-        var caps = _services.Capabilities;
-        _ = Task.Run(() =>
+        // This runs inside OLE's DragEnter on the wheel thread, and Explorer's drag loop waits for us: it must never block on the
+        // startup capability probe (HEIF/Media Foundation/Word probes: well under a second warm, several when cold). If the probe is
+        // not done yet, the first catalog is built from a conservative snapshot and replaced once the probe completes.
+        var probed = _services.TryGetCapabilities(out var caps);
+        _ = Task.Run(async () =>
         {
-            IReadOnlyList<ActionDef> actions;
-            try
-            {
-                actions = ActionCatalog.For(paths, caps);
-            }
+            ApplyOnWheelThread(generation, paths, BuildCatalog(paths, caps), entry, refresh: false);
+            if (probed) return;
+
+            Capabilities full;
+            try { full = await _services.CapabilitiesAsync.ConfigureAwait(false); }
             catch (Exception ex)
             {
-                WheelLog.Error("ActionCatalog.For failed", ex);
-                actions = [];
+                WheelLog.Error("the capability probe failed", ex);
+                return;
             }
-            _thread.Post(() => ApplyActions(generation, paths, actions, entry));
+            WheelLog.Stage("capability probe finished during the drag: refreshing the tiles");
+            ApplyOnWheelThread(generation, paths, BuildCatalog(paths, full), entry, refresh: true);
         });
+    }
+
+    private static IReadOnlyList<ActionDef> BuildCatalog(IReadOnlyList<string> paths, Capabilities caps)
+    {
+        try
+        {
+            return ActionCatalog.For(paths, caps);
+        }
+        catch (Exception ex)
+        {
+            WheelLog.Error("ActionCatalog.For failed", ex);
+            return [];
+        }
+    }
+
+    private void ApplyOnWheelThread(int generation, IReadOnlyList<string> paths, IReadOnlyList<ActionDef> actions, PointPx entry, bool refresh)
+    {
+        _thread.Post(() =>
+        {
+            if (refresh) RefreshActions(generation, paths, actions);
+            else ApplyActions(generation, paths, actions, entry);
+        });
+    }
+
+    /// <summary>
+    /// Replaces the tiles of a wheel that is already showing the first (conservative) catalog, once the capability probe is done.
+    /// Keeps the page the user is on if it still has tiles; the pointer is re-evaluated against the new tiles.
+    /// </summary>
+    private void RefreshActions(int generation, IReadOnlyList<string> paths, IReadOnlyList<ActionDef> actions)
+    {
+        if (!_haveActions || !_anim.IsCurrent(generation) || _mode != Mode.Drag || !_window.IsShown || !ReferenceEquals(paths, _paths))
+        {
+            WheelLog.Stage("catalog refresh discarded (stale)");
+            return;
+        }
+        var page = _dragModel.Page;
+        _dragModel.SetActions(actions);
+        if (page != _dragModel.Page) _dragModel.SetPage(page);
+        _session.SetPage(_dragModel.Page);
+        WheelLog.Stage("tiles (refreshed): " + string.Join(",", _dragModel.Formats.Select(a => a.Title)) + " | " + string.Join(",", _dragModel.Tools.Select(a => a.Title)));
+        if (_lastPointer is { } p) _dragModel.PointerMoved(p, _rect.Centre, _dpi);
     }
 
     private void ApplyActions(int generation, IReadOnlyList<string> paths, IReadOnlyList<ActionDef> actions, PointPx entry)
@@ -781,11 +826,10 @@ internal sealed class WheelController : IDisposable
     /// <summary>Opens the wheel for "Convert Files…" at the centre of the monitor under the cursor.</summary>
     public void ShowClickMode(IReadOnlyList<string> paths)
     {
-        var caps = _services.Capabilities;
         _ = Task.Run(() =>
         {
             IReadOnlyList<ActionDef> actions;
-            try { actions = ActionCatalog.For(paths, caps); }
+            try { actions = ActionCatalog.For(paths, _services.Capabilities); } // may wait for the startup probe: off the UI thread
             catch (Exception ex) { WheelLog.Error("ActionCatalog.For failed (click mode)", ex); actions = []; }
             _thread.Post(() => ShowClick(paths, actions));
         });

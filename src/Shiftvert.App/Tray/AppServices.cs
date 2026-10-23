@@ -48,8 +48,17 @@ public sealed class AppServices
     /// <summary>Runs actions and reports the outcome; also holds <c>LastOutputs</c>/<c>LastFinishedAt</c>.</summary>
     public JobRunner Jobs { get; }
 
-    /// <summary>What this machine can do (probed once; the first access may take a moment, so startup warms it up).</summary>
+    /// <summary>
+    /// What this machine can do (probed once). The first access waits for the probe, so only call this from a thread that may
+    /// block; message-loop and OLE callbacks use <see cref="TryGetCapabilities"/> / <see cref="CapabilitiesAsync"/>.
+    /// </summary>
     public Capabilities Capabilities => Capabilities.Current;
+
+    /// <summary>Never blocks: the real capabilities once the startup probe is done, else a conservative snapshot (and false).</summary>
+    public bool TryGetCapabilities(out Capabilities capabilities) => Capabilities.TryGetCurrent(out capabilities);
+
+    /// <summary>Completes with the real capabilities when the startup probe is done (starts it if it has not started).</summary>
+    public Task<Capabilities> CapabilitiesAsync => Capabilities.CurrentAsync;
 
     /// <summary>Creates the services on the UI thread.</summary>
     public static AppServices Create(DispatcherQueue dispatcher) => new(dispatcher);

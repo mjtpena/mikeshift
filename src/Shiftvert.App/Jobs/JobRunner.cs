@@ -80,7 +80,6 @@ public sealed class JobRunner
             _dispatcher.TryEnqueue(() => ShowToast(FeedbackPlan.StartText(action, _ledger.OthersRunning(id)))));
 
         var progress = new ToastProgress(this, action, id, snapshot.Length);
-        var ctx = new ActionContext(_capabilities(), notifying, progress);
         var ct = _shutdown.Token;
 
         var task = Task.Run(async () =>
@@ -88,6 +87,8 @@ public sealed class JobRunner
             ActionResult result;
             try
             {
+                // Read here, not on the UI thread: the first read waits for the startup capability probe.
+                var ctx = new ActionContext(_capabilities(), notifying, progress);
                 result = await action.Run(snapshot, ctx, ct).ConfigureAwait(false);
             }
             catch (OperationCanceledException)

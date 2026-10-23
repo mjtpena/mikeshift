@@ -59,10 +59,33 @@ public sealed record Capabilities
     /// <summary>Nothing optional available (every flag false).</summary>
     public static Capabilities None { get; } = new();
 
-    private static readonly Lazy<Capabilities> s_current = new(Probe, LazyThreadSafetyMode.ExecutionAndPublication);
+    private static readonly ProbeCache s_cache = new(Probe, Quick);
 
-    /// <summary>The probe result for this machine, computed once per process (thread-safe).</summary>
-    public static Capabilities Current => s_current.Value;
+    /// <summary>
+    /// The probe result for this machine, computed once per process (thread-safe). The first access runs the probe and can take
+    /// a second or more (WIC HEIF encode, Media Foundation transforms), so UI and message-loop threads must not call this before
+    /// <see cref="IsProbed"/> is true: use <see cref="TryGetCurrent"/> or <see cref="CurrentAsync"/> instead.
+    /// </summary>
+    public static Capabilities Current => s_cache.Value;
+
+    /// <summary>True once the machine probe has finished, so <see cref="Current"/> returns immediately.</summary>
+    public static bool IsProbed => s_cache.IsReady;
+
+    /// <summary>
+    /// Never blocks. Returns true with the real probe result once <see cref="IsProbed"/>; until then it returns false and a
+    /// conservative <paramref name="capabilities"/> snapshot (<see cref="Quick"/>) so callers can show something right away and
+    /// refresh when <see cref="CurrentAsync"/> completes.
+    /// </summary>
+    public static bool TryGetCurrent(out Capabilities capabilities) => s_cache.TryGet(out capabilities);
+
+    /// <summary>The probe result, awaited. Starts the probe on a thread-pool thread if nothing has yet; completes when it is done.</summary>
+    public static Task<Capabilities> CurrentAsync => s_cache.ValueAsync;
+
+    /// <summary>
+    /// What is known without running any codec probe: nothing optional is assumed to exist, except that Word is detected (one
+    /// registry read). Tiles built from this are a safe subset of the real ones.
+    /// </summary>
+    public static Capabilities Quick() => new() { WordCom = DetectWord() };
 
     /// <summary>
     /// Probes this machine now (uncached). Composes <see cref="ImageProbe.ProbeCapabilities"/> (W2a),
@@ -94,5 +117,45 @@ public sealed record Capabilities
         {
             return false;
         }
+    }
+}
+
+/// <summary>
+/// Runs a slow probe at most once and lets callers wait for it (<see cref="Value"/>), await it (<see cref="ValueAsync"/>) or peek
+/// without blocking (<see cref="TryGet"/>, which hands out a quick stand-in until the probe is done). Split out from
+/// <see cref="Capabilities"/> so the non-blocking behaviour can be tested with a probe that waits for the test.
+/// </summary>
+internal sealed class ProbeCache
+{
+    private readonly Func<Capabilities> _quick;
+    private readonly Lazy<Capabilities> _value;
+    private readonly Lazy<Task<Capabilities>> _async;
+
+    public ProbeCache(Func<Capabilities> probe, Func<Capabilities> quick)
+    {
+        _quick = quick;
+        _value = new Lazy<Capabilities>(probe, LazyThreadSafetyMode.ExecutionAndPublication);
+        _async = new Lazy<Task<Capabilities>>(() => Task.Run(() => _value.Value), LazyThreadSafetyMode.ExecutionAndPublication);
+    }
+
+    /// <summary>Blocks until the probe has run (running it on this thread if nobody has started it).</summary>
+    public Capabilities Value => _value.Value;
+
+    /// <summary>True once the probe has finished.</summary>
+    public bool IsReady => _value.IsValueCreated;
+
+    /// <summary>The probe result as a task; starts the probe on the thread pool when nobody has.</summary>
+    public Task<Capabilities> ValueAsync => _async.Value;
+
+    /// <summary>True and the real result when ready; otherwise false and the quick stand-in. Never waits for a running probe.</summary>
+    public bool TryGet(out Capabilities capabilities)
+    {
+        if (_value.IsValueCreated)
+        {
+            capabilities = _value.Value;
+            return true;
+        }
+        capabilities = _quick();
+        return false;
     }
 }
