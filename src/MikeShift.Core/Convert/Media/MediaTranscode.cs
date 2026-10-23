@@ -1,5 +1,6 @@
 using MikeShift.Core.Actions;
 using System.Runtime.InteropServices;
+using Windows.Media.Editing;
 using Windows.Media.MediaProperties;
 using Windows.Media.Transcoding;
 using Windows.Storage;
@@ -38,6 +39,51 @@ internal static class MediaTranscode
             TryReset(destination);
             await RunOnceAsync(source, destination, profile, trim, what, hardware: false, ct, progress, sourceVideoSubtype).ConfigureAwait(false);
         }
+    }
+
+    /// <summary>
+    /// Trims through <c>MediaComposition</c> instead of <c>MediaTranscoder.TrimStartTime</c>. The transcoder's trim of an ASF/WMV source
+    /// seeks the video but not the audio: the first ~0.3 s of the cut then plays audio from the START of the file before the right
+    /// audio begins. The composition engine cuts both streams at the same place.
+    /// </summary>
+    public static async Task RunTrimmedViaCompositionAsync(
+        string source, string destination, MediaEncodingProfile profile, TimeRange trim, string what, CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+        if (!File.Exists(destination))
+            await using (new FileStream(destination, FileMode.CreateNew, FileAccess.Write, FileShare.None)) { }
+
+        try
+        {
+            var src = await StorageFile.GetFileFromPathAsync(Path.GetFullPath(source)).AsTask(ct).ConfigureAwait(false);
+            var dst = await StorageFile.GetFileFromPathAsync(Path.GetFullPath(destination)).AsTask(ct).ConfigureAwait(false);
+            var clip = await MediaClip.CreateFromFileAsync(src).AsTask(ct).ConfigureAwait(false);
+            var end = clip.OriginalDuration - trim.End;
+            clip.TrimTimeFromStart = trim.Start;
+            clip.TrimTimeFromEnd = end > TimeSpan.Zero ? end : TimeSpan.Zero;
+            var composition = new MediaComposition();
+            composition.Clips.Add(clip);
+            var result = await composition.RenderToFileAsync(dst, MediaTrimmingPreference.Precise, profile).AsTask(ct).ConfigureAwait(false);
+            if (result != TranscodeFailureReason.None)
+                throw new ConversionException(DescribeFailure(result, what, default));
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (ConversionException)
+        {
+            throw;
+        }
+        catch (Exception ex) when (ex is COMException or InvalidOperationException or ArgumentException or IOException
+                                       or UnauthorizedAccessException or NotSupportedException)
+        {
+            if (ct.IsCancellationRequested) throw new OperationCanceledException(ct);
+            throw new ConversionException($"Windows couldn't convert this file to {what}.", ex);
+        }
+
+        if (new FileInfo(destination).Length == 0)
+            throw new ConversionException($"Windows couldn't convert this file to {what}.");
     }
 
     private static bool TryReset(string path)

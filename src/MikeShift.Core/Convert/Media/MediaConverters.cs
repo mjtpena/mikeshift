@@ -80,7 +80,7 @@ public static class VideoConverter
         return await MediaCommon.CommitAsync(input, format == AudioFormat.M4a ? ".m4a" : ".mp3", "", (temp, token) =>
             format == AudioFormat.M4a
                 ? MediaCommon.EncodeAacAsync(input, temp, info, 256_000, token)
-                : MediaCommon.EncodeMp3Async(input, temp, info, token), ct).ConfigureAwait(false);
+                : MediaCommon.WithTranscodableSource(input, info, token, src => MediaCommon.EncodeMp3Async(src, temp, info, token), flatten16: true), ct).ConfigureAwait(false);
     }
 
     /// <summary>Compress to 720p MP4, " compressed"; keep only if smaller.</summary>
@@ -120,9 +120,10 @@ public static class VideoConverter
             bpp = Math.Clamp((sourceBps - 128_000) / (info.Width * (double)info.Height * Math.Min(info.FrameRate, 60)), ConvertBitsPerPixel, 0.4);
 
         return await MediaCommon.CommitAsync(input, wmv ? ".wmv" : ".mp4", " trimmed", (temp, token) =>
-            MediaTranscode.RunAsync(input, temp,
-                wmv ? MediaTranscode.Wmv(info, info.Height, bpp) : MediaTranscode.Mp4(info, info.Height, bpp),
-                trim, wmv ? "WMV" : "MP4", token, sourceVideoSubtype: info.VideoSubtype), ct).ConfigureAwait(false);
+            wmv
+                ? MediaTranscode.RunTrimmedViaCompositionAsync(input, temp, MediaTranscode.Wmv(info, info.Height, bpp), trim, "WMV", token)
+                : MediaTranscode.RunAsync(input, temp, MediaTranscode.Mp4(info, info.Height, bpp),
+                    trim, "MP4", token, sourceVideoSubtype: info.VideoSubtype), ct).ConfigureAwait(false);
     }
 }
 
@@ -154,7 +155,7 @@ public static class AudioConverter
             case AudioFormat.Mp3:
                 return await MediaCommon.CommitAsync(input, ".mp3", "", (temp, token) =>
                     MediaCommon.WithTranscodableSource(input, info, token, src =>
-                        MediaCommon.EncodeMp3Async(src, temp, info, token)), ct).ConfigureAwait(false);
+                        MediaCommon.EncodeMp3Async(src, temp, info, token), flatten16: true), ct).ConfigureAwait(false);
 
             default:
                 return await MediaCommon.CommitAsync(input, ".flac", "", (temp, token) =>

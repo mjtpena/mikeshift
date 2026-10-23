@@ -412,9 +412,12 @@ internal static class ImageCodec
         if (format == ImageFormat.Webp)
             return pixels.EncodeWebp((int)Math.Round(quality * 100));
 
-        // JPEG and BMP have no usable alpha: flatten on white. GIF keeps 1-bit transparency from WIC's own quantiser.
-        var raster = format is ImageFormat.Jpg or ImageFormat.Bmp ? (pixels.HasRealAlpha ? pixels.FlattenOnWhite() : pixels) : pixels;
-        var alphaMode = format is ImageFormat.Jpg or ImageFormat.Bmp ? BitmapAlphaMode.Ignore : BitmapAlphaMode.Straight;
+        // JPEG and BMP have no usable alpha: flatten on white. HEIC is the same in practice: Windows' HEIF encoder drops the alpha
+        // channel (the decoder reports alpha=Ignore) and would leave whatever colour sits under the transparent pixels, so a
+        // transparent PNG would come out with a solid coloured (often black) block. GIF keeps 1-bit transparency from WIC's own quantiser.
+        var flatten = format is ImageFormat.Jpg or ImageFormat.Bmp or ImageFormat.Heic;
+        var raster = flatten ? (pixels.HasRealAlpha ? pixels.FlattenOnWhite() : pixels) : pixels;
+        var alphaMode = flatten ? BitmapAlphaMode.Ignore : BitmapAlphaMode.Straight;
 
         var encoderId = format switch
         {

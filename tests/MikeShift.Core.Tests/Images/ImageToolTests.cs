@@ -78,15 +78,33 @@ public class ImageToolTests
         Assert.Equal(0, At(back, 10, 10).A);
     }
 
-    [SkipIfNoCapability(nameof(Capabilities.HeifEncode))]
-    public async Task Compress_writes_heic_for_transparent_images_when_the_encoder_exists()
+    [Fact]
+    public async Task Compress_keeps_transparent_images_as_png_even_when_a_heic_encoder_exists()
     {
+        // Windows' HEIF encoder drops the alpha channel, so HEIC would turn the transparent pixels into a solid colour.
         using var tmp = new TempDir();
         var bgra = Fixtures.PhotoBgra(3300, 1100);
         bgra[3] = 0;
         var png = tmp.WriteFile("logo.png", RasterToPng(new Raster(3300, 1100, bgra)));
-        var output = await ImageConverter.CompressAsync(png, Capabilities.Current, default);
-        Assert.Equal(tmp.Combine("logo compressed.heic"), output);
+        var output = await ImageConverter.CompressAsync(png, Capabilities.All, default);
+        Assert.Equal(tmp.Combine("logo compressed.png"), output);
+        Assert.True(Decode(output).Bgra[3] < 128, "the transparent corner was lost"); // resampled to 3000 px, so only almost transparent
+    }
+
+    [SkipIfNoCapability(nameof(Capabilities.HeifEncode))]
+    public async Task Converting_a_transparent_image_to_heic_flattens_it_on_white_instead_of_keeping_a_colour_block()
+    {
+        using var tmp = new TempDir();
+        var bgra = Fixtures.QuadrantsBgra(64, 48);
+        for (var y = 0; y < 24; y++)
+            for (var x = 0; x < 32; x++)
+                bgra[(y * 64 + x) * 4 + 3] = 0;
+        var png = tmp.WriteFile("logo.png", RasterToPng(new Raster(64, 48, bgra)));
+        var output = await ImageConverter.ToFormatAsync(png, ImageFormat.Heic, default);
+        var px = Decode(output).Bgra;
+        // The transparent top-left quadrant is white (255,255,255) after a lossy HEIC round trip, not the red that sat under it.
+        var o = (4 * 64 + 4) * 4;
+        Assert.True(px[o] > 235 && px[o + 1] > 235 && px[o + 2] > 235, $"B{px[o]} G{px[o + 1]} R{px[o + 2]}");
     }
 
     [Fact]

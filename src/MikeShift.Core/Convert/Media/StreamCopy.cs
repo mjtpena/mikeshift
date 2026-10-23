@@ -63,12 +63,15 @@ internal static class StreamCopy
             }
             writer.BeginWriting();
 
-            Pump(reader, writer, videoOut, audio is not null ? audioOut : null, ct);
+            var videoSamples = Pump(reader, writer, videoOut, audio is not null ? audioOut : null, ct);
             writer.Finalize();
             MfInterop.Release(writer);
             writer = null;
 
-            ok = LooksRight(destination, info);
+            // The MP4 sink silently drops samples whose time stamp repeats the previous one (stills exported by Photos / Movie Maker do
+            // that). Inter-coded pictures that follow a dropped one are then wrong for the rest of the clip, so a copy that lost any
+            // video sample is not a copy: fall back to the full transcode.
+            ok = LooksRight(destination, info) && CountVideoSamples(destination) == videoSamples;
             return ok;
         }
         catch (Exception ex) when (ex is COMException or InvalidCastException or ConversionException or IOException or ArgumentException)
@@ -90,8 +93,9 @@ internal static class StreamCopy
     }
 
     /// <summary>Merges the video and audio sample streams by timestamp into the writer.</summary>
-    private static void Pump(IMFSourceReader reader, IMFSinkWriter writer, uint videoOut, uint? audioOut, CancellationToken ct)
+    private static int Pump(IMFSourceReader reader, IMFSinkWriter writer, uint videoOut, uint? audioOut, CancellationToken ct)
     {
+        var videoCount = 0;
         IMFSample? v = Next(reader, MfInterop.FirstVideoStream, out var vTs);
         IMFSample? a = audioOut is null ? null : Next(reader, MfInterop.FirstAudioStream, out _);
         long aTs = 0;
@@ -106,6 +110,7 @@ internal static class StreamCopy
                 if (takeVideo)
                 {
                     writer.WriteSample(videoOut, v!);
+                    videoCount++;
                     MfInterop.Release(v);
                     v = Next(reader, MfInterop.FirstVideoStream, out vTs);
                 }
@@ -121,6 +126,40 @@ internal static class StreamCopy
         {
             MfInterop.Release(v);
             MfInterop.Release(a);
+        }
+        return videoCount;
+    }
+
+    /// <summary>Number of compressed video samples in <paramref name="path"/> (read without decoding), or -1 if it cannot be read.</summary>
+    private static int CountVideoSamples(string path)
+    {
+        IMFSourceReader? reader = null;
+        IMFMediaType? native = null;
+        try
+        {
+            reader = MfInterop.TryOpenReader(path);
+            if (reader is null) return -1;
+            native = MfInterop.TryGetNativeType(reader, MfInterop.FirstVideoStream);
+            if (native is null) return -1;
+            reader.SetStreamSelection(MfInterop.AllStreams, false);
+            reader.SetStreamSelection(MfInterop.FirstVideoStream, true);
+            unsafe { reader.SetCurrentMediaType(MfInterop.FirstVideoStream, null, native); }
+            var n = 0;
+            while (MfInterop.ReadSample(reader, MfInterop.FirstVideoStream, out var sample, out _))
+            {
+                if (sample is not null) n++;
+                MfInterop.Release(sample);
+            }
+            return n;
+        }
+        catch (Exception ex) when (ex is COMException or InvalidCastException)
+        {
+            return -1;
+        }
+        finally
+        {
+            MfInterop.Release(native);
+            MfInterop.Release(reader);
         }
     }
 
