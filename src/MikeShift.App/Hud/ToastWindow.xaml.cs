@@ -39,6 +39,7 @@ public sealed partial class ToastWindow : Window
     private bool _visible;
     private bool _uncloakPending;
     private int _framesSeen;
+    private ulong _monitorId;
 
     public ToastWindow()
     {
@@ -58,7 +59,8 @@ public sealed partial class ToastWindow : Window
         ApplyToolStyles();
         SetAlpha(255);
         _subclass = SubclassProc;
-        PInvoke.SetWindowSubclass(_hwnd, _subclass, 1, 0);
+        if (!PInvoke.SetWindowSubclass(_hwnd, _subclass, 1, 0))
+            Wheel.WheelLog.Error("toast: SetWindowSubclass failed, the window keeps its classic frame");
         PInvoke.SetWindowPos(_hwnd, HWND.Null, 0, 0, 0, 0,
             SET_WINDOW_POS_FLAGS.SWP_FRAMECHANGED | SET_WINDOW_POS_FLAGS.SWP_NOMOVE | SET_WINDOW_POS_FLAGS.SWP_NOSIZE
             | SET_WINDOW_POS_FLAGS.SWP_NOZORDER | SET_WINDOW_POS_FLAGS.SWP_NOACTIVATE);
@@ -84,7 +86,8 @@ public sealed partial class ToastWindow : Window
         _fadeTimer.Tick += (_, _) => OnFadeTick();
 
         Root.PointerEntered += (_, _) => _hideTimer.Stop();
-        Root.PointerExited += (_, _) => RestartHideTimer(TimeSpan.FromSeconds(1.5));
+        // A progress toast stays until the job's result replaces it; the others hide shortly after the pointer leaves.
+        Root.PointerExited += (_, _) => RestartHideTimer(_content is { Kind: ToastKind.Progress } c ? c.Lifetime : TimeSpan.FromSeconds(1.5));
     }
 
     /// <summary>The text currently shown (empty when hidden).</summary>
@@ -106,6 +109,12 @@ public sealed partial class ToastWindow : Window
 
         if (!_visible)
         {
+            // A fade-out may still be running (HideToast, then a new result a moment later): its completion would hide the window we
+            // are about to show again, and it leaves the opacity part-way. Cancel it.
+            _fadeTimer.Stop();
+            _fadeDone = null;
+            SetAlpha(255);
+
             // Compose the first frame while cloaked, then reveal it: SW_SHOWNOACTIVATE shows without stealing focus.
             SetCloak(true);
             PInvoke.ShowWindow(_hwnd, SHOW_WINDOW_CMD.SW_SHOWNOACTIVATE);
@@ -213,6 +222,8 @@ public sealed partial class ToastWindow : Window
     {
         // WM_NCCALCSIZE with wParam TRUE and a result of 0: the client area is the entire window rectangle.
         if (message == PInvoke.WM_NCCALCSIZE && wParam.Value != 0) return default;
+        // The window is going away: take the subclass off so the procedure is never called after its delegate is released.
+        if (message == PInvoke.WM_NCDESTROY) PInvoke.RemoveWindowSubclass(hwnd, _subclass, 1);
         return PInvoke.DefSubclassProc(hwnd, message, wParam, lParam);
     }
 
@@ -311,6 +322,8 @@ public sealed partial class ToastWindow : Window
         _uncloakFallback.Stop();
         if (!_uncloakPending) return;
         _uncloakPending = false;
+        // Make sure there is something to reveal: a hide that raced with this show may have hidden the window.
+        PInvoke.ShowWindow(_hwnd, SHOW_WINDOW_CMD.SW_SHOWNOACTIVATE);
         if (Wheel.WheelTheme.ReadAnimationsEnabled())
         {
             var rise = (int)Math.Round(RisePixelsDip * (PInvoke.GetDpiForWindow(_hwnd) / 96.0));
@@ -333,8 +346,15 @@ public sealed partial class ToastWindow : Window
         var area = DisplayArea.GetFromPoint(new PointInt32(cursor.X, cursor.Y), DisplayAreaFallback.Nearest);
         var work = area.WorkArea;
 
-        // First move onto the target monitor so GetDpiForWindow reports that monitor's scale.
-        AppWindow.Move(new PointInt32(work.X, work.Y));
+        // GetDpiForWindow reports the scale of the monitor the window is on. Only when the cursor moved to another monitor is the window
+        // moved onto it first (to its corner); on every other update the window is already there and is not shifted, so there is no
+        // one-frame jump to the corner while it is on screen.
+        var monitor = area.DisplayId.Value;
+        if (monitor != _monitorId)
+        {
+            AppWindow.Move(new PointInt32(work.X, work.Y));
+            _monitorId = monitor;
+        }
         var dpi = PInvoke.GetDpiForWindow(_hwnd);
         var scale = dpi == 0 ? 1.0 : dpi / 96.0;
 

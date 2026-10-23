@@ -1,6 +1,8 @@
 using Microsoft.UI.Xaml;
 using MikeShift.App.Chrome;
+using MikeShift.App.Settings;
 using MikeShift.App.Tray;
+using MikeShift.Core.Hosting;
 using MikeShift.Core.Feedback;
 using Windows.System;
 using WinUIEx;
@@ -26,12 +28,16 @@ public sealed partial class WelcomeWindow : Window
         WindowChrome.PlaceCentered(this, 580, 840);
     }
 
-    /// <summary>Shows the welcome window if it has never been shown, and records that it was.</summary>
+    /// <summary>
+    /// Shows the welcome window if it has never been shown, and records that it was. A start by the Open at login task does not show it when
+    /// that record cannot be saved (<see cref="WelcomePolicy"/>): it would otherwise open again at every sign-in.
+    /// </summary>
     public static void ShowIfFirstRun(AppServices services)
     {
-        if (services.Preferences.Launched) return;
-        services.Preferences.Launched = true;
-        Show(services);
+        var prefs = services.Preferences;
+        if (prefs.Launched) return;
+        var remembered = prefs.TryMarkLaunched();
+        if (WelcomePolicy.ShouldShow(alreadyLaunched: false, remembered, StartupService.WasLaunchedAtLogin())) Show(services);
     }
 
     /// <summary>Shows the welcome window ("How it works" in the tray menu), or brings the open one to the front.</summary>

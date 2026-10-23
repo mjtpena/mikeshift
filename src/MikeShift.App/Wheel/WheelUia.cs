@@ -102,9 +102,10 @@ internal sealed class WheelAutomation
         }
     }
 
-    internal void InvokeTile(int index) => _controller.InvokeTile(index);
+    internal void InvokeTile(WheelSnapshot snapshot, int index) => _controller.InvokeTile(index, snapshot.ShowGeneration, snapshot.Titles[index]);
 
-    internal void InvokeHighlight(int index) => _controller.HighlightTile(index);
+    internal void InvokeHighlight(WheelSnapshot snapshot, int index) =>
+        _controller.HighlightTile(index, snapshot.ShowGeneration, index >= 0 && index < snapshot.Titles.Count ? snapshot.Titles[index] : "");
 
     private static UiaRect Rect(double left, double top, double width, double height) => new() { Left = left, Top = top, Width = width, Height = height };
 
@@ -271,8 +272,7 @@ internal sealed class WheelAutomation
             };
         }
 
-        public int[]? GetRuntimeId() =>
-            [UiaNative.AppendRuntimeId, (_snapshot.Page == MikeShift.Core.Actions.WheelPage.Tool ? 1000 : 0) + _index + 1];
+        public int[]? GetRuntimeId() => UiaRuntimeId.ForTile(_snapshot.Page == MikeShift.Core.Actions.WheelPage.Tool, _index);
 
         public UiaRect BoundingRectangle
         {
@@ -296,20 +296,21 @@ internal sealed class WheelAutomation
 
         public object[]? GetEmbeddedFragmentRoots() => null;
 
-        public void SetFocus() => _owner.InvokeHighlight(_index);
+        public void SetFocus() => _owner.InvokeHighlight(_snapshot, _index);
 
         public IRawElementProviderFragmentRoot? FragmentRoot => _owner._root;
 
-        public void Invoke() => _owner.InvokeTile(_index);
+        public void Invoke() => _owner.InvokeTile(_snapshot, _index);
 
         // SelectionItem pattern: selecting = highlighting (click mode); drag mode ignores it (the pointer owns the highlight).
-        public void Select() => _owner.InvokeHighlight(_index);
+        // Every call carries the snapshot this provider was made from, so a call on a provider that outlived its wheel does nothing.
+        public void Select() => _owner.InvokeHighlight(_snapshot, _index);
 
-        public void AddToSelection() => _owner.InvokeHighlight(_index);
+        public void AddToSelection() => _owner.InvokeHighlight(_snapshot, _index);
 
         public void RemoveFromSelection()
         {
-            if (_snapshot.Highlighted == _index) _owner.InvokeHighlight(-1);
+            if (_snapshot.Highlighted == _index) _owner.InvokeHighlight(_snapshot, -1);
         }
 
         public bool IsSelected => _snapshot.Highlighted == _index;

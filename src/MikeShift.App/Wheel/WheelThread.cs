@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using MikeShift.Core.Hosting;
 using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.UI.WindowsAndMessaging;
@@ -85,6 +86,7 @@ internal sealed unsafe class WheelThread : IDisposable
         Controller.Warmup();
 
         var handle = new HANDLE(_wake.SafeWaitHandle.DangerousGetHandle());
+        var backoff = new FailureBackoff();
         while (!_stop)
         {
             try
@@ -108,11 +110,15 @@ internal sealed unsafe class WheelThread : IDisposable
                 }
 
                 Controller.Pump();
+                backoff.Reset();
             }
             catch (Exception ex)
             {
-                // The loop must survive anything: log and carry on.
+                // The loop must survive anything: log and carry on. A failure that repeats on every iteration (a timer that stays due
+                // because the work that would clear it keeps throwing) would otherwise spin a core and fill the log: wait a little,
+                // longer each time (50 ms up to 1 s).
                 WheelLog.Error("wheel loop iteration failed", ex);
+                Thread.Sleep(backoff.NextDelay());
             }
         }
 

@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices;
 using MikeShift.App.Chrome;
 using MikeShift.Core.Feedback;
+using MikeShift.Core.Hosting;
 using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.UI.Shell;
@@ -27,9 +28,6 @@ internal static unsafe class FilePicker
 
     /// <summary>Remembers the last folder of this dialog separately from every other open dialog on the PC.</summary>
     private static readonly Guid ClientGuid = new("5b0d1f3e-6c1a-4f43-9d62-3a2b0a8f77c1");
-
-    /// <summary>Dev/test knob: <c>MIKESHIFT_PICKER_FOLDER</c> forces the starting folder (screenshots must not show real folders).</summary>
-    private const string FolderOverrideVariable = "MIKESHIFT_PICKER_FOLDER";
 
     /// <summary>Shows the dialog and returns the chosen file paths (empty if cancelled or on failure).</summary>
     public static IReadOnlyList<string> PickFiles(nint owner = 0)
@@ -91,8 +89,10 @@ internal static unsafe class FilePicker
             }
             return result;
         }
-        catch (COMException)
+        catch (Exception ex) when (!UnhandledPolicy.IsFatal(ex))
         {
+            // Any failure of the common dialog (a shell extension that throws, a COM error) means "nothing picked", not a dead app.
+            Wheel.WheelLog.Error("file picker failed", ex);
             return [];
         }
         finally
@@ -123,7 +123,7 @@ internal static unsafe class FilePicker
     {
         try
         {
-            var forced = Environment.GetEnvironmentVariable(FolderOverrideVariable);
+            var forced = DevSwitches.PickerFolder; // dev switch: screenshots must not show real folders
             if (!string.IsNullOrEmpty(forced) && Directory.Exists(forced))
             {
                 dialog.SetFolder(ItemFor(forced));

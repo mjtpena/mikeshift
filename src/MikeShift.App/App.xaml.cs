@@ -7,6 +7,7 @@ using MikeShift.App.Tray;
 using MikeShift.App.Wheel;
 using MikeShift.Core;
 using MikeShift.Core.Feedback;
+using MikeShift.Core.Hosting;
 
 namespace MikeShift.App;
 
@@ -17,13 +18,14 @@ namespace MikeShift.App;
 public partial class App : Application
 {
     private readonly bool _smokeTest;
+    private readonly UnhandledPolicy _unhandled = new();
     private DragCoordinator? _drag;
 
     public App()
     {
         InitializeComponent();
         Chrome.WindowChrome.ApplyForcedTheme(this);
-        UnhandledException += (_, e) => Wheel.WheelLog.Error("unhandled: " + e.Message, e.Exception);
+        UnhandledException += OnUnhandledException;
         _smokeTest = Environment.GetCommandLineArgs().Contains("--smoke-test", StringComparer.Ordinal);
 
         // There is no main window: closing Settings or Welcome must never end the process.
@@ -62,11 +64,11 @@ public partial class App : Application
         _ = Task.Run(() => Capabilities.Current);
 
         // W3 wiring: the input monitor + wheel thread, and the click-mode wheel for Convert Files….
-        _drag = DragCoordinator.Start(Services, installHooks: Environment.GetEnvironmentVariable("MIKESHIFT_NO_HOOKS") != "1");
+        _drag = DragCoordinator.Start(Services, installHooks: !DevSwitches.NoHooks);
         if (_drag is not null) Tray.ConvertFilesRequested += _drag.ShowClickMode;
         // Crop/Trim editors for interactive actions; dev flags `--crop <img>` / `--trim <media>` open them directly.
         Editors.EditorRegistration.Register(Services.Interaction);
-        Editors.EditorRegistration.TryHandleDevArgs(Environment.GetCommandLineArgs());
+        Editors.EditorRegistration.TryHandleDevArgs(DevSwitches.Args);
 
         // Build the (hidden) toast window a little after start-up so the first result does not wait for XAML to initialise.
         var prewarm = dispatcher.CreateTimer();
@@ -75,7 +77,7 @@ public partial class App : Application
         prewarm.Tick += (_, _) => Services.Hud.Prewarm();
         prewarm.Start();
 
-        var args2 = Environment.GetCommandLineArgs();
+        var args2 = DevSwitches.Args; // dev flags only exist when the dev switches are on (see DevSwitches)
         dispatcher.TryEnqueue(() =>
         {
             if (IsElevated())
@@ -96,6 +98,14 @@ public partial class App : Application
         });
     }
 
+    private void OnUnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
+    {
+        Wheel.WheelLog.Error("unhandled: " + e.Message, e.Exception);
+        // A resident tray app survives a failed menu action or a window that would not open; a corrupted process (out of memory...) or an
+        // endless stream of failures still ends it.
+        if (e.Exception is { } exception && _unhandled.ShouldHandle(exception, DateTime.UtcNow)) e.Handled = true;
+    }
+
     private bool _quitting;
 
     /// <summary>
@@ -106,12 +116,52 @@ public partial class App : Application
     {
         if (_quitting) return;
         _quitting = true;
+        await ShutDownServicesAsync();
+        Exit();
+    }
+
+    /// <summary>
+    /// The shutdown path shared by Quit and Restart: input hooks and the wheel, the tray icon (so no ghost icon is left in the notification area),
+    /// running jobs (so their temporary files are deleted) and the toast window.
+    /// </summary>
+    private async Task ShutDownServicesAsync()
+    {
         _drag?.Dispose();
         _drag = null;
         Tray.Dispose();
         try { await Services.Jobs.ShutdownAsync(TimeSpan.FromSeconds(3)); }
         catch (Exception) { /* exit regardless */ }
         Services.Hud.Dispose();
+    }
+
+    /// <summary>
+    /// Settings' "Restart": runs the same shutdown as Quit, then asks Windows to start the app again. If Windows will not restart it, the
+    /// app has already shut down, so it says so and exits rather than lingering without a tray icon.
+    /// </summary>
+    public async Task RestartAsync()
+    {
+        if (_quitting) return;
+        _quitting = true;
+        await ShutDownServicesAsync();
+
+        string? failure = null;
+        try
+        {
+            var result = Microsoft.Windows.AppLifecycle.AppInstance.Restart(string.Empty);
+            if (result.ToString() != "RestartPending") failure = result.ToString();
+        }
+        catch (Exception ex)
+        {
+            failure = ex.Message;
+        }
+
+        if (failure is not null)
+        {
+            Wheel.WheelLog.Error("restart failed: " + failure);
+            Windows.Win32.PInvoke.MessageBox(Windows.Win32.Foundation.HWND.Null,
+                "MikeShift could not restart itself, so it has closed. Start it again from the Start menu.", FeedbackCopy.AppName,
+                Windows.Win32.UI.WindowsAndMessaging.MESSAGEBOX_STYLE.MB_OK | Windows.Win32.UI.WindowsAndMessaging.MESSAGEBOX_STYLE.MB_ICONWARNING);
+        }
         Exit();
     }
 

@@ -25,6 +25,9 @@ internal sealed record WheelSnapshot(
     ScreenRect Rect,
     double DpiScale)
 {
+    /// <summary>Which showing of the wheel this is (<c>WheelAnimation.Generation</c>): UI Automation calls made against an older one are ignored.</summary>
+    public int ShowGeneration { get; init; }
+
     /// <summary>One sentence per tile saying what it does (UIA FullDescription).</summary>
     public IReadOnlyList<string> Descriptions { get; init; } = [];
 
@@ -55,10 +58,9 @@ internal sealed class WheelController : IDisposable
     /// <summary>
     /// How long the wheel must have been idle before the Win2D device and its buffers are released (about 45 MB of resident memory).
     /// Any left-button press re-creates them (<see cref="PrewarmIfCold"/>), which takes ~100 ms and is long finished by the time a
-    /// drag has moved and Shift is pressed. <c>MIKESHIFT_TRIM_MS</c> overrides it for measurements.
+    /// drag has moved and Shift is pressed. The dev switch <c>MIKESHIFT_TRIM_MS</c> overrides it for measurements.
     /// </summary>
-    private static readonly long TrimAfterMs =
-        long.TryParse(Environment.GetEnvironmentVariable("MIKESHIFT_TRIM_MS"), out var v) && v >= 0 ? v : 15_000;
+    private static readonly long TrimAfterMs = DevSwitches.TrimMs ?? 15_000;
 
     private readonly AppServices _services;
     private readonly WheelThread _thread;
@@ -864,6 +866,7 @@ internal sealed class WheelController : IDisposable
             ? new WheelSnapshot(true, _mode == Mode.Click, model.Page, actions.Select(WheelText.AutomationName).ToArray(),
                 model.HighlightedIndex, _virtualFiles ? WheelText.SaveFirst : model.CentreTitle, _rect, _dpi)
             {
+                ShowGeneration = _anim.Generation,
                 Descriptions = actions.Select(WheelText.Describe).ToArray(),
                 HasBothPages = model.HasBothPages,
                 VirtualFiles = _virtualFiles,
@@ -990,26 +993,29 @@ internal sealed class WheelController : IDisposable
 
         var model = CurrentModel;
         var sizePx = _rect.Width;
-        var scene = new WheelScene
-        {
-            SizePx = sizePx,
-            DpiScale = _dpi,
-            Theme = _theme,
-            Animation = _anim,
-            Now = now,
-            Tiles = _shownTiles,
-            Outgoing = _outgoing,
-            CentreText = model.CentreTitle,
-            CentreBold = model.CentreIsActionName,
-            HubHint = model.HubHint,
-            VirtualFiles = _virtualFiles,
-            HubEmpty = _mode == Mode.Drag && _shownTiles.Count == 0 && !_virtualFiles,
-            Callouts = BuildCallouts(model),
-            MainSide = _mode == Mode.Click ? CalloutSide.Top : _calloutSide ?? CalloutSide.Top,
-        };
 
         try
         {
+            // Building the scene can throw too (callouts read the model): it is inside the try, and the frame timers are reset in the
+            // finally, so a failing frame cannot leave "a frame is due now" set and make the loop spin.
+            var scene = new WheelScene
+            {
+                SizePx = sizePx,
+                DpiScale = _dpi,
+                Theme = _theme,
+                Animation = _anim,
+                Now = now,
+                Tiles = _shownTiles,
+                Outgoing = _outgoing,
+                CentreText = model.CentreTitle,
+                CentreBold = model.CentreIsActionName,
+                HubHint = model.HubHint,
+                VirtualFiles = _virtualFiles,
+                HubEmpty = _mode == Mode.Drag && _shownTiles.Count == 0 && !_virtualFiles,
+                Callouts = BuildCallouts(model),
+                MainSide = _mode == Mode.Click ? CalloutSide.Top : _calloutSide ?? CalloutSide.Top,
+            };
+
             var t0 = Stopwatch.GetTimestamp();
             var pixels = _renderer.Render(scene);
             var t1 = Stopwatch.GetTimestamp();
@@ -1026,25 +1032,36 @@ internal sealed class WheelController : IDisposable
             try { _renderer.RecreateDevice(); }
             catch (Exception ex2) { WheelLog.Error("device recreation failed", ex2); }
         }
-
-        _needsFrame = false;
-        _nextFrameMs = NowMs + FrameMs;
+        finally
+        {
+            _needsFrame = false;
+            _nextFrameMs = NowMs + FrameMs;
+        }
     }
 
     // ------------------------------------------------------------------ UI Automation entry points (any thread)
 
-    /// <summary>UIA <c>Invoke</c> on a tile: highlight and pick it (click mode only).</summary>
-    internal void InvokeTile(int index) => _thread.Post(() =>
+    /// <summary>
+    /// Whether a UIA call made against tile <paramref name="index"/> (<paramref name="title"/>) of show <paramref name="generation"/> still means
+    /// that tile now. A client may hold a provider for as long as it likes; by the time it calls, the wheel may be a different one.
+    /// </summary>
+    private bool TileStillCurrent(int generation, int index, string title) =>
+        TileIdentity.StillCurrent(generation, _anim.Generation, index, title, _clickModel.CurrentActions.Select(WheelText.AutomationName).ToArray());
+
+    /// <summary>UIA <c>Invoke</c> on a tile: highlight and pick it (click mode only; ignored if the tile is no longer the one the call was made on).</summary>
+    internal void InvokeTile(int index, int generation, string title) => _thread.Post(() =>
     {
-        if (_mode != Mode.Click || _anim.Phase != WheelPhase.Visible) return;
+        if (_mode != Mode.Click || _anim.Phase != WheelPhase.Visible || !TileStillCurrent(generation, index, title)) return;
         _clickModel.Highlight(index);
         _clickModel.PickHighlighted();
     });
 
-    /// <summary>UIA <c>SetFocus</c> on a tile: move the highlight there (click mode only).</summary>
-    internal void HighlightTile(int index) => _thread.Post(() =>
+    /// <summary>UIA <c>SetFocus</c> / <c>Select</c> on a tile: move the highlight there (click mode only; ignored if stale). Index -1 clears it.</summary>
+    internal void HighlightTile(int index, int generation, string title) => _thread.Post(() =>
     {
-        if (_mode == Mode.Click && _anim.Phase == WheelPhase.Visible) _clickModel.Highlight(index);
+        if (_mode != Mode.Click || _anim.Phase != WheelPhase.Visible) return;
+        if (index < 0 ? generation != _anim.Generation : !TileStillCurrent(generation, index, title)) return;
+        _clickModel.Highlight(index);
     });
 
     /// <summary>UIA <c>SetFocus</c> on the root.</summary>

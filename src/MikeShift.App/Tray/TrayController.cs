@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.Input;
 using H.NotifyIcon;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
@@ -9,6 +10,7 @@ using MikeShift.App.FirstRun;
 using MikeShift.App.Hud;
 using MikeShift.App.Settings;
 using MikeShift.Core.Feedback;
+using MikeShift.Core.Hosting;
 using Windows.UI.ViewManagement;
 using Windows.Win32;
 using Windows.Win32.UI.WindowsAndMessaging;
@@ -145,7 +147,23 @@ public sealed class TrayController : IDisposable
     }
 
     /// <summary>Left click: the primary action, picking files to convert (Windows convention: left click is the main surface).</summary>
-    private void OnLeftClick() => ConvertFiles();
+    private void OnLeftClick() => Guarded("convert files", ConvertFiles);
+
+    /// <summary>
+    /// Runs a tray action so that a failure (a window that cannot be created, a picker that throws) is logged instead of reaching the
+    /// dispatcher's unhandled-exception path. Fatal exceptions (out of memory...) are not swallowed.
+    /// </summary>
+    private static void Guarded(string what, Action action)
+    {
+        try
+        {
+            action();
+        }
+        catch (Exception ex) when (!UnhandledPolicy.IsFatal(ex))
+        {
+            Wheel.WheelLog.Error("tray action failed: " + what, ex);
+        }
+    }
 
     /// <summary>Pops the menu at the cursor (right click, a second launch of the app, dev scenes).</summary>
     public void ShowMenuAtCursor()
@@ -205,7 +223,7 @@ public sealed class TrayController : IDisposable
 
     private MenuFlyout BuildFlyout()
     {
-        void Post(Action action) => _services.Dispatcher.TryEnqueue(() => action());
+        void Post(Action action) => _services.Dispatcher.TryEnqueue(() => Guarded("menu item", action));
         var flyout = new MenuFlyout();
 
         // T-02: the header teaches the gesture (instead of a greyed-out row) and names the product. A separator, because the
@@ -244,6 +262,9 @@ public sealed class TrayController : IDisposable
         _lastItem.Visibility = _lastPath is null ? Visibility.Collapsed : Visibility.Visible;
         if (_lastPath is null) return;
         _lastItem.Text = $"Show {Path.GetFileName(_lastPath.TrimEnd('\\', '/'))} in folder";
+        // Narrator reads the item's name when it is reached with the arrow keys; the access key (F) is announced with it.
+        AutomationProperties.SetName(_lastItem, _lastItem.Text);
+        AutomationProperties.SetAccessKey(_lastItem, "F");
         _lastTimer?.Stop();
         if (_lastTimer is not null)
         {

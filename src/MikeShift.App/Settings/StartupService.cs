@@ -20,6 +20,28 @@ public sealed class StartupService
     private const string RunKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
     private const string RunValueName = "MikeShift";
 
+    /// <summary>Argument the unpackaged Run-key entry passes, so a start at login can be told from the user starting the app.</summary>
+    public const string StartupArgument = "--startup";
+
+    /// <summary>
+    /// True if this process was started by Open at login: packaged, the activation kind is StartupTask; unpackaged, the Run-key entry
+    /// carries <see cref="StartupArgument"/>. Never throws.
+    /// </summary>
+    public static bool WasLaunchedAtLogin()
+    {
+        try
+        {
+            if (PackageInfo.IsPackaged)
+                return Microsoft.Windows.AppLifecycle.AppInstance.GetCurrent().GetActivatedEventArgs().Kind
+                    == Microsoft.Windows.AppLifecycle.ExtendedActivationKind.StartupTask;
+            return Environment.GetCommandLineArgs().Contains(StartupArgument, StringComparer.Ordinal);
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+    }
+
     /// <summary>Is Open at login currently on?</summary>
     public async Task<bool> GetEnabledAsync()
     {
@@ -53,7 +75,7 @@ public sealed class StartupService
             {
                 var exe = Environment.ProcessPath;
                 if (exe is null) return new StartupResult(false, "Could not determine the application path.");
-                key.SetValue(RunValueName, $"\"{exe}\"");
+                key.SetValue(RunValueName, $"\"{exe}\" {StartupArgument}");
             }
             else
             {

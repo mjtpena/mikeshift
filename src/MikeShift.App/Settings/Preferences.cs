@@ -19,8 +19,8 @@ public interface IPreferenceStore
     /// <summary>The stored value, or null if absent.</summary>
     string? Get(string key);
 
-    /// <summary>Stores a value.</summary>
-    void Set(string key, string value);
+    /// <summary>Stores a value. Returns false if it could only be kept in memory (read-only profile, full disk): the next run will not see it.</summary>
+    bool Set(string key, string value);
 }
 
 /// <summary>Packaged: <c>ApplicationData.Current.LocalSettings</c>.</summary>
@@ -29,11 +29,21 @@ internal sealed class LocalSettingsStore : IPreferenceStore
     public string? Get(string key) =>
         Windows.Storage.ApplicationData.Current.LocalSettings.Values.TryGetValue(key, out var v) ? v as string : null;
 
-    public void Set(string key, string value) =>
-        Windows.Storage.ApplicationData.Current.LocalSettings.Values[key] = value;
+    public bool Set(string key, string value)
+    {
+        try
+        {
+            Windows.Storage.ApplicationData.Current.LocalSettings.Values[key] = value;
+            return true;
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+    }
 }
 
-/// <summary>Unpackaged: <c>%LOCALAPPDATA%\MikeShift\settings.json</c> (flat string map); <c>MIKESHIFT_SETTINGS_PATH</c> points dev/test runs at another file.</summary>
+/// <summary>Unpackaged: <c>settings.json</c> in <see cref="AppData.Folder"/> (flat string map); the dev switch <c>MIKESHIFT_SETTINGS_PATH</c> points dev/test runs at another file.</summary>
 internal sealed class JsonFileStore : IPreferenceStore
 {
     private readonly string _path;
@@ -41,43 +51,51 @@ internal sealed class JsonFileStore : IPreferenceStore
     private Dictionary<string, string>? _cache;
 
     public JsonFileStore(string? path = null) =>
-        _path = path ?? Environment.GetEnvironmentVariable("MIKESHIFT_SETTINGS_PATH") ?? System.IO.Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MikeShift", "settings.json");
+        _path = path ?? DevSwitches.SettingsPath ?? AppData.FilePath("settings.json");
 
     public string? Get(string key)
     {
         lock (_gate) return Load().TryGetValue(key, out var v) ? v : null;
     }
 
-    public void Set(string key, string value)
+    public bool Set(string key, string value)
     {
         lock (_gate)
         {
-            var map = Load();
+            // Merge into what is on disk now, not into what this process read at start-up: another instance (a dev scene next to the real
+            // app, a second launch that has not redirected yet) may have saved other keys since, and a blind rewrite would undo them.
+            var map = new Dictionary<string, string>(Load());
+            if (ReadFile() is { } onDisk)
+                foreach (var (k, v) in onDisk) map[k] = v;
             map[key] = value;
+            _cache = map; // the value is kept for this run even if it cannot be saved
             try
             {
                 Directory.CreateDirectory(System.IO.Path.GetDirectoryName(_path)!);
                 var tmp = _path + ".tmp";
                 File.WriteAllText(tmp, JsonSerializer.Serialize(map));
                 File.Move(tmp, _path, overwrite: true);
+                return true;
             }
-            catch (IOException) { /* a preference that cannot be saved is not worth crashing for */ }
-            catch (UnauthorizedAccessException) { }
+            catch (IOException) { return false; } // a preference that cannot be saved is not worth crashing for
+            catch (UnauthorizedAccessException) { return false; }
         }
     }
 
-    private Dictionary<string, string> Load()
+    /// <summary>The file's current content: empty if there is no file, null if it cannot be read or is damaged.</summary>
+    private Dictionary<string, string>? ReadFile()
     {
-        if (_cache is not null) return _cache;
         try
         {
-            if (File.Exists(_path))
-                _cache = JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(_path));
+            return File.Exists(_path) ? JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(_path)) ?? [] : [];
         }
-        catch (Exception ex) when (ex is IOException or JsonException or UnauthorizedAccessException) { }
-        return _cache ??= [];
+        catch (Exception ex) when (ex is IOException or JsonException or UnauthorizedAccessException)
+        {
+            return null;
+        }
     }
+
+    private Dictionary<string, string> Load() => _cache ??= ReadFile() ?? [];
 }
 
 /// <summary>
@@ -151,6 +169,14 @@ public sealed class Preferences
     {
         get => GetBool(LaunchedKey, false);
         set => SetBool(LaunchedKey, value);
+    }
+
+    /// <summary>Records that the welcome window was shown. False if that could not be saved (the next start would show it again).</summary>
+    public bool TryMarkLaunched()
+    {
+        var saved = _store.Set(LaunchedKey, "true");
+        Changed?.Invoke(LaunchedKey);
+        return saved;
     }
 
     /// <summary>A remembered editor window size (client DIPs), or null.</summary>

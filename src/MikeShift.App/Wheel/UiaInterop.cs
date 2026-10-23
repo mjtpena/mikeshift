@@ -130,8 +130,6 @@ internal static class UiaNative
     // Pattern ids
     public const int InvokePattern = 10000, SelectionPattern = 10001, SelectionItemPattern = 10010;
 
-    public const int AppendRuntimeId = 0x2A; // UiaAppendRuntimeId
-
     [DllImport("uiautomationcore.dll")]
     public static extern IntPtr UiaReturnRawElementProvider(IntPtr hwnd, IntPtr wParam, IntPtr lParam, IRawElementProviderSimple? provider);
 
