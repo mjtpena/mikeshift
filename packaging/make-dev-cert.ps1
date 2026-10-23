@@ -1,14 +1,14 @@
 <#
 .SYNOPSIS
-  Creates a self-signed code-signing certificate for sideloading Shiftvert, and exports it as .pfx + .cer.
+  Creates a self-signed code-signing certificate for sideloading MikeShift, and exports it as .pfx + .cer.
 
 .DESCRIPTION
-  The certificate subject must equal the Publisher in src/Shiftvert.App/Package.appxmanifest ("CN=Shiftvert Dev"); an MSIX
+  The certificate subject must equal the Publisher in src/MikeShift.App/Package.appxmanifest ("CN=MikeShift Dev"); an MSIX
   signed with any other subject is rejected at install time.
 
   What this script does:
     1. Creates the certificate in the CurrentUser\My store (needed by New-SelfSignedCertificate; no admin rights, nothing machine-wide).
-    2. Exports <OutDir>\ShiftvertDev.pfx (private key, protected by -Password) and <OutDir>\ShiftvertDev.cer (public part only).
+    2. Exports <OutDir>\MikeShiftDev.pfx (private key, protected by -Password) and <OutDir>\MikeShiftDev.cer (public part only).
     3. Removes the certificate from CurrentUser\My again (unless -KeepInStore), so the files are the only copy.
     4. Prints the one-time, elevated command that makes Windows trust the .cer.
 
@@ -16,11 +16,11 @@
 
   The .pfx is a private key: keep it out of git (the repo ignores *.pfx and *.cer; the default OutDir is under artifacts/, also ignored).
 
-.PARAMETER Password  Password for the .pfx (SecureString). If omitted, the SHIFTVERT_PFX_PASSWORD environment variable is used.
+.PARAMETER Password  Password for the .pfx (SecureString). If omitted, the MIKESHIFT_PFX_PASSWORD environment variable is used.
 .PARAMETER OutDir    Where to write the .pfx and .cer. Default: <repo>\artifacts\dev-cert.
-.PARAMETER Subject   Certificate subject. Default "CN=Shiftvert Dev" (must match the manifest Publisher).
+.PARAMETER Subject   Certificate subject. Default "CN=MikeShift Dev" (must match the manifest Publisher).
 .PARAMETER Years     Validity in years. Default 3.
-.PARAMETER Name      File name stem for the exported files. Default ShiftvertDev.
+.PARAMETER Name      File name stem for the exported files. Default MikeShiftDev.
 .PARAMETER KeepInStore  Leave the certificate in CurrentUser\My after exporting.
 
 .EXAMPLE
@@ -32,9 +32,9 @@
 param(
     [securestring] $Password,
     [string] $OutDir,
-    [string] $Subject = 'CN=Shiftvert Dev',
+    [string] $Subject = 'CN=MikeShift Dev',
     [ValidateRange(1, 20)] [int] $Years = 3,
-    [string] $Name = 'ShiftvertDev',
+    [string] $Name = 'MikeShiftDev',
     [switch] $KeepInStore
 )
 
@@ -43,16 +43,16 @@ $root = Split-Path -Parent $PSScriptRoot
 if (-not $OutDir) { $OutDir = Join-Path $root 'artifacts\dev-cert' }
 
 if (-not $Password) {
-    if ($env:SHIFTVERT_PFX_PASSWORD) {
-        $Password = ConvertTo-SecureString $env:SHIFTVERT_PFX_PASSWORD -AsPlainText -Force
+    if ($env:MIKESHIFT_PFX_PASSWORD) {
+        $Password = ConvertTo-SecureString $env:MIKESHIFT_PFX_PASSWORD -AsPlainText -Force
     }
     else {
-        throw 'Provide -Password (a SecureString) or set SHIFTVERT_PFX_PASSWORD.'
+        throw 'Provide -Password (a SecureString) or set MIKESHIFT_PFX_PASSWORD.'
     }
 }
 
 # Refuse to drift away from the manifest, which would produce a package that cannot be installed.
-$manifest = Join-Path $root 'src\Shiftvert.App\Package.appxmanifest'
+$manifest = Join-Path $root 'src\MikeShift.App\Package.appxmanifest'
 if (Test-Path $manifest) {
     $publisher = ([xml](Get-Content -LiteralPath $manifest -Raw)).Package.Identity.Publisher
     if ($publisher -and ($publisher -ne $Subject)) {
@@ -68,7 +68,7 @@ Write-Host "==> Creating self-signed code-signing certificate '$Subject' (Curren
 $cert = New-SelfSignedCertificate `
     -Type Custom `
     -Subject $Subject `
-    -FriendlyName 'Shiftvert Dev (sideload signing)' `
+    -FriendlyName 'MikeShift Dev (sideload signing)' `
     -KeyUsage DigitalSignature `
     -KeyAlgorithm RSA -KeyLength 2048 -HashAlgorithm SHA256 `
     -KeyExportPolicy Exportable `
@@ -98,4 +98,4 @@ Write-Host "  Import-Certificate -FilePath '$cerPath' -CertStoreLocation Cert:\L
 Write-Host ''
 Write-Host 'Then build + sign + install:' -ForegroundColor Green
 Write-Host "  ./scripts/release.ps1 -PfxPath '$pfxPath' -PfxPassword (Read-Host -AsSecureString 'PFX password')"
-Write-Host '  Add-AppxPackage -Path .\artifacts\Shiftvert_<version>.msixbundle'
+Write-Host '  Add-AppxPackage -Path .\artifacts\MikeShift_<version>.msixbundle'

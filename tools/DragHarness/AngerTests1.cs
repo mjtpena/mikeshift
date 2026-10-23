@@ -179,7 +179,7 @@ internal static partial class Anger
                 var t0 = Stopwatch.StartNew();
                 var done = Sess.Wait(() => Directory.EnumerateFiles(s.Work, "*.png").Count() == 500, 180000);
                 Rec.Check("500 PNGs written", done, $"{Directory.EnumerateFiles(s.Work, "*.png").Count()} PNGs, {t0.ElapsedMilliseconds} ms");
-                Rec.Check("no temp folders left", !Directory.EnumerateFileSystemEntries(s.Work, ".*shiftvert-tmp").Any());
+                Rec.Check("no temp folders left", !Directory.EnumerateFileSystemEntries(s.Work, ".*mikeshift-tmp").Any());
                 Thread.Sleep(2000);
                 Rec.Check("toast says 500 files saved", s.ToastTexts(1500).Any(x => x.Contains("500")), string.Join(" | ", s.ToastTexts(100)));
             });

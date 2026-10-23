@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="MikeShift.App.Editors.CropEditorWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="Crop">
+
+    <Grid x:Name="Root" Padding="16" RowSpacing="12" PreviewKeyDown="OnPreviewKeyDown">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="376" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <Border CornerRadius="8" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+            <Grid x:Name="SurfaceHost" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <TextBlock x:Name="ErrorText" Visibility="Collapsed" TextWrapping="Wrap" MaxWidth="500"
+                           HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+            </Grid>
+        </Border>
+
+        <TextBlock Grid.Row="1" x:Name="SelectionText" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                   AutomationProperties.LiveSetting="Off" />
+
+        <Grid Grid.Row="2" x:Name="PresetButtons" ColumnSpacing="6" AutomationProperties.Name="Aspect ratio">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <ToggleButton Grid.Column="0" Content="Free" Tag="Free" HorizontalAlignment="Stretch"
+                          AutomationProperties.Name="Aspect ratio Free" Click="OnPresetClicked" />
+            <ToggleButton Grid.Column="1" Content="Original" Tag="Original" HorizontalAlignment="Stretch"
+                          AutomationProperties.Name="Aspect ratio Original" Click="OnPresetClicked" />
+            <ToggleButton Grid.Column="2" Content="1:1" Tag="Square" HorizontalAlignment="Stretch"
+                          AutomationProperties.Name="Aspect ratio 1:1" Click="OnPresetClicked" />
+            <ToggleButton Grid.Column="3" Content="4:5" Tag="FourFive" HorizontalAlignment="Stretch"
+                          AutomationProperties.Name="Aspect ratio 4:5" Click="OnPresetClicked" />
+            <ToggleButton Grid.Column="4" Content="3:2" Tag="ThreeTwo" HorizontalAlignment="Stretch"
+                          AutomationProperties.Name="Aspect ratio 3:2" Click="OnPresetClicked" />
+            <ToggleButton Grid.Column="5" Content="16:9" Tag="SixteenNine" HorizontalAlignment="Stretch"
+                          AutomationProperties.Name="Aspect ratio 16:9" Click="OnPresetClicked" />
+            <ToggleButton Grid.Column="6" Content="9:16" Tag="NineSixteen" HorizontalAlignment="Stretch"
+                          AutomationProperties.Name="Aspect ratio 9:16" Click="OnPresetClicked" />
+        </Grid>
+
+        <Grid Grid.Row="3" ColumnSpacing="12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="56" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Text="Scale" VerticalAlignment="Center" />
+            <Slider Grid.Column="1" x:Name="ScaleSlider" Minimum="5" Maximum="100" Value="100"
+                    StepFrequency="1" SmallChange="1" LargeChange="10" TickFrequency="5"
+                    AutomationProperties.Name="Scale percent" ValueChanged="OnScaleChanged" />
+            <TextBlock Grid.Column="2" x:Name="PercentText" VerticalAlignment="Center" HorizontalTextAlignment="End" />
+        </Grid>
+
+        <StackPanel Grid.Row="4" Orientation="Horizontal" Spacing="12">
+            <NumberBox x:Name="WidthBox" Header="Width (px)" Width="150" Minimum="1" Maximum="1000000"
+                       SpinButtonPlacementMode="Compact" SmallChange="1" LargeChange="10"
+                       ValidationMode="InvalidInputOverwritten" AutomationProperties.Name="Output width in pixels"
+                       ValueChanged="OnWidthChanged" />
+            <TextBlock Text="×" VerticalAlignment="Bottom" Margin="0,0,0,6" />
+            <NumberBox x:Name="HeightBox" Header="Height (px)" Width="150" Minimum="1" Maximum="1000000"
+                       SpinButtonPlacementMode="Compact" SmallChange="1" LargeChange="10"
+                       ValidationMode="InvalidInputOverwritten" AutomationProperties.Name="Output height in pixels"
+                       ValueChanged="OnHeightChanged" />
+        </StackPanel>
+
+        <Grid Grid.Row="5" ColumnSpacing="8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <Button x:Name="ResetButton" Content="Reset" Click="OnResetClicked" AutomationProperties.Name="Reset the crop" />
+            <Button Grid.Column="2" x:Name="CancelButton" Content="Cancel" MinWidth="88" Click="OnCancelClicked"
+                    AutomationProperties.Name="Cancel (Escape)" />
+            <Button Grid.Column="3" x:Name="SaveButton" Content="Save" MinWidth="88" Style="{StaticResource AccentButtonStyle}"
+                    Click="OnSaveClicked" AutomationProperties.Name="Save the crop (Enter)" />
+        </Grid>
+    </Grid>
+</Window>

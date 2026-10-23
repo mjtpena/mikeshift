@@ -1,9 +1,9 @@
 MIT License
 
-Copyright (c) 2026 Shiftvert for Windows contributors
+Copyright (c) 2026 MikeShift contributors
 
-Shiftvert for Windows reimplements the interaction model and feature set of Shiftvert
-(https://github.com/roiegold/shiftvert) by roiegold. See NOTICE for that credit and for the
+MikeShift is a Windows port of Shiftvert (https://github.com/roiegold/shiftvert) by roiegold (MIT); it
+reimplements that project's interaction model and feature set. See NOTICE for that credit and for the
 licences of every third-party component this product uses or ships.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy

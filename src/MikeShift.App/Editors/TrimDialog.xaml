@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="MikeShift.App.Editors.TrimDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="Trim">
+
+    <Grid x:Name="Root" Padding="16" RowSpacing="14" PreviewKeyDown="OnPreviewKeyDown">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TextBlock x:Name="InfoText" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" />
+
+        <Grid Grid.Row="1" x:Name="SliderHost" />
+
+        <Grid Grid.Row="2" ColumnSpacing="12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="140" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="140" />
+            </Grid.ColumnDefinitions>
+            <TextBox x:Name="StartBox" Header="Start (m:ss.f)" PlaceholderText="0:00.0" MaxLength="16"
+                     AutomationProperties.Name="Start time" LostFocus="OnStartLostFocus" />
+            <StackPanel Grid.Column="1" VerticalAlignment="Bottom" HorizontalAlignment="Center" Spacing="2">
+                <TextBlock x:Name="LengthText" Style="{StaticResource SubtitleTextBlockStyle}" HorizontalTextAlignment="Center"
+                           AutomationProperties.Name="Selected length" />
+                <TextBlock x:Name="TotalText" Foreground="{ThemeResource TextFillColorSecondaryBrush}" HorizontalTextAlignment="Center" />
+            </StackPanel>
+            <TextBox Grid.Column="2" x:Name="EndBox" Header="End (m:ss.f)" PlaceholderText="0:00.0" MaxLength="16"
+                     AutomationProperties.Name="End time" LostFocus="OnEndLostFocus" />
+        </Grid>
+
+        <TextBlock Grid.Row="3" x:Name="ErrorText" Visibility="Collapsed" TextWrapping="Wrap"
+                   Foreground="{ThemeResource SystemFillColorCriticalBrush}" />
+
+        <StackPanel Grid.Row="4" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+            <Button x:Name="CancelButton" Content="Cancel" MinWidth="88" Click="OnCancelClicked"
+                    AutomationProperties.Name="Cancel (Escape)" />
+            <Button x:Name="TrimButton" Content="Trim" MinWidth="88" Style="{StaticResource AccentButtonStyle}"
+                    Click="OnTrimClicked" AutomationProperties.Name="Trim (Enter)" />
+        </StackPanel>
+    </Grid>
+</Window>

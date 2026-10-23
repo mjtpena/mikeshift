@@ -1,33 +1,35 @@
 # Architecture
 
-How Shiftvert for Windows is put together. "Built" means in the source tree and exercised as described in [TESTPLAN.md](TESTPLAN.md); everything specified in [PLAN.md](PLAN.md) is built. Written against the tree after work package W5a.
+How MikeShift is put together. "Built" means in the source tree and exercised as described in [TESTPLAN.md](TESTPLAN.md); everything specified in [PLAN.md](PLAN.md) is built. Written against the tree after work package W5a.
 
 ## 1. Solution layout
 
 ```
-Shiftvert.sln
+MikeShift.sln
 Directory.Build.props      net10.0-windows10.0.26100.0, min OS 10.0.17763.0, nullable, warnings are errors
 Directory.Packages.props   every NuGet version, pinned centrally (PDFsharp stays on 6.2.4: later versions are not MIT)
 src/
-  Shiftvert.Core/          no UI. Everything that converts, classifies, names and decides.
-  Shiftvert.App/           WinUI 3 tray app, packaged as MSIX (assembly Shiftvert.exe)
-  Shiftvert.Cli/           console exe (shiftvert.exe), a thin Main around Core's CliRunner
+  MikeShift.Core/          no UI. Everything that converts, classifies, names and decides.
+  MikeShift.App/           WinUI 3 tray app, packaged as MSIX (assembly MikeShift.exe)
+  MikeShift.Cli/           console exe (mikeshift.exe), a thin Main around Core's CliRunner
 tests/
-  Shiftvert.Core.Tests/    xUnit; fixtures are generated at test time
-  Shiftvert.Cli.Tests/     launches the real shiftvert.exe as a child process
-tools/DragHarness/         scripted Shift-drags (real mouse/keyboard input + an OLE drag source) against a running Shiftvert.exe
+  MikeShift.Core.Tests/    xUnit; fixtures are generated at test time
+  MikeShift.Cli.Tests/     launches the real mikeshift.exe as a child process
+tools/IconGen/            build-time icon generator: renders assets/brand/mikeshift.svg into every MSIX logo, .ico and docs/screenshots/brand/icon-sheet.png (not shipped)
+tools/DragHarness/         scripted Shift-drags (real mouse/keyboard input + an OLE drag source) against a running MikeShift.exe
 packaging/make-dev-cert.ps1   self-signed signing certificate for sideloading
-scripts/                   build.ps1, release.ps1, make-fixtures.ps1
+scripts/                   build.ps1, release.ps1, make-fixtures.ps1, make-icons.ps1
+assets/brand/mikeshift.svg  hand-written source of the app mark
 ```
 
-**Shiftvert.Core** (namespace `Shiftvert.Core.*`)
+**MikeShift.Core** (namespace `MikeShift.Core.*`)
 
 | Folder | Role | State |
 |---|---|---|
 | `Actions/` | `ActionDef`, `ActionCatalog.For(paths, capabilities)` (which tiles for a selection), `Each` (per-file batching, partial failures), `ZipAction`, `SpecialFiles` (pipes/sockets/devices are never read) | built |
 | `Actions/Catalog/` | the ordered action list per category (Image, Pdf, Video, Audio, Document) | built |
 | `Kind.cs`, `Capabilities.cs` | file classification (`Kind.Of`, and `Kind.CommonOf` for whole selections); what this machine can do (HEIF encode, WebP, MP3/FLAC/H.264/AAC encoders, HEVC/VP9/AV1 decoders, WebM, Word), probed once; `Capabilities.Current` waits for the probe, `TryGetCurrent` / `IsProbed` / `CurrentAsync` never block (see §5) | built |
-| `Convert/Naming.cs` | output names (`base + suffix + ext`, ` 2`, ` 3` on collision); work happens in a hidden `.name.guid.shiftvert-tmp` folder next to the target (a crash leaves nothing visible), then one move into place; Downloads fallback | built |
+| `Convert/Naming.cs` | output names (`base + suffix + ext`, ` 2`, ` 3` on collision); work happens in a hidden `.name.guid.mikeshift-tmp` folder next to the target (a crash leaves nothing visible), then one move into place; Downloads fallback | built |
 | `Convert/Images`, `Convert/Pdf` | image and PDF converters | built |
 | `Convert/Media` | video and audio converters (Media Foundation), GIF export, AIFF reader/writer, lossless MP4 re-wrap | built |
 | `Convert/Documents` | document model plus DOCX/ODT/RTF/HTML/TXT readers and writers, PDF writer, Word automation | built |
@@ -36,7 +38,7 @@ scripts/                   build.ps1, release.ps1, make-fixtures.ps1
 | `Feedback/` | `FeedbackPlan` and `JobLedger`: what the toast and dialogs say, and the "N still working" bookkeeping | built, unit-tested |
 | `Cli/CliRunner.cs` | the whole command line, callable in-process | built |
 
-**Shiftvert.App** folders: `Tray/` (tray icon and menu, Convert Files… dialog, a plain action list used only if the wheel could not start), `Jobs/` (`JobRunner`, `UiInteraction`), `Hud/` (non-activating toast window, chime, dialogs), `Settings/` (preferences, Open at Login, settings window), `FirstRun/` (welcome window), `Input/` (low-level input monitor), `Wheel/` (the wheel window, renderer, drop target, controller, UI Automation, `DragCoordinator`), `Editors/` (Crop editor, Trim dialog, media probe for the preview), `MemoryTrim.cs`, `Program.cs` (single-instance entry point).
+**MikeShift.App** folders: `Tray/` (tray icon and menu, Convert Files… dialog, a plain action list used only if the wheel could not start), `Jobs/` (`JobRunner`, `UiInteraction`), `Hud/` (non-activating toast window, chime, dialogs), `Settings/` (preferences, Open at Login, settings window), `FirstRun/` (welcome window), `Input/` (low-level input monitor), `Wheel/` (the wheel window, renderer, drop target, controller, UI Automation, `DragCoordinator`), `Editors/` (Crop editor, Trim dialog, media probe for the preview), `MemoryTrim.cs`, `Program.cs` (single-instance entry point). The tray icon is monochrome and follows the taskbar theme: `tray-dark-taskbar.ico` (white glyph) or `tray-light-taskbar.ico` (dark glyph), switched live from `UISettings.ColorValuesChanged` (`Tray/TaskbarTheme.cs`, which reads `SystemUsesLightTheme`). Regenerate all icons with `scripts/make-icons.ps1`; the preview sheet is `docs/screenshots/brand/icon-sheet.png`.
 
 Native calls use CsWin32 (source-generated P/Invoke). Every `NativeMethods.txt` in a project is picked up, so each folder lists the Win32 functions it needs next to the code that uses them.
 
@@ -50,7 +52,7 @@ Native calls use CsWin32 (source-generated P/Invoke). Every `NativeMethods.txt` 
  reader task (thread pool, DragCoordinator)  channel -> WheelController.Enqueue (drops moves while no button is down)
                                               |
                                               v
- wheel thread (dedicated STA, "Shiftvert wheel")  owns the wheel window, the OLE drop target (OLE calls it through this thread's
+ wheel thread (dedicated STA, "MikeShift wheel")  owns the wheel window, the OLE drop target (OLE calls it through this thread's
    message loop), the Win2D renderer, DragSession, WheelModel and the animation clock. Idles in MsgWaitForMultipleObjectsEx with
    an infinite timeout; wakes for messages, posted work, or a timer it asked for (a 16 ms frame while animating, the session's
    deadlines, a 50 ms button poll while a drag is active, the idle-memory timer).
@@ -62,11 +64,11 @@ Native calls use CsWin32 (source-generated P/Invoke). Every `NativeMethods.txt` 
 ```
 
 * **Hook callbacks do nothing else.** A low-level hook callback that takes longer than the `LowLevelHooksTimeout` registry value is silently removed by Windows with no notification, so the callback allocates nothing and takes no locks. `LowLevelInputMonitor` also runs a watchdog: if the left button has been down for a while and no event arrived, it installs fresh hooks before removing the old ones. It sits behind `IInputMonitor` so a Raw Input implementation can replace it.
-* **Only the gesture keys are ever read:** mouse move, left button, vertical wheel, Shift, Ctrl, Alt, Esc. Injected events (including our own mouse nudge) are flagged so `DragSession` can ignore them; touch and pen events are not flagged as injected. (The dev harness sets `SHIFTVERT_ACCEPT_INJECTED=1` so its synthetic input counts; never set in normal use.)
+* **Only the gesture keys are ever read:** mouse move, left button, vertical wheel, Shift, Ctrl, Alt, Esc. Injected events (including our own mouse nudge) are flagged so `DragSession` can ignore them; touch and pen events are not flagged as injected. (The dev harness sets `MIKESHIFT_ACCEPT_INJECTED=1` so its synthetic input counts; never set in normal use.)
 * **The wheel thread never converts and never blocks on anything slow.** Everything it touches is its own; other threads reach it through `WheelThread.Post`/`Wake` and read an immutable `WheelSnapshot` (UI Automation does).
 * **The UI thread never converts.** `JobRunner.Enqueue` returns a job id immediately; the converter runs on the thread pool, then marshals the result (toast, chime, failure dialog) back. Interactive actions (Crop, Trim) call back into the UI through `IInteraction` (`UiInteraction`) and await the editor window.
-* **Single instance:** `Program.Main` calls `AppInstance.FindOrRegisterForKey("shiftvert")` before any XAML starts; a second launch is redirected to the first, which pops its tray menu at the cursor.
-* Converters are plain async methods on `Shiftvert.Core` and take a `CancellationToken`; cancelling keeps outputs already written.
+* **Single instance:** `Program.Main` calls `AppInstance.FindOrRegisterForKey("mikeshift")` before any XAML starts; a second launch is redirected to the first, which pops its tray menu at the cursor.
+* Converters are plain async methods on `MikeShift.Core` and take a `CancellationToken`; cancelling keeps outputs already written.
 * **Classification must be fast** because the wheel is an empty disc until it is done. `Kind.Of` caches verdicts per (path, size, mtime) for the life of a drag; `Kind.CommonOf` classifies up to 16 files exactly, confirms a larger selection whose extensions all agree by sniffing a sample of 12, and sniffs any other large selection in parallel with early exit (500 JPEGs: about 20 ms).
 
 ## 3. Drag detection and the wheel
@@ -101,7 +103,7 @@ A tray app sits resident all day, so what it holds while idle matters more than 
 * The blurred glass snapshot is dropped when the wheel hides; the 380 px pixel buffer goes with the device.
 * A few seconds after an editor closes or a job finishes, `MemoryTrim.CompactSoon` does the same compaction (an editor holds a decoded preview and a lot of XAML state).
 * Toast, Settings and Welcome windows are created on first use. Codec probing (`Capabilities.Current`) runs once in the background at start-up. Nothing on the UI or OLE thread waits for it: the wheel's `DragEnter` uses `Capabilities.TryGetCurrent`, and if the probe has not finished it builds the first catalog from `Capabilities.Quick()` (no optional codec assumed, only the Word registry check) and replaces the tiles when `CurrentAsync` completes, keeping the page and re-hitting the pointer; the job runner reads the capabilities on its worker thread, and click mode builds its catalog off the UI thread.
-* Measured on the development PC (Release, self-contained, 20 to 30 s after start): working set 198 MB → about 17 MB, private working set 94 MB → about 5 MB (private bytes, i.e. committed, about 57 MB). During a gesture the working set goes up again (a wheel on screen: about 115 MB private working set for a click-mode launch; an editor: about 190 MB) and is handed back afterwards. `SHIFTVERT_TRIM_MS` changes the 15 s (dev/test only).
+* Measured on the development PC (Release, self-contained, 20 to 30 s after start): working set 198 MB → about 17 MB, private working set 94 MB → about 5 MB (private bytes, i.e. committed, about 57 MB). During a gesture the working set goes up again (a wheel on screen: about 115 MB private working set for a click-mode launch; an editor: about 190 MB) and is handed back afterwards. `MIKESHIFT_TRIM_MS` changes the 15 s (dev/test only).
 
 ## 6. Converters
 
@@ -115,15 +117,15 @@ A tray app sits resident all day, so what it holds while idle matters more than 
 | Documents | Open XML SDK for DOCX; hand-written ODT/RTF/HTML/TXT readers and writers around a common `DocModel`; PDFsharp for PDF output; Word automation (COM) for legacy `.doc` and, when installed, DOCX→PDF | pictures: TXT only (parity); see LIMITS |
 | Zip | `System.IO.Compression` | UTC timestamps, reparse-loop and special-file refusal |
 
-Every converter writes through `Naming` (a hidden `.name.guid.shiftvert-tmp` folder next to the target, then a move into place), so a failed job leaves no partial output, and hashes of the inputs are asserted unchanged in tests. Corrupt input is covered by a matrix test: truncated, misnamed and empty files through every offered action must end in `error: …` (exit 1) or a valid output, never a crash, a hang over 30 s (120 s for a legacy `.doc`, which goes through Word and its own 90 s kill switch), or a stray file. Word conversions run one at a time per process (instances started together stall each other), and the process-wide list of WINWORD.EXE processes is only used to find and kill the one instance a conversion started. The CLI ends with `TerminateProcess` after flushing its output (`FastExit`): the capability probe loads the GPU encoder stack (D3D/DXGI and the vendor driver), and tearing that down at normal process exit can fail-fast inside dxgi.dll on some PCs (observed at exit of the test host), which a caller would see as a crashed child instead of the exit code.
+Every converter writes through `Naming` (a hidden `.name.guid.mikeshift-tmp` folder next to the target, then a move into place), so a failed job leaves no partial output, and hashes of the inputs are asserted unchanged in tests. Corrupt input is covered by a matrix test: truncated, misnamed and empty files through every offered action must end in `error: …` (exit 1) or a valid output, never a crash, a hang over 30 s (120 s for a legacy `.doc`, which goes through Word and its own 90 s kill switch), or a stray file. Word conversions run one at a time per process (instances started together stall each other), and the process-wide list of WINWORD.EXE processes is only used to find and kill the one instance a conversion started. The CLI ends with `TerminateProcess` after flushing its output (`FastExit`): the capability probe loads the GPU encoder stack (D3D/DXGI and the vendor driver), and tearing that down at normal process exit can fail-fast inside dxgi.dll on some PCs (observed at exit of the test host), which a caller would see as a crashed child instead of the exit code.
 
 ## 7. Packaging
 
 * **MSIX**, built by the Windows App SDK tooling (`WindowsPackageType=MSIX`), one package per architecture (x64, ARM64), **self-contained**: the .NET 10 runtime and the Windows App SDK ship inside the package, so there is nothing to install first. `scripts/release.ps1` combines both into one `.msixbundle` with `makeappx bundle` ([MakeAppx](https://learn.microsoft.com/en-us/windows/msix/package/create-app-package-with-makeappx-tool)) and signs with `signtool` if given a certificate.
-* **Windows App SDK by component.** The app references `Microsoft.WindowsAppSDK.Base`, `.Foundation`, `.InteractiveExperiences` and `.WinUI` (2.5.1 line) instead of the `Microsoft.WindowsAppSDK` metapackage, which also drags in the on-device AI, ML (ONNX Runtime + DirectML), Search, Widgets and DWrite components that Shiftvert never calls. `H.NotifyIcon.WinUI` depends on the metapackage, so it stays in the restore graph; the metapackage and those components are referenced with `ExcludeAssets="all"` (see the comment in `Shiftvert.App.csproj`), which keeps them out of the output and the MSIX. Effect: bundle 304.8 MB → 256.8 MB, per-architecture package 154.6 → 130.3 MB. When bumping the Windows App SDK, update the component versions in `Directory.Packages.props` to what the new metapackage's `.nuspec` lists, and check that no `onnxruntime.dll`/`DirectML.dll` reappears in the output.
-* **Two `Application` entries** in `Package.appxmanifest`: `App` (the tray app, `Shiftvert.exe`) and `Cli` (`cli\shiftvert.exe`, hidden from the Start menu). The `shiftvert.exe` command on PATH is an app execution alias ([uap5:AppExecutionAlias](https://learn.microsoft.com/en-us/uwp/schemas/appxpackage/uapmanifestschema/element-uap5-appexecutionalias)) owned by the `Cli` entry with `desktop4:Subsystem="console"`, so stdout, stderr and the exit code reach the terminal.
-* **Why the CLI lives in `cli\` as its own self-contained copy:** file names on Windows are case-insensitive, and the tray app's `Shiftvert.exe`/`Shiftvert.dll` would collide with the CLI's `shiftvert.exe`/`shiftvert.dll`. The app project publishes the CLI (`BundleShiftvertCli` target in `Shiftvert.App.csproj`, under the "Packaging (W4b)" comment) and adds it to the package as content. It costs about 51 MB per architecture (a second copy of the .NET runtime, SkiaSharp and the Windows SDK projection); opt out with `-p:BundleCli=false` for faster inner-loop builds. Sharing one runtime between the two would roughly halve this but needs a framework-dependent or single-host design that is not done.
-* **Open at Login:** the manifest's `windows.startupTask` (`ShiftvertStartup`, disabled by default), driven by [`StartupTask`](https://learn.microsoft.com/en-us/uwp/api/windows.applicationmodel.startuptask); it appears in Settings → Apps → Startup, where the user can also turn it off. Unpackaged dev runs use the HKCU Run key instead.
+* **Windows App SDK by component.** The app references `Microsoft.WindowsAppSDK.Base`, `.Foundation`, `.InteractiveExperiences` and `.WinUI` (2.5.1 line) instead of the `Microsoft.WindowsAppSDK` metapackage, which also drags in the on-device AI, ML (ONNX Runtime + DirectML), Search, Widgets and DWrite components that MikeShift never calls. `H.NotifyIcon.WinUI` depends on the metapackage, so it stays in the restore graph; the metapackage and those components are referenced with `ExcludeAssets="all"` (see the comment in `MikeShift.App.csproj`), which keeps them out of the output and the MSIX. Effect: bundle 304.8 MB → 256.8 MB, per-architecture package 154.6 → 130.3 MB. When bumping the Windows App SDK, update the component versions in `Directory.Packages.props` to what the new metapackage's `.nuspec` lists, and check that no `onnxruntime.dll`/`DirectML.dll` reappears in the output.
+* **Two `Application` entries** in `Package.appxmanifest`: `App` (the tray app, `MikeShift.exe`) and `Cli` (`cli\mikeshift.exe`, hidden from the Start menu). The `mikeshift.exe` command on PATH is an app execution alias ([uap5:AppExecutionAlias](https://learn.microsoft.com/en-us/uwp/schemas/appxpackage/uapmanifestschema/element-uap5-appexecutionalias)) owned by the `Cli` entry with `desktop4:Subsystem="console"`, so stdout, stderr and the exit code reach the terminal.
+* **Why the CLI lives in `cli\` as its own self-contained copy:** file names on Windows are case-insensitive, and the tray app's `MikeShift.exe`/`MikeShift.dll` would collide with the CLI's `mikeshift.exe`/`mikeshift.dll`. The app project publishes the CLI (`BundleMikeShiftCli` target in `MikeShift.App.csproj`, under the "Packaging (W4b)" comment) and adds it to the package as content. It costs about 51 MB per architecture (a second copy of the .NET runtime, SkiaSharp and the Windows SDK projection); opt out with `-p:BundleCli=false` for faster inner-loop builds. Sharing one runtime between the two would roughly halve this but needs a framework-dependent or single-host design that is not done.
+* **Open at Login:** the manifest's `windows.startupTask` (`MikeShiftStartup`, disabled by default), driven by [`StartupTask`](https://learn.microsoft.com/en-us/uwp/api/windows.applicationmodel.startuptask); it appears in Settings → Apps → Startup, where the user can also turn it off. Unpackaged dev runs use the HKCU Run key instead.
 * **Single instance:** [`AppInstance`](https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/winrt/microsoft.windows.applifecycle.appinstance) (see §2).
-* **Signing:** the manifest Publisher is `CN=Shiftvert Dev`; `packaging/make-dev-cert.ps1` creates a matching self-signed certificate ([creating a signing certificate](https://learn.microsoft.com/en-us/windows/msix/package/create-certificate-package-signing)). Long paths are enabled by the application manifests.
+* **Signing:** the manifest Publisher is `CN=MikeShift Dev`; `packaging/make-dev-cert.ps1` creates a matching self-signed certificate ([creating a signing certificate](https://learn.microsoft.com/en-us/windows/msix/package/create-certificate-package-signing)). Long paths are enabled by the application manifests.
 * **CI:** `.github/workflows/ci.yml` builds and tests on `windows-latest`, then runs `scripts/release.ps1` and uploads the unsigned bundle and `SHA256SUMS.txt`.

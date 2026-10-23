@@ -1,3 +1,5 @@
+> Note (2026-10-23): the product is now called MikeShift; this plan uses its original working name.
+
 # Shiftvert for Windows — build & test handover plan
 
 > Handover for an implementing agent (Opus). Repo: `C:\Users\mjtpe\dev\Orqentis\mikeshift` (empty, `main`, one "Initial commit"). Working name **Shiftvert for Windows**; namespace `Shiftvert`. After approval this file is copied into the repo as `docs/PLAN.md` so the implementer has it in-tree.

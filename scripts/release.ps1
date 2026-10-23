@@ -4,19 +4,19 @@
 
 .DESCRIPTION
   Output (default <repo>\artifacts\):
-      Shiftvert_<version>.msixbundle
+      MikeShift_<version>.msixbundle
       SHA256SUMS.txt                      (sha256sum format: "<hash>  <file>", verify with `sha256sum -c` or Get-FileHash)
 
   Steps:
-    1. For each platform: dotnet build src/Shiftvert.App -c Release -p:Platform=<p> -p:GenerateAppxPackageOnBuild=true
+    1. For each platform: dotnet build src/MikeShift.App -c Release -p:Platform=<p> -p:GenerateAppxPackageOnBuild=true
                           -p:AppxPackageSigningEnabled=false -p:AppxBundle=Never      (same command CI and scripts/build.ps1 -Msix use)
     2. If -PfxPath is given, sign each per-architecture .msix, so the packages inside the bundle carry the same publisher signature.
-    3. makeappx bundle  -> artifacts\Shiftvert_<version>.msixbundle
+    3. makeappx bundle  -> artifacts\MikeShift_<version>.msixbundle
     4. If -PfxPath is given, signtool sign the bundle (SHA-256; optional RFC 3161 timestamp).
     5. SHA256SUMS.txt.
 
   Unsigned bundles cannot be installed; they are what CI uploads. Sign with the dev cert (packaging\make-dev-cert.ps1) or your
-  release certificate. The signing certificate subject must equal the manifest Publisher (CN=Shiftvert Dev for the dev cert).
+  release certificate. The signing certificate subject must equal the manifest Publisher (CN=MikeShift Dev for the dev cert).
 
   makeappx.exe / signtool.exe are located in this order: -MakeAppx / -SignTool, the newest Windows 10 SDK under
   "%ProgramFiles(x86)%\Windows Kits\10\bin" (10.0.26100.* preferred), the Microsoft.Windows.SDK.BuildTools NuGet package in the
@@ -26,17 +26,17 @@
 .PARAMETER Platforms      Default x64, ARM64.
 .PARAMETER OutDir         Output folder. Default <repo>\artifacts.
 .PARAMETER PfxPath        Sign with this .pfx. Omit for an unsigned bundle.
-.PARAMETER PfxPassword    Password for the .pfx (SecureString). Falls back to SHIFTVERT_PFX_PASSWORD.
+.PARAMETER PfxPassword    Password for the .pfx (SecureString). Falls back to MIKESHIFT_PFX_PASSWORD.
 .PARAMETER TimestampUrl   RFC 3161 timestamp server (e.g. http://timestamp.digicert.com). Optional: this is the only thing in the whole
                           pipeline that touches the network, and only when you ask for it.
-.PARAMETER SkipBuild      Reuse the .msix files already in src\Shiftvert.App\AppPackages.
+.PARAMETER SkipBuild      Reuse the .msix files already in src\MikeShift.App\AppPackages.
 .PARAMETER MakeAppx       Explicit path to makeappx.exe.
 .PARAMETER SignTool       Explicit path to signtool.exe.
 
 .EXAMPLE
   ./scripts/release.ps1
 .EXAMPLE
-  ./scripts/release.ps1 -PfxPath artifacts\dev-cert\ShiftvertDev.pfx -PfxPassword (Read-Host -AsSecureString 'PFX password')
+  ./scripts/release.ps1 -PfxPath artifacts\dev-cert\MikeShiftDev.pfx -PfxPassword (Read-Host -AsSecureString 'PFX password')
 #>
 [CmdletBinding()]
 param(
@@ -103,18 +103,18 @@ function Get-PlainPassword([securestring] $secure) {
 Push-Location $root
 try {
     # --- inputs -------------------------------------------------------------------------------------------------------------
-    $manifestPath = Join-Path $root 'src\Shiftvert.App\Package.appxmanifest'
+    $manifestPath = Join-Path $root 'src\MikeShift.App\Package.appxmanifest'
     $identity = ([xml](Get-Content -LiteralPath $manifestPath -Raw)).Package.Identity
     $version = $identity.Version
     $publisher = $identity.Publisher
-    Write-Host "Shiftvert $version  publisher $publisher  platforms $($Platforms -join ', ')" -ForegroundColor Cyan
+    Write-Host "MikeShift $version  publisher $publisher  platforms $($Platforms -join ', ')" -ForegroundColor Cyan
 
     $signing = [bool] $PfxPath
     if ($signing) {
         if (-not (Test-Path -LiteralPath $PfxPath)) { throw "PFX not found: $PfxPath" }
         if (-not $PfxPassword) {
-            if ($env:SHIFTVERT_PFX_PASSWORD) { $PfxPassword = ConvertTo-SecureString $env:SHIFTVERT_PFX_PASSWORD -AsPlainText -Force }
-            else { throw 'Signing needs -PfxPassword (SecureString) or SHIFTVERT_PFX_PASSWORD.' }
+            if ($env:MIKESHIFT_PFX_PASSWORD) { $PfxPassword = ConvertTo-SecureString $env:MIKESHIFT_PFX_PASSWORD -AsPlainText -Force }
+            else { throw 'Signing needs -PfxPassword (SecureString) or MIKESHIFT_PFX_PASSWORD.' }
         }
         $PfxPath = (Resolve-Path -LiteralPath $PfxPath).Path
         $SignTool = if ($SignTool) { $SignTool } else { Find-SdkTool 'signtool.exe' }
@@ -131,7 +131,7 @@ try {
     }
 
     # --- build one MSIX per platform ------------------------------------------------------------------------------------------
-    $packagesRoot = Join-Path $root 'src\Shiftvert.App\AppPackages'
+    $packagesRoot = Join-Path $root 'src\MikeShift.App\AppPackages'
     $msixFiles = @()
     foreach ($p in $Platforms) {
         if (-not $SkipBuild) {
@@ -141,7 +141,7 @@ try {
                     ForEach-Object { Remove-Item -LiteralPath $_.FullName -Recurse -Force }
             }
             Invoke-Step "MSIX ($p, $Configuration)" {
-                dotnet build src/Shiftvert.App -c $Configuration "-p:Platform=$p" `
+                dotnet build src/MikeShift.App -c $Configuration "-p:Platform=$p" `
                     -p:GenerateAppxPackageOnBuild=true -p:AppxPackageSigningEnabled=false -p:AppxBundle=Never --nologo
             }
         }
@@ -164,7 +164,7 @@ try {
         if ($signing) { Sign-File $dest }
     }
 
-    $bundlePath = Join-Path $OutDir "Shiftvert_$version.msixbundle"
+    $bundlePath = Join-Path $OutDir "MikeShift_$version.msixbundle"
     if (Test-Path $bundlePath) { Remove-Item -LiteralPath $bundlePath -Force }
     Invoke-Step 'makeappx bundle' { & $MakeAppx bundle /d $staging /p $bundlePath /bv $version /o }
     Remove-Item -LiteralPath $staging -Recurse -Force

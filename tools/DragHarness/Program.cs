@@ -71,7 +71,7 @@ internal static class Program
         }
 
         var repo = FindRepoRoot();
-        var app = Arg("--app", Path.Combine(repo, "src", "Shiftvert.App", "bin", "x64", "Debug", "net10.0-windows10.0.26100.0", "Shiftvert.exe"));
+        var app = Arg("--app", Path.Combine(repo, "src", "MikeShift.App", "bin", "x64", "Debug", "net10.0-windows10.0.26100.0", "MikeShift.exe"));
         var wanted = Arg("--scenario", "copy");
         var screenshot = Arg("--screenshot", "");
         var theme = Arg("--theme", "dark");
@@ -85,9 +85,9 @@ internal static class Program
         if (args.Contains("--anger"))
         {
             // "Test in anger": real Explorer as the drag source (AngerKit.cs, Anger*.cs). Runs on an MTA thread (UI Automation).
-            if (!args.Contains("--attach") && Native.FindWindowW("ShiftvertWheel", null) != IntPtr.Zero)
+            if (!args.Contains("--attach") && Native.FindWindowW("MikeShiftWheel", null) != IntPtr.Zero)
             {
-                Console.Error.WriteLine("A Shiftvert process is already running; quit it first (or pass --attach).");
+                Console.Error.WriteLine("A MikeShift process is already running; quit it first (or pass --attach).");
                 return 2;
             }
             var rc = 0;
@@ -97,9 +97,9 @@ internal static class Program
             t.Join();
             return rc;
         }
-        if (Native.FindWindowW("ShiftvertWheel", null) != IntPtr.Zero)
+        if (Native.FindWindowW("MikeShiftWheel", null) != IntPtr.Zero)
         {
-            Console.Error.WriteLine("A Shiftvert process is already running; quit it first (the harness needs its own instance and log).");
+            Console.Error.WriteLine("A MikeShift process is already running; quit it first (the harness needs its own instance and log).");
             return 2;
         }
 
@@ -127,12 +127,12 @@ internal static class Program
     private static string FindRepoRoot()
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "Shiftvert.sln"))) dir = dir.Parent;
+        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "MikeShift.sln"))) dir = dir.Parent;
         return dir?.FullName ?? Directory.GetCurrentDirectory();
     }
 }
 
-/// <summary>One scripted drag against a freshly started Shiftvert.exe.</summary>
+/// <summary>One scripted drag against a freshly started MikeShift.exe.</summary>
 internal sealed class ScenarioRun
 {
     private readonly Scenario _s;
@@ -155,7 +155,7 @@ internal sealed class ScenarioRun
         _appPath = appPath;
         _theme = theme;
         _screenshot = screenshot;
-        _work = Path.Combine(Path.GetTempPath(), "shiftvert-harness-" + Guid.NewGuid().ToString("N")[..8]);
+        _work = Path.Combine(Path.GetTempPath(), "mikeshift-harness-" + Guid.NewGuid().ToString("N")[..8]);
         _logPath = Path.Combine(_work, "app-log.txt");
     }
 
@@ -258,11 +258,11 @@ internal sealed class ScenarioRun
             psi.ArgumentList.Add("--convert");
             foreach (var path in convert) psi.ArgumentList.Add(path);
         }
-        psi.Environment["SHIFTVERT_LOG"] = _logPath;
-        psi.Environment["SHIFTVERT_TRACE"] = "1";
-        psi.Environment["SHIFTVERT_ACCEPT_INJECTED"] = "1";
-        psi.Environment["SHIFTVERT_THEME"] = _theme;
-        if (Environment.GetEnvironmentVariable("SHIFTVERT_ANIMATIONS") is { } animations) psi.Environment["SHIFTVERT_ANIMATIONS"] = animations;
+        psi.Environment["MIKESHIFT_LOG"] = _logPath;
+        psi.Environment["MIKESHIFT_TRACE"] = "1";
+        psi.Environment["MIKESHIFT_ACCEPT_INJECTED"] = "1";
+        psi.Environment["MIKESHIFT_THEME"] = _theme;
+        if (Environment.GetEnvironmentVariable("MIKESHIFT_ANIMATIONS") is { } animations) psi.Environment["MIKESHIFT_ANIMATIONS"] = animations;
         _process = Process.Start(psi);
         var ready = WaitLog(t => t.Contains("hooks installed") && t.Contains("wheel ready"), 20000);
         Check("app started, wheel ready, hooks installed", ready, ready ? "" : Log());
@@ -318,7 +318,7 @@ internal sealed class ScenarioRun
 
     private static bool WheelVisible()
     {
-        var hwnd = Native.FindWindowW("ShiftvertWheel", null);
+        var hwnd = Native.FindWindowW("MikeShiftWheel", null);
         return hwnd != IntPtr.Zero && Native.IsWindowVisible(hwnd);
     }
 
@@ -711,7 +711,7 @@ internal sealed class ScenarioRun
     {
         try
         {
-            var hwnd = Native.FindWindowW("ShiftvertWheel", null);
+            var hwnd = Native.FindWindowW("MikeShiftWheel", null);
             var root = System.Windows.Automation.AutomationElement.FromHandle(hwnd);
             var type = root.Current.ControlType;
             Check("UIA: the wheel window is a List", type == System.Windows.Automation.ControlType.List, $"{type.ProgrammaticName}, name \"{root.Current.Name}\"");
@@ -729,7 +729,7 @@ internal sealed class ScenarioRun
     {
         try
         {
-            var hwnd = Native.FindWindowW("ShiftvertWheel", null);
+            var hwnd = Native.FindWindowW("MikeShiftWheel", null);
             var root = System.Windows.Automation.AutomationElement.FromHandle(hwnd);
             var children = root.FindAll(System.Windows.Automation.TreeScope.Children, System.Windows.Automation.Condition.TrueCondition);
             var focused = children.Cast<System.Windows.Automation.AutomationElement>().FirstOrDefault(c => c.Current.HasKeyboardFocus);
@@ -913,7 +913,7 @@ internal sealed class BackdropForm : Form
         e.Graphics.FillRectangle(brush, ClientRectangle);
         using var font = new Font("Segoe UI", 15);
         for (var y = 30; y < Height; y += 46)
-            e.Graphics.DrawString("Shiftvert drag harness backdrop - the wheel's glass blurs this - " + y, font, Brushes.White, 20, y);
+            e.Graphics.DrawString("MikeShift drag harness backdrop - the wheel's glass blurs this - " + y, font, Brushes.White, 20, y);
     }
 
     protected override void OnMouseDown(MouseEventArgs e)

@@ -10,8 +10,8 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <Deterministic>true</Deterministic>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
-    <Authors>Shiftvert contributors</Authors>
-    <Product>Shiftvert for Windows</Product>
+    <Authors>Michael John Peña</Authors>
+    <Product>MikeShift</Product>
     <Version>0.1.0</Version>
     <!-- Win32 (CsWin32), COM interop and Media Foundation helpers need unsafe code. -->
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>

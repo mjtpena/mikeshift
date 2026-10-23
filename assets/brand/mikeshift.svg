@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  MikeShift mark: a wheel of six rounded segments around an open hub, one segment (upper right) lit - "the tile you drop on".
+  Hand-written source of truth. tools/IconGen reads this file (a deliberately tiny SVG subset: <linearGradient>, <rect id="plate">,
+  <g id="glyph"> with <path class="seg"> / <path class="seg hot">, absolute M/L/A/Z path data) and renders every icon from it:
+  run scripts/make-icons.ps1.
+
+  Geometry (256 x 256 box, centre 128,128): outer radius 120, hub radius 30, straight 20-unit gaps between segments (about 1.25 px at
+  16 px), corner radius 11. The glyph's own transform below only positions it for viewing this file; the generator ignores it and
+  scales the glyph per target (full-bleed for the monochrome tray icons, ~66 % on the blue plate for the app / Store logos).
+
+  Colour: Fluent brand blue #0F6CBD on the plate; glyph white, inactive segments 55 % white. The tray icons are monochrome
+  (white glyph for a dark taskbar, near-black for a light one) and use the same paths.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <title>MikeShift</title>
+  <defs>
+    <linearGradient id="plateFill" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4AA3F2"/>
+      <stop offset="1" stop-color="#0F6CBD"/>
+    </linearGradient>
+  </defs>
+
+  <rect id="plate" x="0" y="0" width="256" height="256" rx="56" fill="url(#plateFill)"/>
+
+  <g id="glyph" transform="translate(128 128) scale(0.66) translate(-128 -128)" fill="#FFFFFF">
+    <path class="seg hot" d="M183.24 104.92 L230.75 92.19 A10 10 0 0 0 237.27 78.39 A120 120 0 0 0 177.61 18.73 A10 10 0 0 0 163.81 25.25 L151.08 72.76 A10 10 0 0 0 155.46 83.84 A52 52 0 0 1 172.16 100.54 A10 10 0 0 0 183.24 104.92Z"/>
+    <path class="seg" fill-opacity="0.6" d="M135.63 68.62 L148.36 21.11 A10 10 0 0 0 139.67 8.57 A120 120 0 0 0 58.18 30.41 A10 10 0 0 0 56.92 45.61 L91.7 80.39 A10 10 0 0 0 103.49 82.14 A52 52 0 0 1 126.3 76.03 A10 10 0 0 0 135.63 68.62Z"/>
+    <path class="seg" fill-opacity="0.6" d="M80.39 91.7 L45.61 56.92 A10 10 0 0 0 30.41 58.18 A120 120 0 0 0 8.57 139.67 A10 10 0 0 0 21.11 148.36 L68.62 135.63 A10 10 0 0 0 76.03 126.3 A52 52 0 0 1 82.14 103.49 A10 10 0 0 0 80.39 91.7Z"/>
+    <path class="seg" fill-opacity="0.6" d="M72.76 151.08 L25.25 163.81 A10 10 0 0 0 18.73 177.61 A120 120 0 0 0 78.39 237.27 A10 10 0 0 0 92.19 230.75 L104.92 183.24 A10 10 0 0 0 100.54 172.16 A52 52 0 0 1 83.84 155.46 A10 10 0 0 0 72.76 151.08Z"/>
+    <path class="seg" fill-opacity="0.6" d="M120.37 187.38 L107.64 234.89 A10 10 0 0 0 116.33 247.43 A120 120 0 0 0 197.82 225.59 A10 10 0 0 0 199.08 210.39 L164.3 175.61 A10 10 0 0 0 152.51 173.86 A52 52 0 0 1 129.7 179.97 A10 10 0 0 0 120.37 187.38Z"/>
+    <path class="seg" fill-opacity="0.6" d="M175.61 164.3 L210.39 199.08 A10 10 0 0 0 225.59 197.82 A120 120 0 0 0 247.43 116.33 A10 10 0 0 0 234.89 107.64 L187.38 120.37 A10 10 0 0 0 179.97 129.7 A52 52 0 0 1 173.86 152.51 A10 10 0 0 0 175.61 164.3Z"/>
+  </g>
+</svg>

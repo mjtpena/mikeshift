@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>mikeshift</AssemblyName>
+    <RootNamespace>MikeShift.Cli</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>../MikeShift.App/Assets/MikeShift.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MikeShift.Core\MikeShift.Core.csproj" />
+  </ItemGroup>
+
+  <!-- Packaging (W4b) -->
+  <PropertyGroup>
+    <!-- MikeShift.App publishes this project self-contained for the MSIX (package\cli\mikeshift.exe); plain builds stay framework-dependent. -->
+    <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
+  </PropertyGroup>
+
+</Project>

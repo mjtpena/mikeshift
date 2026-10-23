@@ -10,10 +10,10 @@
     artifacts/coverage/Cobertura.xml  merged Cobertura
     artifacts/coverage/Namespaces.txt line/branch % per namespace + the least-covered classes (also printed)
 
-  Measured: Shiftvert.Core and Shiftvert.Cli. Not measured: Shiftvert.App (WinUI), generated code (CsWin32 Windows.Win32.*,
+  Measured: MikeShift.Core and MikeShift.Cli. Not measured: MikeShift.App (WinUI), generated code (CsWin32 Windows.Win32.*,
   *.g.cs, [GeneratedCode], [ExcludeFromCodeCoverage]).
-  Note: the CLI child-process tests launch shiftvert.exe out of process, which coverlet cannot see; the in-process CliRunner
-  tests (Shiftvert.Core.Tests) count.
+  Note: the CLI child-process tests launch mikeshift.exe out of process, which coverlet cannot see; the in-process CliRunner
+  tests (MikeShift.Core.Tests) count.
 
 .PARAMETER Configuration  Debug (default) or Release.
 .PARAMETER Filter         Optional `dotnet test --filter` expression (e.g. "Category!=Slow").
@@ -37,10 +37,10 @@ try {
     if (Test-Path $out) { Remove-Item $out -Recurse -Force }
     New-Item -ItemType Directory -Path $raw | Out-Null
 
-    # One project at a time: the CLI tests launch shiftvert.exe against 30 s limits, and running them next to the 1000-test Core
+    # One project at a time: the CLI tests launch mikeshift.exe against 30 s limits, and running them next to the 1000-test Core
     # suite under instrumentation starves them (Word-backed cases time out).
     $testExit = 0
-    foreach ($proj in 'tests/Shiftvert.Core.Tests', 'tests/Shiftvert.Cli.Tests') {
+    foreach ($proj in 'tests/MikeShift.Core.Tests', 'tests/MikeShift.Cli.Tests') {
         $testArgs = @('test', $proj, '-c', $Configuration, '--nologo', '--collect:XPlat Code Coverage',
                       '--settings', 'tests/coverage.runsettings', '--results-directory', $raw)
         if ($NoBuild) { $testArgs += '--no-build' }
@@ -66,7 +66,7 @@ try {
     dotnet tool restore | Out-Null
     $list = ($reports.FullName -join ';')
     dotnet reportgenerator "-reports:$list" "-targetdir:$out" '-reporttypes:Html;TextSummary;Cobertura' `
-        '-assemblyfilters:+Shiftvert.Core;+Shiftvert.Cli' '-verbosity:Warning'
+        '-assemblyfilters:+MikeShift.Core;+MikeShift.Cli' '-verbosity:Warning'
     if ($LASTEXITCODE -ne 0) { throw 'reportgenerator failed' }
     if (Test-Path (Join-Path $out 'Summary.txt')) { } elseif (Test-Path (Join-Path $out 'TextSummary.txt')) { Rename-Item (Join-Path $out 'TextSummary.txt') 'Summary.txt' }
 
@@ -99,7 +99,7 @@ try {
     $merged | Group-Object Namespace | Sort-Object Name | ForEach-Object {
         [void] $sb.AppendLine(('{0,-46} {1,7} {2,9} {3,9}' -f $_.Name, (Sum $_.Group Lines), (Pct (Sum $_.Group LinesHit) (Sum $_.Group Lines)), (Pct (Sum $_.Group BranchesHit) (Sum $_.Group Branches))))
     }
-    foreach ($asm in 'Shiftvert.Core', 'Shiftvert.Cli') {
+    foreach ($asm in 'MikeShift.Core', 'MikeShift.Cli') {
         $g = @($merged | Where-Object { $_.Namespace -eq $asm -or $_.Namespace -like "$asm.*" })
         if ($g.Count -gt 0) {
             [void] $sb.AppendLine(('{0,-46} {1,7} {2,9} {3,9}' -f "TOTAL $asm", (Sum $g Lines), (Pct (Sum $g LinesHit) (Sum $g Lines)), (Pct (Sum $g BranchesHit) (Sum $g Branches))))
