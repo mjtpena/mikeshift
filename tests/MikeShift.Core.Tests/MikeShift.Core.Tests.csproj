@@ -21,6 +21,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The command-line tests reuse the integrity suite's independent readers (tests/MikeShift.Core.Tests/Integrity). -->
+    <InternalsVisibleTo Include="MikeShift.Cli.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Using Include="Xunit" />
     <Using Include="MikeShift.Core.Tests.Infrastructure" />
   </ItemGroup>

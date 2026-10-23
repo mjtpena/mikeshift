@@ -88,9 +88,17 @@ internal static class MediaCommon
     /// Runs <paramref name="body"/> with a path Media Foundation can read: the input itself, or for AIFF (which Media Foundation
     /// has no source for) a temporary WAV decoded by the built-in AIFF reader, deleted afterwards.
     /// </summary>
-    public static async Task WithTranscodableSource(string input, MediaInfo info, CancellationToken ct, Func<string, Task> body)
+    /// <param name="flatten16">
+    /// Also stage everything that is not already a 16-bit WAV as a 16-bit WAV (MP3 output). Windows' MP3 encoder takes 16-bit audio,
+    /// and when the transcoder has to decode first (24-bit WAV, AAC...) it ends the file 40-60 ms early: the tail of the music is lost.
+    /// Encoding from a plain 16-bit WAV does not do that.
+    /// </param>
+    public static async Task WithTranscodableSource(string input, MediaInfo info, CancellationToken ct, Func<string, Task> body,
+        bool flatten16 = false)
     {
-        if (!AiffFile.LooksLikeAiff(input))
+        var aiff = AiffFile.LooksLikeAiff(input);
+        var deep = flatten16 && (info.AudioBits > 16 || !(IsPcmContainer(input, out var isWav) && isWav));
+        if (!aiff && !deep)
         {
             await body(input).ConfigureAwait(false);
             return;
@@ -101,9 +109,11 @@ internal static class MediaCommon
         {
             await Task.Run(() =>
             {
-                using var src = AiffPcmSource.TryOpen(input) ?? throw new ConversionException("This AIFF file is damaged.");
+                using var src = aiff
+                    ? AiffPcmSource.TryOpen(input) ?? throw new ConversionException("This AIFF file is damaged.")
+                    : OpenPcm(input, info);
                 using var fs = new FileStream(staged, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None, 1 << 16);
-                PcmWriter.WriteWav(src, fs, src.BitsPerSample, -1, ct);
+                PcmWriter.WriteWav(src, fs, flatten16 ? Math.Min(16, src.BitsPerSample) : src.BitsPerSample, -1, ct);
             }, ct).ConfigureAwait(false);
             await body(staged).ConfigureAwait(false);
         }
@@ -131,7 +141,7 @@ internal static class MediaCommon
             try
             {
                 File.WriteAllBytes(destination, []);
-                await MediaTranscode.RunAsync(source, destination, MediaTranscode.M4a(rung, rung == 0 ? 0 : rate, rung == 0 ? 0 : channels),
+                await RunAudioEncodeAsync(source, destination, MediaTranscode.M4a(rung, rung == 0 ? 0 : rate, rung == 0 ? 0 : channels),
                     trim, "M4A", ct).ConfigureAwait(false);
                 return;
             }
@@ -151,13 +161,13 @@ internal static class MediaCommon
         try
         {
             File.WriteAllBytes(destination, []);
-            await MediaTranscode.RunAsync(source, destination, MediaTranscode.Mp3(rate, channels), null, "MP3", ct).ConfigureAwait(false);
+            await RunAudioEncodeAsync(source, destination, MediaTranscode.Mp3(rate, channels), null, "MP3", ct).ConfigureAwait(false);
         }
         catch (ConversionException)
         {
             ct.ThrowIfCancellationRequested();
             File.WriteAllBytes(destination, []);
-            await MediaTranscode.RunAsync(source, destination, MediaTranscode.Mp3(), null, "MP3", ct).ConfigureAwait(false);
+            await RunAudioEncodeAsync(source, destination, MediaTranscode.Mp3(), null, "MP3", ct).ConfigureAwait(false);
         }
     }
 
@@ -171,13 +181,55 @@ internal static class MediaCommon
         try
         {
             File.WriteAllBytes(destination, []);
-            await MediaTranscode.RunAsync(source, destination, MediaTranscode.Flac(rate, channels, bits), null, "FLAC", ct).ConfigureAwait(false);
+            await RunAudioEncodeAsync(source, destination, MediaTranscode.Flac(rate, channels, bits), null, "FLAC", ct).ConfigureAwait(false);
         }
         catch (ConversionException)
         {
             ct.ThrowIfCancellationRequested();
             File.WriteAllBytes(destination, []);
-            await MediaTranscode.RunAsync(source, destination, MediaTranscode.Flac(0, 0, 0), null, "FLAC", ct).ConfigureAwait(false);
+            await RunAudioEncodeAsync(source, destination, MediaTranscode.Flac(0, 0, 0), null, "FLAC", ct).ConfigureAwait(false);
         }
+    }
+
+    // ------------------------------------------------------------ complete-file check
+
+    /// <summary>How many times an audio encode that ended early is repeated before giving up.</summary>
+    private const int MaxEncodeAttempts = 4;
+
+    /// <summary>
+    /// <see cref="MediaTranscode.RunAsync"/> for an audio target, plus a check that the file was written to the end. Windows'
+    /// transcoder sometimes (about one MP3 encode in eight on a busy PC, measured) finishes "successfully" with the last 50-100 ms of
+    /// the audio missing. Where the length to expect is known exactly (a WAV source, including the 16-bit WAV staged for MP3, or a
+    /// trim range), a file that ends early is thrown away and encoded again; if it keeps happening the job fails instead of saving
+    /// a clipped file.
+    /// </summary>
+    private static async Task RunAudioEncodeAsync(
+        string source, string destination, Windows.Media.MediaProperties.MediaEncodingProfile profile, TimeRange? trim, string what, CancellationToken ct)
+    {
+        var want = ExactSeconds(source, trim);
+        for (var attempt = 1; ; attempt++)
+        {
+            await MediaTranscode.RunAsync(source, destination, profile, trim, what, ct).ConfigureAwait(false);
+            if (want is not { } seconds || EndsOnTime(destination, seconds)) return;
+            if (attempt >= MaxEncodeAttempts)
+                throw new ConversionException($"Windows stopped writing the {what} file before the end of the audio, so it was not saved. Please try again.");
+            ct.ThrowIfCancellationRequested();
+            File.WriteAllBytes(destination, []);
+        }
+    }
+
+    /// <summary>The length the output must reach: the trim range, or a PCM WAV source's own length; null when it is not known exactly.</summary>
+    private static double? ExactSeconds(string source, TimeRange? trim)
+    {
+        if (trim is { } t) return t.Duration.TotalSeconds;
+        using var wav = WavPcmSource.TryOpen(source);
+        return wav is { TotalFrames: > 0, SampleRate: > 0 } ? (double)wav.TotalFrames / wav.SampleRate : null;
+    }
+
+    /// <summary>True if the encoded file is at least <paramref name="seconds"/> long (less 25 ms), or its length cannot be read at all.</summary>
+    private static bool EndsOnTime(string path, double seconds)
+    {
+        var got = MediaInfo.TryRead(path);
+        return got is null || got.Duration.TotalSeconds >= seconds - 0.025;
     }
 }

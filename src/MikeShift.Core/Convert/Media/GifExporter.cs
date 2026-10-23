@@ -94,7 +94,7 @@ internal static class GifExporter
     }
 
     /// <summary>Asks the reader for RGB32 frames at the native size; returns the actual width, height and row stride in bytes (negative = bottom-up).</summary>
-    private static (int W, int H, int Stride) ConfigureRgb32(IMFSourceReader reader)
+    internal static (int W, int H, int Stride) ConfigureRgb32(IMFSourceReader reader)
     {
         var native = MfInterop.TryGetNativeType(reader, MfInterop.FirstVideoStream)
                      ?? throw new ConversionException("This file has no video.");
@@ -109,7 +109,20 @@ internal static class GifExporter
             MfInterop.SetGuid(want, PInvoke.MF_MT_MAJOR_TYPE, PInvoke.MFMediaType_Video);
             MfInterop.SetGuid(want, PInvoke.MF_MT_SUBTYPE, PInvoke.MFVideoFormat_RGB32);
             MfInterop.SetUInt32(want, PInvoke.MF_MT_INTERLACE_MODE, (uint)MFVideoInterlaceMode.MFVideoInterlace_Progressive);
-            unsafe { reader.SetCurrentMediaType(MfInterop.FirstVideoStream, null, want); }
+            try
+            {
+                unsafe { reader.SetCurrentMediaType(MfInterop.FirstVideoStream, null, want); }
+            }
+            catch (COMException)
+            {
+                // WMV streams refuse an explicit "progressive" request (MF_E_INVALIDMEDIATYPE) but give RGB32 when the
+                // interlace mode is left out; the decoder then reports the mode itself.
+                MfInterop.Release(want);
+                want = MfInterop.CreateMediaType();
+                MfInterop.SetGuid(want, PInvoke.MF_MT_MAJOR_TYPE, PInvoke.MFMediaType_Video);
+                MfInterop.SetGuid(want, PInvoke.MF_MT_SUBTYPE, PInvoke.MFVideoFormat_RGB32);
+                unsafe { reader.SetCurrentMediaType(MfInterop.FirstVideoStream, null, want); }
+            }
 
             reader.GetCurrentMediaType(MfInterop.FirstVideoStream, out got);
             MfInterop.TryGetUInt64(got, PInvoke.MF_MT_FRAME_SIZE, out var actual);

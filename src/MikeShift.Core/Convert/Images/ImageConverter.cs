@@ -58,8 +58,8 @@ public static class ImageConverter
         CompressAsync(input, Capabilities.Current, ct);
 
     /// <summary>
-    /// Compress. Output is a JPG (flattened on white) unless the source is HEIC or has real transparency: then HEIC when
-    /// <paramref name="caps"/> allows encoding it, else PNG. Animated GIF/APNG/WebP are refused. If the result is not at least
+    /// Compress. Output is a JPG (flattened on white) unless the source has real transparency (then PNG, which keeps it) or is
+    /// HEIC (then HEIC when <paramref name="caps"/> allows encoding it, else PNG). Animated GIF/APNG/WebP are refused. If the result is not at least
     /// 5 % smaller than the original a <see cref="ConversionException"/> ("already small") is thrown and nothing is written.
     /// </summary>
     public static async Task<string> CompressAsync(string input, Capabilities caps, CancellationToken ct)
@@ -70,18 +70,16 @@ public static class ImageConverter
         var pixels = LongSideAtMost(img.Pixels, CompressMaxLongSide);
         var hasAlpha = img.HasRealAlpha;
 
+        // Real transparency must survive, and neither JPEG nor Windows' HEIF encoder can store it: those pictures stay PNG.
+        // HEIC photos stay HEIC when this PC can encode it; everything else becomes JPEG.
         ImageFormat format;
-        double quality;
-        if (img.Container == ImageContainer.Heic || hasAlpha)
-        {
+        const double quality = CompressQuality;
+        if (hasAlpha)
+            format = ImageFormat.Png;
+        else if (img.Container == ImageContainer.Heic)
             format = caps.HeifEncode ? ImageFormat.Heic : ImageFormat.Png;
-            quality = CompressQuality;
-        }
         else
-        {
             format = ImageFormat.Jpg;
-            quality = CompressQuality;
-        }
 
         var bytes = await EncodeAsync(img, pixels, format, quality, keepExif: true, ct).ConfigureAwait(false);
 

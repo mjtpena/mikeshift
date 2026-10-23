@@ -130,7 +130,10 @@ public class VideoConverterTests
     public async Task Mp4_to_M4v_rewraps_h264_and_aac_without_reencoding()
     {
         using var tmp = new TempDir();
-        var mp4 = CopyMp4(tmp);
+        // An ordinary H.264/AAC file. (The MediaComposition fixture repeats video time stamps, which the MP4 sink cannot copy
+        // without losing samples, so MikeShift transcodes that one instead: see Integrity.VideoIntegrityTests.)
+        var mp4 = tmp.Combine("ordinary.mp4");
+        await Integrity.VideoCheck.WriteCleanMp4Async(CopyMp4(tmp), mp4);
         using var guard = OriginalsGuard.Watch(mp4);
         var source = Info(mp4);
 

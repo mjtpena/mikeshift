@@ -98,6 +98,7 @@ or directly: `dotnet build MikeShift.sln`, `dotnet test MikeShift.sln`. CI (GitH
 ## Privacy
 
 * No network access anywhere in the product. No telemetry, no update check inside the app.
+  Measured, not just claimed: `scripts/verify-offline.ps1` runs every conversion through the real command line and a `MikeShift.exe` session while polling every 50 ms for sockets owned by MikeShift (none were ever seen); `scripts/audit-network-imports.ps1` lists the networking APIs a build can reach ([docs/test-runs/2026-10-24-local-and-integrity.md](docs/test-runs/2026-10-24-local-and-integrity.md)). One caveat that is not MikeShift's: **if Microsoft Word is installed, legacy `.doc` files and DOCX to PDF are handed to Word, a separate Microsoft program that opens its own connections to Microsoft services** (licensing, "connected experiences" and similar, governed by your Office privacy settings). Without Word, or for any other format, nothing leaves the PC. Reading an OneDrive "online only" file makes OneDrive download it; that is OneDrive, not MikeShift.
 * Originals are never modified or moved: every conversion writes a new file (via a temporary file in the same folder, then a rename, so a failure never leaves a half-written output).
 * The input hook sees only mouse movement, the left button, the wheel and the Shift/Ctrl/Alt/Esc keys, and only to run the gesture. No other key is read or stored.
 * While the wheel is up, a small screenshot of the pixels under it is blurred to make the glass effect; it stays in memory and is discarded when the wheel hides.
