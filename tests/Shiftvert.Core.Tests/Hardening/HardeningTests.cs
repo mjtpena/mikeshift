@@ -10,9 +10,16 @@ namespace Shiftvert.Core.Tests.Hardening;
 /// <c>error: ...</c> (exit code 1), within 30 s, never leaving a partial or stray file next to the original and never touching it.
 /// The matrix runs the real <see cref="CliRunner"/> in-process (the same code the <c>shiftvert</c> executable runs).
 /// </summary>
+[Collection(WordCollection.Name)] // the matrix sends a .doc to Word, which must not run beside the other Word tests
 public class HardeningTests
 {
     private static readonly TimeSpan MaxRun = TimeSpan.FromSeconds(30);
+
+    /// <summary>
+    /// A legacy .doc goes through Word, which starts slowly and has its own 90 s kill switch (WordInterop.Timeout): the limit for those
+    /// has to outlast that, or a slow Word start (cold machine, add-ins) would be reported as a hang. A real hang still fails.
+    /// </summary>
+    private static readonly TimeSpan MaxWordRun = TimeSpan.FromSeconds(120);
 
     private sealed record Sample(string Name, byte[] Bytes);
 
@@ -100,13 +107,15 @@ public class HardeningTests
 
     private sealed record Run(int Exit, string Out, string Err, TimeSpan Elapsed);
 
-    private static async Task<Run> RunCli(params string[] args)
+    private static Task<Run> RunCli(params string[] args) => RunCli(MaxRun, args);
+
+    private static async Task<Run> RunCli(TimeSpan limit, params string[] args)
     {
         var stdout = new StringWriter();
         var stderr = new StringWriter();
         var sw = Stopwatch.StartNew();
         var task = Task.Run(() => CliRunner.RunAsync(args, stdout, stderr, Capabilities.Current));
-        var exit = await task.WaitAsync(MaxRun); // a hang fails the test with a TimeoutException
+        var exit = await task.WaitAsync(limit); // a hang fails the test with a TimeoutException
         return new Run(exit, stdout.ToString(), stderr.ToString(), sw.Elapsed);
     }
 
@@ -148,7 +157,7 @@ public class HardeningTests
             try
             {
                 using var guard = OriginalsGuard.Watch(path);
-                run = await RunCli([.. args]);
+                run = await RunCli(sample.Name.EndsWith(".doc", StringComparison.OrdinalIgnoreCase) ? MaxWordRun : MaxRun, [.. args]);
             }
             catch (Exception ex)
             {

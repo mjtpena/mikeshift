@@ -7,6 +7,7 @@ using static Shiftvert.Core.Tests.Documents.DocumentTestHelpers;
 
 namespace Shiftvert.Core.Tests.Documents;
 
+[Collection(WordCollection.Name)]
 public class DocumentConversionTests
 {
     public static TheoryData<string, DocFormat> Pairs()

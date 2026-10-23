@@ -1,7 +1,5 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
-using Windows.Win32;
-using Windows.Win32.Foundation;
 
 namespace Shiftvert.Core.Documents;
 
@@ -29,10 +27,18 @@ internal static class WordInterop
     // A password that no document uses: a protected file fails fast instead of making Word prompt.
     private const string BogusPassword = "\u0001";
 
+    /// <summary>
+    /// One Word conversion at a time per process. Word instances started together start slowly and stall each other, and the
+    /// "which WINWORD.EXE is mine" bookkeeping below (a before/after process diff) is only unambiguous when no other conversion
+    /// is launching or killing a Word at the same moment. The wait honours cancellation and does not count against <see cref="Timeout"/>.
+    /// </summary>
+    private static readonly SemaphoreSlim s_gate = new(1, 1);
+
     /// <summary>The WINWORD.EXE processes that existed before this conversion, and the one it started (once known).</summary>
     private sealed class Instance(HashSet<int> before)
     {
         public HashSet<int> Before { get; } = before;
+        public DateTime StartedUtc { get; } = DateTime.UtcNow;
         public volatile int Pid;
     }
 
@@ -46,7 +52,10 @@ internal static class WordInterop
         return pids;
     }
 
-    /// <summary>Kills the Word process this conversion started (never one that was already running).</summary>
+    /// <summary>
+    /// Kills the Word process this conversion started (never one that was already running). When the pid isn't known yet
+    /// (Word is still starting) only WINWORD.EXE processes that appeared since this conversion began are candidates.
+    /// </summary>
     private static void Kill(Instance instance)
     {
         var pids = instance.Pid != 0 ? [instance.Pid] : WordPids().Except(instance.Before).ToList();
@@ -56,7 +65,9 @@ internal static class WordInterop
             try
             {
                 using var p = Process.GetProcessById(pid);
-                if (string.Equals(p.ProcessName, "WINWORD", StringComparison.OrdinalIgnoreCase)) p.Kill();
+                if (!string.Equals(p.ProcessName, "WINWORD", StringComparison.OrdinalIgnoreCase)) continue;
+                if (instance.Pid == 0 && p.StartTime.ToUniversalTime() < instance.StartedUtc.AddSeconds(-1)) continue;
+                p.Kill();
             }
             catch (Exception)
             {
@@ -80,6 +91,19 @@ internal static class WordInterop
     /// Throws <see cref="ConversionException"/> if Word can't be started or can't open the file.
     /// </summary>
     public static async Task ConvertAsync(string input, DocFormat format, string outputPath, CancellationToken ct)
+    {
+        await s_gate.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            await ConvertCoreAsync(input, format, outputPath, ct).ConfigureAwait(false);
+        }
+        finally
+        {
+            s_gate.Release();
+        }
+    }
+
+    private static async Task ConvertCoreAsync(string input, DocFormat format, string outputPath, CancellationToken ct)
     {
         ct.ThrowIfCancellationRequested();
         var work = Path.Combine(Path.GetTempPath(), "shiftvert-word-" + Guid.NewGuid().ToString("N"));
@@ -168,15 +192,10 @@ internal static class WordInterop
         try
         {
             word = Activator.CreateInstance(type) ?? throw new ConversionException("Microsoft Word couldn't be started.");
-            try
-            {
-                PInvoke.GetWindowThreadProcessId(new HWND((nint)(int)word.Hwnd), out var pid);
-                instance.Pid = (int)pid;
-            }
-            catch (Exception)
-            {
-                // Hwnd is optional; the before/after process diff finds the instance instead.
-            }
+            // Word's Application object has no Hwnd (only windows do, and none is open yet), so the instance is found by a
+            // process diff. Conversions are serialised by s_gate, so a single new WINWORD.EXE is ours.
+            var started = WordPids().Except(instance.Before).ToList();
+            if (started.Count == 1) instance.Pid = started[0];
             word.Visible = false;
             word.DisplayAlerts = 0;               // wdAlertsNone
             try { word.AutomationSecurity = 3; } catch (Exception) { /* msoAutomationSecurityForceDisable; optional */ }
