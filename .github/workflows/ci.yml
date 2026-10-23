@@ -34,6 +34,23 @@ jobs:
       - name: Test (Release)
         run: dotnet test Shiftvert.sln -c Release --no-build --logger "trx;LogFileName=test-results.trx"
 
+      # Second pass of the same suites under coverlet (scripts/coverage.ps1: merged HTML, Summary.txt and Cobertura in artifacts/coverage).
+      # Informational: no threshold is enforced.
+      - name: Coverage
+        continue-on-error: true
+        shell: pwsh
+        run: ./scripts/coverage.ps1 -Configuration Release -NoBuild
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: |
+            artifacts/coverage/
+            !artifacts/coverage/raw/**
+          if-no-files-found: ignore
+
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
