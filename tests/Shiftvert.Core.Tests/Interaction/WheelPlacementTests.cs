@@ -30,6 +30,40 @@ public class WheelPlacementTests
         Assert.Equal(380, r.Height);
     }
 
+    // Found by the GUI "test in anger" run (2026-10-23): Shift pressed with the cursor over the taskbar placed the wheel inside the work area
+    // and therefore NOT under the cursor, so OLE never delivered DragEnter and the wheel silently hid.
+    private static readonly ScreenRect PrimaryBounds = new(0, 0, 1920, 1080);
+
+    [Theory]
+    [InlineData(960, 1070)]   // taskbar at the bottom
+    [InlineData(1915, 1078)]  // the very corner of the taskbar
+    [InlineData(5, 1042)]
+    public void CursorOverTheTaskbarStaysInsideTheWindow(int x, int y)
+    {
+        var cursor = new PointPx(x, y);
+        var r = WheelPlacement.ForCursor(cursor, 380, Primary, PrimaryBounds);
+        Assert.True(r.Contains(cursor), $"{r} must contain {cursor}");
+        Assert.True(r.Left >= PrimaryBounds.Left && r.Right <= PrimaryBounds.Right && r.Top >= PrimaryBounds.Top && r.Bottom <= PrimaryBounds.Bottom);
+        Assert.Equal(380, r.Width);
+    }
+
+    [Fact]
+    public void CursorOverAVerticalTaskbarStaysInsideTheWindow()
+    {
+        var work = new ScreenRect(48, 0, 1920, 1080);   // taskbar on the left
+        var r = WheelPlacement.ForCursor(new PointPx(10, 500), 380, work, PrimaryBounds);
+        Assert.True(r.Contains(new PointPx(10, 500)));
+        Assert.Equal(0, r.Left);
+    }
+
+    [Fact]
+    public void CursorInsideTheWorkAreaStillClampsToTheWorkArea()
+    {
+        var r = WheelPlacement.ForCursor(new PointPx(960, 1030), 380, Primary, PrimaryBounds);
+        Assert.Equal(660, r.Top);
+        Assert.Equal(1040, r.Bottom);
+    }
+
     [Fact]
     public void NegativeCoordinatesOnAMonitorLeftOfThePrimary()
     {

@@ -412,7 +412,7 @@ internal sealed class WheelController : IDisposable
         var monitor = WheelWindow.MonitorAt(cursor);
         _dpi = monitor.DpiScale;
         var size = WheelGeometry.WindowSizePx(_dpi);
-        _rect = WheelPlacement.ForCursor(cursor, size, monitor.WorkArea);
+        _rect = WheelPlacement.ForCursor(cursor, size, monitor.WorkArea, monitor.Bounds);
 
         _dragModel.ToolsKey = _session.ToolsKey;
         _dragModel.SetActions([]);

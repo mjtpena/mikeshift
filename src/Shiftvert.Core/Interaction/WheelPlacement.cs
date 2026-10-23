@@ -22,9 +22,12 @@ public static class WheelPlacement
     /// A square window of <paramref name="size"/> physical px centred on <paramref name="cursor"/>, shifted just enough to lie inside
     /// <paramref name="workArea"/>. If the work area is smaller than the window the window is aligned to its top-left corner.
     /// Works with negative coordinates (monitors left of / above the primary).
+    /// If the cursor is over the taskbar (inside <paramref name="monitorBounds"/> but outside the work area), the window is kept inside the
+    /// whole monitor instead: a window that does not contain the cursor never receives the OLE <c>DragEnter</c>, so there would be no wheel.
     /// </summary>
-    public static ScreenRect ForCursor(PointPx cursor, int size, ScreenRect workArea)
+    public static ScreenRect ForCursor(PointPx cursor, int size, ScreenRect workArea, ScreenRect? monitorBounds = null)
     {
+        if (monitorBounds is { } bounds && !workArea.Contains(cursor) && bounds.Contains(cursor)) workArea = bounds;
         var left = cursor.X - size / 2;
         var top = cursor.Y - size / 2;
         left = Math.Max(workArea.Left, Math.Min(left, workArea.Right - size));
