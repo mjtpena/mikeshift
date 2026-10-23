@@ -561,29 +561,48 @@ public class ActionsCoverageTests
         }
     }
 
-    /// <summary>Denies listing and reading <paramref name="directory"/> to the current user until disposed.</summary>
-    private static IDisposable DenyRead(string directory) => new DenyReadScope(directory);
+    private static IDisposable DenyRead(string directory) => CoverageAcl.DenyRead(directory);
+}
 
-    private sealed class DenyReadScope : IDisposable
+/// <summary>Temporary "deny read" ACLs for the error-path tests (restored on dispose).</summary>
+internal static class CoverageAcl
+{
+    /// <summary>Denies listing/reading the file or directory at <paramref name="path"/> to the current user until disposed.</summary>
+    public static IDisposable DenyRead(string path) => new Scope(path);
+
+    private sealed class Scope : IDisposable
     {
-        private readonly DirectoryInfo _dir;
+        private readonly string _path;
+        private readonly bool _isDirectory;
         private readonly FileSystemAccessRule _rule;
 
-        public DenyReadScope(string directory)
+        public Scope(string path)
         {
-            _dir = new DirectoryInfo(directory);
+            _path = path;
+            _isDirectory = Directory.Exists(path);
             _rule = new FileSystemAccessRule(WindowsIdentity.GetCurrent().User!, FileSystemRights.ListDirectory | FileSystemRights.ReadData,
                 AccessControlType.Deny);
-            var sec = _dir.GetAccessControl();
-            sec.AddAccessRule(_rule);
-            _dir.SetAccessControl(sec);
+            Apply(sec => sec.AddAccessRule(_rule));
         }
 
-        public void Dispose()
+        public void Dispose() => Apply(sec => sec.RemoveAccessRule(_rule));
+
+        private void Apply(Action<FileSystemSecurity> change)
         {
-            var sec = _dir.GetAccessControl();
-            sec.RemoveAccessRule(_rule);
-            _dir.SetAccessControl(sec);
+            if (_isDirectory)
+            {
+                var d = new DirectoryInfo(_path);
+                var sec = d.GetAccessControl();
+                change(sec);
+                d.SetAccessControl(sec);
+            }
+            else
+            {
+                var f = new FileInfo(_path);
+                var sec = f.GetAccessControl();
+                change(sec);
+                f.SetAccessControl(sec);
+            }
         }
     }
 }
