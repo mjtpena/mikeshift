@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using Windows.Win32;
 using Windows.Win32.Foundation;
@@ -12,6 +13,7 @@ namespace MikeShift.Core.Media;
 /// plain managed values. Rules: every COM object obtained here is released with <see cref="Release"/> in a
 /// <c>finally</c>; <c>MFStartup</c> runs once per process and is balanced by one <c>MFShutdown</c> at process exit.
 /// </summary>
+[UnconditionalSuppressMessage("Trimming", "IL2050", Justification = TrimJustification.ComInterop)]
 internal static class MfInterop
 {
     // Source Reader stream selectors (mfreadwrite.h). Declared here to avoid enum casts.

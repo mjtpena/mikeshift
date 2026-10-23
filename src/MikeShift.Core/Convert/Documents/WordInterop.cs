@@ -1,4 +1,8 @@
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
+using System.Reflection;
+using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
 
 namespace MikeShift.Core.Documents;
@@ -10,7 +14,7 @@ namespace MikeShift.Core.Documents;
 /// A conversion that does not finish within <see cref="Timeout"/> (or is cancelled) has its own WINWORD.EXE killed, so a hung
 /// or prompting Word can never block the job forever.
 /// </summary>
-internal static class WordInterop
+internal static partial class WordInterop
 {
     // WdSaveFormat / WdExportFormat values.
     private const int WdFormatText = 2;
@@ -152,8 +156,7 @@ internal static class WordInterop
             {
                 throw;
             }
-            catch (Exception ex) when (ex is COMException or InvalidCastException or InvalidOperationException
-                                           or Microsoft.CSharp.RuntimeBinder.RuntimeBinderException)
+            catch (Exception ex) when (ex is COMException or InvalidCastException or InvalidOperationException)
             {
                 throw new ConversionException("Microsoft Word couldn't convert this file.", ex);
             }
@@ -185,27 +188,26 @@ internal static class WordInterop
 
     private static void Run(string input, DocFormat format, string output, Instance instance)
     {
-        var type = Type.GetTypeFromProgID("Word.Application")
-                   ?? throw new ConversionException("Microsoft Word isn't available.");
-        dynamic? word = null;
-        dynamic? doc = null;
+        object? word = null;
+        object? doc = null;
         try
         {
-            word = Activator.CreateInstance(type) ?? throw new ConversionException("Microsoft Word couldn't be started.");
+            word = LateBound.CreateInstance("Word.Application")
+                   ?? throw new ConversionException("Microsoft Word isn't available.");
             // Word's Application object has no Hwnd (only windows do, and none is open yet), so the instance is found by a
             // process diff. Conversions are serialised by s_gate, so a single new WINWORD.EXE is ours.
             var started = WordPids().Except(instance.Before).ToList();
             if (started.Count == 1) instance.Pid = started[0];
-            word.Visible = false;
-            word.DisplayAlerts = 0;               // wdAlertsNone
-            try { word.AutomationSecurity = 3; } catch (Exception) { /* msoAutomationSecurityForceDisable; optional */ }
+            LateBound.Set(word, "Visible", false);
+            LateBound.Set(word, "DisplayAlerts", 0);               // wdAlertsNone
+            try { LateBound.Set(word, "AutomationSecurity", 3); } catch (Exception) { /* msoAutomationSecurityForceDisable; optional */ }
 
             try
             {
-                doc = word.Documents.Open(
-                    FileName: input, ConfirmConversions: false, ReadOnly: true, AddToRecentFiles: false,
-                    PasswordDocument: BogusPassword, WritePasswordDocument: BogusPassword,
-                    Visible: false, NoEncodingDialog: true, OpenAndRepair: false);
+                doc = LateBound.Call(LateBound.Get(word, "Documents"), "Open",
+                    ("FileName", input), ("ConfirmConversions", false), ("ReadOnly", true), ("AddToRecentFiles", false),
+                    ("PasswordDocument", BogusPassword), ("WritePasswordDocument", BogusPassword),
+                    ("Visible", false), ("NoEncodingDialog", true), ("OpenAndRepair", false));
             }
             catch (COMException ex) when (IsPasswordError(ex))
             {
@@ -214,23 +216,78 @@ internal static class WordInterop
 
             if (format == DocFormat.Pdf)
             {
-                doc.ExportAsFixedFormat(OutputFileName: output, ExportFormat: WdExportFormatPdf);
+                LateBound.Call(doc, "ExportAsFixedFormat", ("OutputFileName", output), ("ExportFormat", WdExportFormatPdf));
             }
             else if (format == DocFormat.Txt)
             {
-                doc.SaveAs2(FileName: output, FileFormat: SaveFormat(format), Encoding: MsoEncodingUtf8, AllowSubstitutions: false);
+                LateBound.Call(doc, "SaveAs2", ("FileName", output), ("FileFormat", SaveFormat(format)), ("Encoding", MsoEncodingUtf8), ("AllowSubstitutions", false));
             }
             else
             {
-                doc.SaveAs2(FileName: output, FileFormat: SaveFormat(format));
+                LateBound.Call(doc, "SaveAs2", ("FileName", output), ("FileFormat", SaveFormat(format)));
             }
         }
         finally
         {
-            try { if (doc is not null) doc.Close(SaveChanges: 0); } catch (Exception) { /* ignore */ }
-            try { if (word is not null) word.Quit(SaveChanges: 0); } catch (Exception) { /* ignore */ }
-            try { if (doc is not null) Marshal.FinalReleaseComObject((object)doc); } catch (Exception) { /* ignore */ }
-            try { if (word is not null) Marshal.FinalReleaseComObject((object)word); } catch (Exception) { /* ignore */ }
+            try { if (doc is not null) LateBound.Call(doc, "Close", ("SaveChanges", 0)); } catch (Exception) { /* ignore */ }
+            try { if (word is not null) LateBound.Call(word, "Quit", ("SaveChanges", 0)); } catch (Exception) { /* ignore */ }
+            try { if (doc is not null) Marshal.FinalReleaseComObject(doc); } catch (Exception) { /* ignore */ }
+            try { if (word is not null) Marshal.FinalReleaseComObject(word); } catch (Exception) { /* ignore */ }
+        }
+    }
+
+    /// <summary>
+    /// Late-bound (IDispatch) calls on a COM automation object, without <c>dynamic</c>: the C# runtime binder is reflection over the
+    /// object's type, which an IL-trimmed app cannot rely on. <see cref="Type.InvokeMember(string, BindingFlags, Binder?, object?, object?[]?, ParameterModifier[]?, CultureInfo?, string[]?)"/>
+    /// on a COM object goes straight to <c>IDispatch::Invoke</c> with named arguments, as Word's optional-parameter methods need.
+    /// COM failures are rethrown as the original <see cref="COMException"/> (reflection wraps them in a <see cref="TargetInvocationException"/>).
+    /// </summary>
+    private static partial class LateBound
+    {
+        private const uint ClsctxServer = 0x15;                        // CLSCTX_INPROC_SERVER | CLSCTX_LOCAL_SERVER | CLSCTX_REMOTE_SERVER
+        private static readonly Guid IidIDispatch = new("00020400-0000-0000-C000-000000000046");
+
+        [LibraryImport("ole32.dll", StringMarshalling = StringMarshalling.Utf16)]
+        private static partial int CLSIDFromProgID(string progId, out Guid clsid);
+
+        [LibraryImport("ole32.dll")]
+        private static partial int CoCreateInstance(in Guid clsid, nint outer, uint context, in Guid iid, out nint instance);
+
+        /// <summary>Starts the automation server registered as <paramref name="progId"/> and returns its IDispatch; null if it is not registered.</summary>
+        public static object? CreateInstance(string progId)
+        {
+            if (CLSIDFromProgID(progId, out var clsid) < 0) return null;
+            Marshal.ThrowExceptionForHR(CoCreateInstance(clsid, 0, ClsctxServer, IidIDispatch, out var unknown));
+            try { return Marshal.GetObjectForIUnknown(unknown); }
+            finally { Marshal.Release(unknown); }
+        }
+
+        public static object? Get(object? target, string property) =>
+            Invoke(target, property, BindingFlags.GetProperty, [], null);
+
+        public static void Set(object? target, string property, object value) =>
+            Invoke(target, property, BindingFlags.SetProperty, [value], null);
+
+        /// <summary>Calls <paramref name="method"/> with every argument passed by name (Word's methods take dozens of optional ones).</summary>
+        public static object? Call(object? target, string method, params (string Name, object Value)[] args) =>
+            Invoke(target, method, BindingFlags.InvokeMethod, args.Select(a => a.Value).ToArray(), args.Select(a => a.Name).ToArray());
+
+        // IL2075 is about Type.InvokeMember on a Type the trimmer cannot see, which it warns about because for ordinary managed types it looks
+        // members up in metadata that may have been trimmed. Here the target is always a COM object (the RCW of the IDispatch that CreateInstance
+        // returned, or something Word handed back): for those, InvokeMember never consults managed metadata, it calls IDispatch::Invoke.
+        [UnconditionalSuppressMessage("Trimming", "IL2075", Justification = "The target is a COM object; Type.InvokeMember on it is an IDispatch call, not a metadata lookup.")]
+        private static object? Invoke(object? target, string member, BindingFlags kind, object?[] args, string[]? names)
+        {
+            ArgumentNullException.ThrowIfNull(target);
+            try
+            {
+                return target.GetType().InvokeMember(member, kind, binder: null, target, args, modifiers: null, culture: CultureInfo.InvariantCulture, names);
+            }
+            catch (TargetInvocationException ex) when (ex.InnerException is not null)
+            {
+                ExceptionDispatchInfo.Capture(ex.InnerException).Throw();
+                throw;
+            }
         }
     }
 }

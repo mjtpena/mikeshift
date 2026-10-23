@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.ComTypes;
 using Windows.Win32;
@@ -98,6 +99,7 @@ internal static unsafe class DataObjectInspector
     }
 
     /// <summary>File-system paths of the items in the data object's IDList array (Libraries, search results...). Virtual items are skipped.</summary>
+    [UnconditionalSuppressMessage("Trimming", "IL2050", Justification = TrimJustification.ComInterop)]
     public static IReadOnlyList<string> ReadShellItems(System.Runtime.InteropServices.ComTypes.IDataObject data)
     {
         try

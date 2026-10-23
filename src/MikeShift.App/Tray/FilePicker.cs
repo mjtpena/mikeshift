@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using MikeShift.App.Chrome;
 using MikeShift.Core.Feedback;
@@ -193,6 +194,7 @@ internal static unsafe class FilePicker
         public void OnOverwrite(IFileDialog pfd, IShellItem psi, FDE_OVERWRITE_RESPONSE* pResponse) { }
     }
 
+    [UnconditionalSuppressMessage("Trimming", "IL2050", Justification = TrimJustification.ComInterop)]
     private static IShellItem ItemFor(string path)
     {
         var iid = typeof(IShellItem).GUID;

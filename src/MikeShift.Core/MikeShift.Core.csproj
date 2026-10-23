@@ -3,6 +3,8 @@
   <PropertyGroup>
     <RootNamespace>MikeShift.Core</RootNamespace>
     <AssemblyName>MikeShift.Core</AssemblyName>
+    <!-- The shipped apps are IL-trimmed (Trimming.props): this makes the trim analyzers run on Core's own code. -->
+    <IsTrimmable>true</IsTrimmable>
   </PropertyGroup>
 
   <ItemGroup>

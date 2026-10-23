@@ -1,0 +1,41 @@
+<Project>
+  <!-- IL trimming of the shipped (self-contained) apps. Imported by MikeShift.App and MikeShift.Cli, after they have set SelfContained.
+
+       * Trimming runs when a package is produced (-p:GenerateAppxPackageOnBuild=true, which scripts/release.ps1 and scripts/build.ps1 -Msix
+         pass) and not in a plain `dotnet build`, where it would only slow the inner loop down. The trim ANALYZERS (IL2xxx/IL3xxx, below) run
+         on every compile, so a trim problem in our own code is a build error (TreatWarningsAsErrors) everywhere.
+       * Opt out for an untrimmed package (to compare sizes or bisect a trimming problem): -p:MikeShiftTrim=false. -->
+  <PropertyGroup>
+    <MikeShiftTrim Condition="'$(MikeShiftTrim)' == ''">true</MikeShiftTrim>
+    <!-- Always on (even for a plain framework-dependent build of the CLI): the trim analyzer, and with it the ILLink package, are then part
+         of every restore, including the one the app runs for the CLI before it publishes it. -->
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(MikeShiftTrim)' == 'true' and '$(SelfContained)' == 'true' and '$(GenerateAppxPackageOnBuild)' == 'true'">
+    <PublishTrimmed>true</PublishTrimmed>
+  </PropertyGroup>
+
+  <!-- Keyed on PublishTrimmed itself, because MikeShift.App publishes the CLI with PublishTrimmed passed in as a global property. -->
+  <PropertyGroup Condition="'$(PublishTrimmed)' == 'true'">
+    <TrimMode>full</TrimMode>
+    <!-- Win32/COM interop is classic [ComImport] marshalling (CsWin32 allowMarshaling, the OLE drop target, UI Automation provider, Media
+         Foundation, shell dialogs). Trimming turns the runtime's built-in COM support off unless it is asked for explicitly. -->
+    <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+    <_TrimmerUnusedInterfaces>false</_TrimmerUnusedInterfaces>
+  </PropertyGroup>
+
+  <!-- Two kinds of ILLink warning that are not ours to fix. This is the linker's own run; our code is checked by the trim analyzers at compile
+       time, where every IL2xxx is an error.
+         IL2104  "assembly X produced trim warnings": reported for the two Windows SDK projection assemblies (Microsoft.Windows.SDK.NET and
+                 WinRT.Runtime; with -p:TrimmerSingleWarn=false they show 70 x IL2081, all in the ABI.* generic-collection fallbacks of the
+                 WinRT marshalling, for generic instantiations nothing in this app uses). No other assembly produces it.
+         IL2026  one warning, from System.Private.CoreLib's ComActivator: "Built-in COM support is not trim compatible". That is the framework's
+                 notice for BuiltInComInteropSupport=true, which the [ComImport] interop needs (above).
+       The property is only changed for the linker run, not for the compiler. Anything else the linker reports is still an error. -->
+  <Target Name="MikeShiftILLinkKnownWarnings" BeforeTargets="_RunILLink">
+    <PropertyGroup>
+      <NoWarn>$(NoWarn);IL2104;IL2026</NoWarn>
+    </PropertyGroup>
+  </Target>
+</Project>

@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using MikeShift.Core.Interaction;
 using Windows.Win32.Foundation;
@@ -24,12 +25,13 @@ internal sealed class WheelDropTarget : IDropTarget, IDisposable
     }
 
     /// <summary>Registers the target with OLE (the thread must be an initialised STA).</summary>
+    [UnconditionalSuppressMessage("Trimming", "IL2050", Justification = TrimJustification.ComInterop)]
     public void Register()
     {
         try
         {
-            if (Activator.CreateInstance(Type.GetTypeFromCLSID(OleNative.ClsidDragDropHelper)!) is IDropTargetHelper helper)
-                _helper = helper;
+            _helper = OleNative.CreateInstance<IDropTargetHelper>(OleNative.ClsidDragDropHelper, OleNative.IidDropTargetHelper);
+            if (_helper is null) WheelLog.Error("IDropTargetHelper unavailable: Explorer's drag image will not render over the wheel");
         }
         catch (Exception ex)
         {

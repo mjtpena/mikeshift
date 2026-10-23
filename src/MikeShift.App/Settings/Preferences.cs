@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace MikeShift.App.Settings;
 
@@ -43,6 +44,10 @@ internal sealed class LocalSettingsStore : IPreferenceStore
     }
 }
 
+/// <summary>Source-generated serializer for <c>settings.json</c> (a flat string map): no reflection, so it survives IL trimming.</summary>
+[JsonSerializable(typeof(Dictionary<string, string>))]
+internal sealed partial class SettingsJsonContext : JsonSerializerContext;
+
 /// <summary>Unpackaged: <c>settings.json</c> in <see cref="AppData.Folder"/> (flat string map); the dev switch <c>MIKESHIFT_SETTINGS_PATH</c> points dev/test runs at another file.</summary>
 internal sealed class JsonFileStore : IPreferenceStore
 {
@@ -73,7 +78,7 @@ internal sealed class JsonFileStore : IPreferenceStore
             {
                 Directory.CreateDirectory(System.IO.Path.GetDirectoryName(_path)!);
                 var tmp = _path + ".tmp";
-                File.WriteAllText(tmp, JsonSerializer.Serialize(map));
+                File.WriteAllText(tmp, JsonSerializer.Serialize(map, SettingsJsonContext.Default.DictionaryStringString));
                 File.Move(tmp, _path, overwrite: true);
                 return true;
             }
@@ -87,7 +92,7 @@ internal sealed class JsonFileStore : IPreferenceStore
     {
         try
         {
-            return File.Exists(_path) ? JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(_path)) ?? [] : [];
+            return File.Exists(_path) ? JsonSerializer.Deserialize(File.ReadAllText(_path), SettingsJsonContext.Default.DictionaryStringString) ?? [] : [];
         }
         catch (Exception ex) when (ex is IOException or JsonException or UnauthorizedAccessException)
         {
