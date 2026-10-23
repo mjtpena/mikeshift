@@ -53,7 +53,7 @@ public class WheelPlacementTests
         var work = new ScreenRect(48, 0, 1920, 1080);   // taskbar on the left
         var r = WheelPlacement.ForCursor(new PointPx(10, 500), 380, work, PrimaryBounds);
         Assert.True(r.Contains(new PointPx(10, 500)));
-        Assert.Equal(0, r.Left);
+        Assert.Equal(10 - WheelPlacement.TaskbarAnchorGap, r.Left);   // anchored beside the taskbar: 4 px before the pointer
     }
 
     [Fact]
@@ -93,15 +93,12 @@ public class WheelPlacementTests
     }
 
     [Fact]
-    public void CollapseWindowGrowsAroundTheSameCentre()
+    public void ResizedKeepsTheCentre()
     {
         var w = new ScreenRect(770, 310, 1150, 690);
-        var size = WheelPlacement.CollapseWindowSizePx(1.0);
-        Assert.Equal(646, size);
-        var grown = WheelPlacement.Resized(w, size);
-        Assert.Equal(w.Centre, grown.Centre);
-        Assert.Equal(size, grown.Width);
-        Assert.InRange(WheelPlacement.CollapseWindowSizePx(1.5), 969, 970);
+        var other = WheelPlacement.Resized(w, 500);
+        Assert.Equal(w.Centre, other.Centre);
+        Assert.Equal(500, other.Width);
     }
 
     [Fact]

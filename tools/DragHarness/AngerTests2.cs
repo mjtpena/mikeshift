@@ -42,6 +42,14 @@ internal static partial class Anger
                     var inside = rect.Left >= W.Left - 1 && rect.Top >= W.Top - 1 && rect.Right <= W.Right + 1 && rect.Bottom <= W.Bottom + 1;
                     if (!W.Contains(p)) inside = B.Contains(rect) && rect.Contains(p); // cursor over the taskbar: the wheel must still contain it
                     Rec.Check($"[{name}] wheel window inside the work area", inside, $"rect {rect}, dpi scale {scale:0.##}, latency {s.LatencyMs} ms");
+                    if (!W.Contains(p))
+                    {
+                        // UX review W-03: over a taskbar the window is anchored beside it. Only the 40 px transparent margin and the 11 px rim of the
+                        // disc may overlap the taskbar, so the tile ring (the part that must stay readable) is entirely inside the work area.
+                        var ring = (40 + 11) * scale;
+                        var clear = rect.Left + ring >= W.Left - 1 && rect.Top + ring >= W.Top - 1 && rect.Right - ring <= W.Right + 1 && rect.Bottom - ring <= W.Bottom + 1;
+                        Rec.Check($"[{name}] the tile ring is clear of the taskbar", clear, $"rect {rect}, work area {W}");
+                    }
                     Thread.Sleep(420);
                     var hit = s.ToTile("PNG");
                     Rec.Check($"[{name}] tile PNG highlighted by moving onto it", hit);

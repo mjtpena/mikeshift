@@ -46,9 +46,9 @@ public static class WheelGeometry
     /// <summary>Radius at which tile labels are centred ((56 + 139) / 2).</summary>
     public const double LabelRadius = 97.5;
     /// <summary>Label box (width, height).</summary>
-    public const double LabelWidth = 76, LabelHeight = 40;
-    /// <summary>Tile corner radius.</summary>
-    public const double TileCornerRadius = 11;
+    public const double LabelWidth = 76, LabelHeight = 44;
+    /// <summary>Tile corner radius (Fluent: 8 px for flyout-sized surfaces).</summary>
+    public const double TileCornerRadius = 8;
     /// <summary>Gap between neighbouring tiles.</summary>
     public const double TileGap = 6;
     /// <summary>How far the highlighted tile is pushed outward.</summary>
@@ -67,6 +67,12 @@ public static class WheelGeometry
     /// re-targeting, yet is small enough (hub radius 50) that a deliberate move toward a tile leaves it within ~1 frame. Scaled by DPI.
     /// </summary>
     public const double NeutralRadius = 12;
+
+    /// <summary>Radius of the hub when the wheel has a single tile: the hub itself is the button (no ring).</summary>
+    public const double SingleHubRadius = 64;
+
+    /// <summary>The transparent margin around the disc inside the window ((380 - 2·150) / 2): the callout pill lives here.</summary>
+    public const double WindowMargin = (WindowSize - 2 * DiscRadius) / 2;
 
     /// <summary>Wheel window edge in physical px for <paramref name="dpiScale"/>.</summary>
     public static int WindowSizePx(double dpiScale) => (int)Math.Ceiling(WindowSize * dpiScale);
@@ -150,6 +156,8 @@ public static class WheelGeometry
         if (dpiScale <= 0) dpiScale = 1;
         double dx = x - centreX, dy = y - centreY;
         var r = Math.Sqrt(dx * dx + dy * dy);
+        // A single tile has no ring: the hub is the button.
+        if (n == 1) return r <= SingleHubRadius * dpiScale ? 0 : null;
         if (r < HitInnerRadius * dpiScale || r > HitOuterRadius * dpiScale) return null;
         return IndexAtAngle(AngleOf(dx, dy), n);
     }

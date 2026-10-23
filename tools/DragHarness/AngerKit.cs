@@ -350,7 +350,7 @@ internal static class WheelInfo
         if (i < 0) return null;
         var angle = (i + 0.5) * 2 * Math.PI / list.Count;
         var c = new Point(rect.Value.Rect.Left + rect.Value.Rect.Width / 2, rect.Value.Rect.Top + rect.Value.Rect.Height / 2);
-        var r = 100 * rect.Value.Scale;
+        var r = (list.Count == 1 ? 40 : 100) * rect.Value.Scale;   // a single tile is the hub button (radius 64), not a ring
         return new Point((int)Math.Round(c.X + r * Math.Sin(angle)), (int)Math.Round(c.Y - r * Math.Cos(angle)));
     }
 

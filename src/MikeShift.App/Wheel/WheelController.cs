@@ -25,6 +25,15 @@ internal sealed record WheelSnapshot(
     ScreenRect Rect,
     double DpiScale)
 {
+    /// <summary>One sentence per tile saying what it does (UIA FullDescription).</summary>
+    public IReadOnlyList<string> Descriptions { get; init; } = [];
+
+    /// <summary>Both the format and the tool page have tiles (the Tab/Ctrl switch does something).</summary>
+    public bool HasBothPages { get; init; }
+
+    /// <summary>The drag carries virtual files: there are no tiles, only the "Save the file first" message.</summary>
+    public bool VirtualFiles { get; init; }
+
     public static WheelSnapshot Hidden { get; } = new(false, false, WheelPage.Format, [], null, "", default, 1);
 }
 
@@ -71,7 +80,12 @@ internal sealed class WheelController : IDisposable
     private double _dpi = 1;
     private IReadOnlyList<ActionDef> _shownTiles = [];
     private IReadOnlyList<ActionDef> _outgoing = [];
-    private string? _message;
+    /// <summary>The drag carries virtual files (Outlook attachments, zip entries...): caution pill + Info hub, shell says "Save the file first, then drag it".</summary>
+    private bool _virtualFiles;
+    private HintEmphasis _emphasis = HintEmphasis.Prominent;
+    private CalloutSide? _calloutSide;
+    private string _selectionSummary = "";
+    private readonly WheelHintStore _hintStore = new();
     private IReadOnlyList<string> _paths = [];
     private System.Runtime.InteropServices.ComTypes.IDataObject? _dataObject;
     private ActionDef? _describedFor;
@@ -169,7 +183,10 @@ internal sealed class WheelController : IDisposable
             var sizePx = WheelGeometry.WindowSizePx(_dpi);
             var glass = new byte[sizePx * sizePx * 4];
             Array.Fill(glass, (byte)128);
-            _renderer.SetGlass(glass, sizePx, _dpi);
+            _renderer.SetGlass(glass, sizePx, _dpi, _theme.Palette);
+            var warmCallouts = new WheelCallouts(
+                new CalloutContent("Convert to PNG", Hints: [new KeyHint("Ctrl", "Tools", 4)]),
+                new CalloutContent(null, Hints: [new KeyHint("↑↓←→", "Select", 1), new KeyHint("Enter", "Convert", 4), new KeyHint("Esc", "Close", 2)]));
 
             var now = NowSeconds;
             _anim.Show(now);
@@ -184,13 +201,21 @@ internal sealed class WheelController : IDisposable
                     SizePx = sizePx, DpiScale = _dpi, Theme = _theme, Animation = _anim, Now = later + pass * 0.3,
                     Tiles = tiles.Where(t => t.Page == WheelPage.Format).ToList(),
                     Outgoing = tiles.Where(t => t.Page == WheelPage.Tool).ToList(),
-                    CentreText = "PNG", CentreBold = true, HubHint = "Ctrl  tools",
+                    CentreText = "Convert to PNG", CentreBold = true, HubHint = "Ctrl  Tools", Callouts = warmCallouts,
                 });
             }
             _renderer.Render(new WheelScene
             {
                 SizePx = sizePx, DpiScale = _dpi, Theme = _theme, Animation = _anim, Now = later + 1,
-                Tiles = tiles.Where(t => t.Page == WheelPage.Tool).ToList(), CentreText = "TOOLS", Message = "Save the file first",
+                Tiles = tiles.Where(t => t.Page == WheelPage.Tool).ToList(), CentreText = "Tools", HubHint = "Shift  Formats",
+                Callouts = new WheelCallouts(new CalloutContent(WheelText.SaveFirst, CalloutTone.Caution, WheelCallout.InfoGlyph)),
+                MainSide = CalloutSide.Bottom,
+            });
+            _renderer.Render(new WheelScene
+            {
+                SizePx = sizePx, DpiScale = _dpi, Theme = _theme, Animation = _anim, Now = later + 1,
+                Tiles = [], VirtualFiles = true,
+                Callouts = new WheelCallouts(new CalloutContent(WheelText.SaveFirst, CalloutTone.Caution, WheelCallout.InfoGlyph)),
             });
             _renderer.ClearGlass();
             _anim.Hide();
@@ -402,7 +427,7 @@ internal sealed class WheelController : IDisposable
         _mode = Mode.Drag;
         _paths = [];
         _haveActions = false;
-        _message = null;
+        _virtualFiles = false;
         _outgoing = [];
         _dataObject = null;
         _forcedDismissTick = 0;
@@ -412,7 +437,10 @@ internal sealed class WheelController : IDisposable
         var monitor = WheelWindow.MonitorAt(cursor);
         _dpi = monitor.DpiScale;
         var size = WheelGeometry.WindowSizePx(_dpi);
-        _rect = WheelPlacement.ForCursor(cursor, size, monitor.WorkArea, monitor.Bounds);
+        // Over a taskbar the window is anchored beside it instead of centred, so the opaque disc stays clear of the shell's topmost taskbar.
+        _rect = WheelPlacement.ForCursor(cursor, size, monitor.WorkArea, monitor.Bounds, (int)Math.Ceiling(WheelPlacement.TaskbarAnchorGap * _dpi));
+        _calloutSide = null;
+        _lastPointer = null;
 
         _dragModel.ToolsKey = _session.ToolsKey;
         _dragModel.SetActions([]);
@@ -442,7 +470,7 @@ internal sealed class WheelController : IDisposable
         var pixels = ScreenCapture.Grab(_rect);
         if (pixels is not null)
         {
-            try { _renderer.SetGlass(pixels, _rect.Width, _dpi); }
+            try { _renderer.SetGlass(pixels, _rect.Width, _dpi, _theme.Palette); }
             catch (Exception ex) { WheelLog.Error("glass blur failed", ex); _renderer.ClearGlass(); }
         }
     }
@@ -475,7 +503,7 @@ internal sealed class WheelController : IDisposable
         _dataObject = null;
         _paths = [];
         _haveActions = false;
-        _message = null;
+        _virtualFiles = false;
         _outgoing = [];
         _needsFrame = false;
         _nudgeRetryTick = 0;
@@ -565,10 +593,15 @@ internal sealed class WheelController : IDisposable
                 BeginCatalog(payload.Paths, pt);
                 break;
             case DragKind.VirtualFiles:
-                _message = "Save the file first";
+                // Nothing here can be converted in place. Say so where the user is looking: in the shell's own drag image (a "not allowed"
+                // drop description), in the callout pill and in the hub (caution tint + Info glyph).
+                _virtualFiles = true;
                 _dragModel.SetActions([]);
+                _descriptionSet = DataObjectInspector.SetDropDescription(data, DataObjectInspector.DropImageNone, DropDescriptionText.SaveFirst.Message, "");
+                WheelLog.Stage($"virtual files: drop description set: {_descriptionSet}");
                 RequestFrame();
                 PublishSnapshot();
+                _automation.Announce(WheelText.SaveFirst);
                 break;
             default:
                 HideNow("the drag carries no files");
@@ -657,6 +690,9 @@ internal sealed class WheelController : IDisposable
         }
         _haveActions = true;
         _dragModel.ToolsKey = _session.ToolsKey;
+        // The first ~20 wheels teach the Ctrl/Shift keys loudly (keycaps in the pill), later ones only whisper.
+        if (actions.Count > 0) _emphasis = _hintStore.BeginWheel();
+        // (When the pointer enters outside the hit ring, e.g. anchored beside a taskbar, the model drops the neutral zone by itself.)
         _dragModel.BeginNeutralZone(entry);
         _dragModel.SetActions(actions);
         _session.SetPage(_dragModel.Page);
@@ -671,6 +707,12 @@ internal sealed class WheelController : IDisposable
         if (_mode != Mode.Drag || !_window.IsShown) return DropEffects.None;
         _lastPointer = pt;
         _session.ReconcileModifiers(keyState);
+        var side = WheelCallout.SideFor((pt.Y - _rect.Centre.Y) / _dpi, _calloutSide);
+        if (side != _calloutSide)
+        {
+            _calloutSide = side; // the pill hops to the far margin when the pointer crosses the middle
+            RequestFrame();
+        }
         _dragModel.PointerMoved(pt, _rect.Centre, _dpi);
         return _dragModel.HighlightedAction is not null ? DropEffects.Copy & allowedEffects : DropEffects.None;
     }
@@ -745,7 +787,6 @@ internal sealed class WheelController : IDisposable
         var index = CurrentModel.HighlightedIndex ?? 0;
         _anim.Pick(NowSeconds, index);
         ClearDescription();
-        _rect = WheelPlacement.Resized(_rect, WheelPlacement.CollapseWindowSizePx(_dpi));
         RequestFrame();
     }
 
@@ -782,6 +823,7 @@ internal sealed class WheelController : IDisposable
     {
         if (!ReferenceEquals(model, CurrentModel) && _mode != Mode.None) return;
         var now = NowSeconds;
+        var pageChanged = false;
 
         if ((change & WheelChange.Actions) != 0)
         {
@@ -797,6 +839,7 @@ internal sealed class WheelController : IDisposable
             _shownTiles = model.CurrentActions;
             _anim.PageChanged(now);
             WheelLog.Stage("page = " + model.Page);
+            pageChanged = true;
         }
 
         if ((change & WheelChange.Highlight) != 0)
@@ -807,7 +850,8 @@ internal sealed class WheelController : IDisposable
         }
 
         PublishSnapshot();
-        if ((change & WheelChange.Highlight) != 0 && model.Mode == WheelMode.Click) _automation.OnHighlightChanged();
+        if (pageChanged && _window is { IsShown: true } && _mode != Mode.None) _automation.OnPageChanged();
+        else if ((change & WheelChange.Highlight) != 0 && model.Mode == WheelMode.Click) _automation.OnHighlightChanged();
         RequestFrame();
     }
 
@@ -815,9 +859,15 @@ internal sealed class WheelController : IDisposable
     {
         var model = CurrentModel;
         var shown = _window is { IsShown: true } && _mode != Mode.None;
+        var actions = model.CurrentActions;
         Volatile.Write(ref _snapshot, shown
-            ? new WheelSnapshot(true, _mode == Mode.Click, model.Page, model.CurrentActions.Select(a => a.DropDescription).ToArray(),
-                model.HighlightedIndex, _message ?? model.CentreTitle, _rect, _dpi)
+            ? new WheelSnapshot(true, _mode == Mode.Click, model.Page, actions.Select(WheelText.AutomationName).ToArray(),
+                model.HighlightedIndex, _virtualFiles ? WheelText.SaveFirst : model.CentreTitle, _rect, _dpi)
+            {
+                Descriptions = actions.Select(WheelText.Describe).ToArray(),
+                HasBothPages = model.HasBothPages,
+                VirtualFiles = _virtualFiles,
+            }
             : WheelSnapshot.Hidden);
     }
 
@@ -831,11 +881,14 @@ internal sealed class WheelController : IDisposable
             IReadOnlyList<ActionDef> actions;
             try { actions = ActionCatalog.For(paths, _services.Capabilities); } // may wait for the startup probe: off the UI thread
             catch (Exception ex) { WheelLog.Error("ActionCatalog.For failed (click mode)", ex); actions = []; }
-            _thread.Post(() => ShowClick(paths, actions));
+            string summary;
+            try { summary = SelectionSummary.For(paths, paths.Count > 1 ? Kind.CommonOf(paths) : null); }
+            catch (Exception ex) { WheelLog.Error("selection summary failed", ex); summary = ""; }
+            _thread.Post(() => ShowClick(paths, actions, summary));
         });
     }
 
-    private void ShowClick(IReadOnlyList<string> paths, IReadOnlyList<ActionDef> actions)
+    private void ShowClick(IReadOnlyList<string> paths, IReadOnlyList<ActionDef> actions, string summary)
     {
         if (actions.Count == 0)
         {
@@ -848,8 +901,9 @@ internal sealed class WheelController : IDisposable
 
         _theme = WheelTheme.Read();
         _mode = Mode.Click;
+        _selectionSummary = summary;
         _paths = paths.ToArray();
-        _message = null;
+        _virtualFiles = false;
         _outgoing = [];
 
         PInvoke.GetCursorPos(out var cursor);
@@ -911,6 +965,20 @@ internal sealed class WheelController : IDisposable
 
     // ------------------------------------------------------------------ drawing
 
+    /// <summary>
+    /// The pill(s) for this frame. Drag mode: one pill in the margin on the side away from the pointer (the pointer carries Explorer's drag
+    /// thumbnail, so anything near it can be hidden). Click mode: the selection above the disc, the keys below it.
+    /// </summary>
+    private WheelCallouts BuildCallouts(WheelModel model)
+    {
+        if (_mode == Mode.Click) return WheelCallout.ForClick(model, _selectionSummary);
+        if (_mode != Mode.Drag) return WheelCallouts.None;
+
+        if (_lastPointer is { } pointer)
+            _calloutSide = WheelCallout.SideFor((pointer.Y - _rect.Centre.Y) / _dpi, _calloutSide);
+        return new WheelCallouts(WheelCallout.ForDrag(model, _virtualFiles, _emphasis));
+    }
+
     private void RenderFrame()
     {
         var now = NowSeconds;
@@ -933,10 +1001,11 @@ internal sealed class WheelController : IDisposable
             Outgoing = _outgoing,
             CentreText = model.CentreTitle,
             CentreBold = model.CentreIsActionName,
-            // Click mode toggles pages with Tab (the model's hint names the drag-mode keys).
-            HubHint = _mode == Mode.Click ? (model.HasBothPages ? (model.Page == WheelPage.Format ? "Tab  tools" : "Tab  formats") : "") : model.HubHint,
-            Message = _message,
-            HubEmpty = _mode == Mode.Drag && _shownTiles.Count == 0 && _message is null,
+            HubHint = model.HubHint,
+            VirtualFiles = _virtualFiles,
+            HubEmpty = _mode == Mode.Drag && _shownTiles.Count == 0 && !_virtualFiles,
+            Callouts = BuildCallouts(model),
+            MainSide = _mode == Mode.Click ? CalloutSide.Top : _calloutSide ?? CalloutSide.Top,
         };
 
         try

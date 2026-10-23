@@ -4,132 +4,13 @@ using Windows.Win32.Foundation;
 
 namespace MikeShift.App.Wheel;
 
-// ---------------------------------------------------------------------------------------------------------------------
-// UI Automation provider interfaces (UIAutomationCore.h), declared by hand: classic COM interop, no extra packages.
-// ---------------------------------------------------------------------------------------------------------------------
-
-[Flags]
-internal enum ProviderOptions
-{
-    ClientSideProvider = 0x1,
-    ServerSideProvider = 0x2,
-    NonClientAreaProvider = 0x4,
-    OverrideProvider = 0x8,
-    ProviderOwnsSetFocus = 0x10,
-    UseComThreading = 0x20,
-}
-
-internal enum NavigateDirection
-{
-    Parent = 0,
-    NextSibling = 1,
-    PreviousSibling = 2,
-    FirstChild = 3,
-    LastChild = 4,
-}
-
-[StructLayout(LayoutKind.Sequential)]
-internal struct UiaRect
-{
-    public double Left;
-    public double Top;
-    public double Width;
-    public double Height;
-}
-
-[ComImport, Guid("D6DD68D1-86FD-4332-8666-9ABEDEA2D24C"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-internal interface IRawElementProviderSimple
-{
-    ProviderOptions ProviderOptions { get; }
-
-    [return: MarshalAs(UnmanagedType.IUnknown)]
-    object? GetPatternProvider(int patternId);
-
-    object? GetPropertyValue(int propertyId);
-
-    IRawElementProviderSimple? HostRawElementProvider { get; }
-}
-
-[ComImport, Guid("F7063DA8-8359-439C-9297-BBC5299A7D87"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-internal interface IRawElementProviderFragment
-{
-    [return: MarshalAs(UnmanagedType.Interface)]
-    IRawElementProviderFragment? Navigate(NavigateDirection direction);
-
-    [return: MarshalAs(UnmanagedType.SafeArray, SafeArraySubType = VarEnum.VT_I4)]
-    int[]? GetRuntimeId();
-
-    UiaRect BoundingRectangle { get; }
-
-    [return: MarshalAs(UnmanagedType.SafeArray, SafeArraySubType = VarEnum.VT_UNKNOWN)]
-    object[]? GetEmbeddedFragmentRoots();
-
-    void SetFocus();
-
-    IRawElementProviderFragmentRoot? FragmentRoot { get; }
-}
-
-[ComImport, Guid("620CE2A5-AB8F-40A9-86CB-DE3C75599B58"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-internal interface IRawElementProviderFragmentRoot
-{
-    [return: MarshalAs(UnmanagedType.Interface)]
-    IRawElementProviderFragment? ElementProviderFromPoint(double x, double y);
-
-    [return: MarshalAs(UnmanagedType.Interface)]
-    IRawElementProviderFragment? GetFocus();
-}
-
-[ComImport, Guid("54FCB24B-E18E-47A2-B4D3-ECCBE77599A2"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-internal interface IInvokeProvider
-{
-    void Invoke();
-}
-
-internal static class UiaNative
-{
-    public const int UiaRootObjectId = -25;
-    public const int UIA_AutomationFocusChangedEventId = 20005;
-
-    // Property ids
-    public const int BoundingRectangle = 30001, ProcessId = 30002, ControlType = 30003, LocalizedControlType = 30004, Name = 30005,
-        HasKeyboardFocus = 30008, IsKeyboardFocusable = 30009, IsEnabled = 30010, AutomationId = 30011, ClassName = 30012,
-        IsControlElement = 30016, IsContentElement = 30017, NativeWindowHandle = 30020, IsOffscreen = 30022, FrameworkId = 30024;
-
-    // Control types
-    public const int ListItem = 50007, List = 50008;
-
-    // Pattern ids
-    public const int InvokePattern = 10000;
-
-    public const int AppendRuntimeId = 0x2A; // UiaAppendRuntimeId
-
-    [DllImport("uiautomationcore.dll")]
-    public static extern IntPtr UiaReturnRawElementProvider(IntPtr hwnd, IntPtr wParam, IntPtr lParam, IRawElementProviderSimple? provider);
-
-    [DllImport("uiautomationcore.dll")]
-    public static extern int UiaHostProviderFromHwnd(IntPtr hwnd, out IRawElementProviderSimple provider);
-
-    [DllImport("uiautomationcore.dll")]
-    public static extern int UiaRaiseAutomationEvent(IRawElementProviderSimple provider, int eventId);
-
-    [DllImport("uiautomationcore.dll", CharSet = CharSet.Unicode)]
-    public static extern int UiaRaiseNotificationEvent(
-        IRawElementProviderSimple provider, int notificationKind, int notificationProcessing,
-        [MarshalAs(UnmanagedType.BStr)] string displayString, [MarshalAs(UnmanagedType.BStr)] string activityId);
-
-    [DllImport("uiautomationcore.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    public static extern bool UiaClientsAreListening();
-
-    public const int NotificationKindOther = 4;
-    public const int NotificationProcessingImportantMostRecent = 1;
-}
-
 /// <summary>
-/// UI Automation for the wheel (PLAN §3.2): the window is a <c>List</c> whose tiles are <c>ListItem</c>s named like their drop description
-/// ("Convert to PNG", "Compress"); the highlighted tile is the focused element in click mode, and every highlight change raises a focus
-/// event and a notification so Narrator announces it. Providers read the immutable <see cref="WheelSnapshot"/>, so UIA threads never touch
-/// wheel-thread state. Tiles support <c>Invoke</c> (picks the tile in click mode).
+/// UI Automation for the wheel (PLAN §3.2, UX review W-15): the window is a <c>List</c> (Selection pattern: single selection, none required)
+/// whose tiles are <c>ListItem</c>s (SelectionItem pattern: <c>IsSelected</c> = highlighted; Invoke picks in click mode) named exactly like the
+/// shell's drop description ("Convert to PNG", "Compress"), with <c>PositionInSet</c>/<c>SizeOfSet</c>, <c>HelpText</c> and a
+/// <c>FullDescription</c> sentence. The highlighted tile is the focused element in click mode and every highlight change raises a focus event or a
+/// notification so Narrator announces it; a page change announces "Tools page, 5 items". Providers read the immutable <see cref="WheelSnapshot"/>,
+/// so UIA threads never touch wheel-thread state.
 /// </summary>
 internal sealed class WheelAutomation
 {
@@ -155,7 +36,8 @@ internal sealed class WheelAutomation
 
     public void OnShown()
     {
-        Announce($"MikeShift wheel, {Snapshot.Titles.Count} options. Arrow keys move, Enter chooses, Escape cancels.");
+        var s = Snapshot;
+        Announce(WheelText.OpenAnnouncement(s.Titles.Count, s.HasBothPages));
     }
 
     public void OnHidden() => _focusedTile = null;
@@ -188,7 +70,26 @@ internal sealed class WheelAutomation
         }
     }
 
-    private void Announce(string text)
+    /// <summary>The page changed (Formats ↔ Tools): focus moves back to the list and "Tools page, 5 items" is announced.</summary>
+    public void OnPageChanged()
+    {
+        try
+        {
+            if (!UiaNative.UiaClientsAreListening()) return;
+            var s = Snapshot;
+            _focusedTile = null;
+            if (s.ClickMode && _controller.Window.IsForeground)
+                UiaNative.UiaRaiseAutomationEvent(_root, UiaNative.UIA_AutomationFocusChangedEventId);
+            Announce(WheelText.PageAnnouncement(s.Page, s.Titles.Count));
+        }
+        catch (Exception ex)
+        {
+            WheelLog.Error("UIA page notification failed", ex);
+        }
+    }
+
+    /// <summary>Raises a UIA notification (read out by Narrator) with <paramref name="text"/>.</summary>
+    internal void Announce(string text)
     {
         try
         {
@@ -203,12 +104,14 @@ internal sealed class WheelAutomation
 
     internal void InvokeTile(int index) => _controller.InvokeTile(index);
 
+    internal void InvokeHighlight(int index) => _controller.HighlightTile(index);
+
     private static UiaRect Rect(double left, double top, double width, double height) => new() { Left = left, Top = top, Width = width, Height = height };
 
     // ------------------------------------------------------------------ root
 
     [ComVisible(true)]
-    private sealed class RootProvider : IRawElementProviderSimple, IRawElementProviderFragment, IRawElementProviderFragmentRoot
+    private sealed class RootProvider : IRawElementProviderSimple, IRawElementProviderFragment, IRawElementProviderFragmentRoot, ISelectionProvider
     {
         private readonly WheelAutomation _owner;
 
@@ -216,7 +119,7 @@ internal sealed class WheelAutomation
 
         public ProviderOptions ProviderOptions => ProviderOptions.ServerSideProvider;
 
-        public object? GetPatternProvider(int patternId) => null;
+        public object? GetPatternProvider(int patternId) => patternId == UiaNative.SelectionPattern ? this : null;
 
         public object? GetPropertyValue(int propertyId)
         {
@@ -224,7 +127,9 @@ internal sealed class WheelAutomation
             return propertyId switch
             {
                 UiaNative.ControlType => UiaNative.List,
-                UiaNative.Name => s.Visible ? $"MikeShift wheel: {(s.Page == MikeShift.Core.Actions.WheelPage.Format ? "convert to" : "tools")}" : "MikeShift wheel",
+                UiaNative.Name => WheelText.ListName(s.Visible, s.Page),
+                UiaNative.HelpText => s.Visible ? WheelText.Help(s.ClickMode, s.HasBothPages, s.Page) : null,
+                UiaNative.FullDescription => !s.Visible ? null : s.VirtualFiles ? WheelText.SaveFirst : WheelText.PageAnnouncement(s.Page, s.Titles.Count),
                 UiaNative.ClassName => WheelWindow.ClassName,
                 UiaNative.AutomationId => "MikeShiftWheel",
                 UiaNative.FrameworkId => "MikeShift",
@@ -235,6 +140,8 @@ internal sealed class WheelAutomation
                 UiaNative.HasKeyboardFocus => false,
                 UiaNative.IsOffscreen => !s.Visible,
                 UiaNative.ProcessId => Environment.ProcessId,
+                UiaNative.SelectionCanSelectMultiple => false,
+                UiaNative.SelectionIsSelectionRequired => false,
                 _ => null,
             };
         }
@@ -281,7 +188,7 @@ internal sealed class WheelAutomation
             var s = _owner.Snapshot;
             if (!s.Visible || s.Titles.Count == 0) return null;
             var centre = s.Rect.Centre;
-            var index = MikeShift.Core.Interaction.WheelGeometry.HitTest(x, y, centre.X, centre.Y, s.Titles.Count, s.DpiScale);
+            var index = WheelGeometry.HitTest(x, y, centre.X, centre.Y, s.Titles.Count, s.DpiScale);
             return index is { } i ? new TileProvider(_owner, i, s) : null;
         }
 
@@ -290,12 +197,23 @@ internal sealed class WheelAutomation
             var s = _owner.Snapshot;
             return s.ClickMode && s.Highlighted is { } i && i < s.Titles.Count ? new TileProvider(_owner, i, s) : null;
         }
+
+        // Selection pattern: at most one tile (the highlighted one), none required.
+        public object[] GetSelection()
+        {
+            var s = _owner.Snapshot;
+            return s.Highlighted is { } i && i < s.Titles.Count ? [new TileProvider(_owner, i, s)] : [];
+        }
+
+        public bool CanSelectMultiple => false;
+
+        public bool IsSelectionRequired => false;
     }
 
     // ------------------------------------------------------------------ tiles
 
     [ComVisible(true)]
-    private sealed class TileProvider : IRawElementProviderSimple, IRawElementProviderFragment, IInvokeProvider
+    private sealed class TileProvider : IRawElementProviderSimple, IRawElementProviderFragment, IInvokeProvider, ISelectionItemProvider
     {
         private readonly WheelAutomation _owner;
         private readonly int _index;
@@ -310,12 +228,21 @@ internal sealed class WheelAutomation
 
         public ProviderOptions ProviderOptions => ProviderOptions.ServerSideProvider;
 
-        public object? GetPatternProvider(int patternId) => patternId == UiaNative.InvokePattern && _snapshot.ClickMode ? this : null;
+        public object? GetPatternProvider(int patternId) => patternId switch
+        {
+            UiaNative.InvokePattern when _snapshot.ClickMode => this,
+            UiaNative.SelectionItemPattern => this,
+            _ => null,
+        };
 
         public object? GetPropertyValue(int propertyId) => propertyId switch
         {
             UiaNative.ControlType => UiaNative.ListItem,
             UiaNative.Name => _snapshot.Titles[_index],
+            UiaNative.HelpText => WheelText.TileHelp(_snapshot.ClickMode),
+            UiaNative.FullDescription => _index < _snapshot.Descriptions.Count ? _snapshot.Descriptions[_index] : null,
+            UiaNative.PositionInSet => _index + 1,
+            UiaNative.SizeOfSet => _snapshot.Titles.Count,
             UiaNative.AutomationId => $"WheelTile{_index}",
             UiaNative.ClassName => "MikeShiftWheelTile",
             UiaNative.FrameworkId => "MikeShift",
@@ -326,6 +253,7 @@ internal sealed class WheelAutomation
             UiaNative.HasKeyboardFocus => _snapshot.ClickMode && _snapshot.Highlighted == _index,
             UiaNative.IsOffscreen => !_snapshot.Visible,
             UiaNative.ProcessId => Environment.ProcessId,
+            UiaNative.SelectionItemIsSelected => _snapshot.Highlighted == _index,
             _ => null,
         };
 
@@ -352,8 +280,14 @@ internal sealed class WheelAutomation
             {
                 var n = _snapshot.Titles.Count;
                 var centre = _snapshot.Rect.Centre;
-                var label = n == 1 ? new PointD(0, -WheelGeometry.LabelRadius) : WheelGeometry.LabelCentre(_index, n);
                 var scale = _snapshot.DpiScale;
+                if (n == 1)
+                {
+                    // A single tile is the hub itself.
+                    var d = 2 * WheelGeometry.SingleHubRadius * scale;
+                    return Rect(centre.X - d / 2, centre.Y - d / 2, d, d);
+                }
+                var label = WheelGeometry.LabelCentre(_index, n);
                 var w = WheelGeometry.LabelWidth * scale;
                 var h = WheelGeometry.LabelHeight * scale;
                 return Rect(centre.X + label.X * scale - w / 2, centre.Y + label.Y * scale - h / 2, w, h);
@@ -367,7 +301,19 @@ internal sealed class WheelAutomation
         public IRawElementProviderFragmentRoot? FragmentRoot => _owner._root;
 
         public void Invoke() => _owner.InvokeTile(_index);
-    }
 
-    internal void InvokeHighlight(int index) => _controller.HighlightTile(index);
+        // SelectionItem pattern: selecting = highlighting (click mode); drag mode ignores it (the pointer owns the highlight).
+        public void Select() => _owner.InvokeHighlight(_index);
+
+        public void AddToSelection() => _owner.InvokeHighlight(_index);
+
+        public void RemoveFromSelection()
+        {
+            if (_snapshot.Highlighted == _index) _owner.InvokeHighlight(-1);
+        }
+
+        public bool IsSelected => _snapshot.Highlighted == _index;
+
+        public IRawElementProviderSimple? SelectionContainer => _owner._root;
+    }
 }

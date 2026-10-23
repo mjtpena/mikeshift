@@ -26,7 +26,7 @@ public enum WheelPhase
 public sealed class WheelAnimation
 {
     /// <summary>How long the highlight push of a tile takes to settle (not specified by the PLAN; short and snappy).</summary>
-    public const double HighlightSeconds = 0.12;
+    public const double HighlightSeconds = 0.083;
 
     private readonly Func<bool> _animationsEnabled;
     private bool _enabled = true;
@@ -173,12 +173,13 @@ public sealed class WheelAnimation
     /// <summary>How many tiles are being animated in (for the total duration of the stagger); set by the renderer.</summary>
     public int TileCountHint { get; set; } = 12;
 
-    /// <summary>Scale of the whole wheel: the opening overshoot, 1 when steady, 1→1.7 while collapsing.</summary>
+    /// <summary>Scale of the whole wheel: 0.94→1 while opening (never above 1), 1 when steady, 1→0.96 while collapsing or dismissing.</summary>
     public double Scale(double now) => Phase switch
     {
         WheelPhase.Hidden => WheelTimings.OpenScaleFrom,
         WheelPhase.Visible => WheelTimings.OpenScale(now - _openStart, _enabled),
         WheelPhase.Collapsing => WheelTimings.CollapseScale(now - _phaseStart, _enabled),
+        WheelPhase.Dismissing => WheelTimings.DismissScale(now - _phaseStart, _enabled),
         _ => 1,
     };
 
@@ -186,8 +187,7 @@ public sealed class WheelAnimation
     public double Opacity(double now) => Phase switch
     {
         WheelPhase.Hidden => 0,
-        WheelPhase.Visible => Math.Clamp(
-            Easing.Animate(Easing.Open, now - _openStart, WheelTimings.Scaled(WheelTimings.OpenSeconds, _enabled), 0, 1), 0, 1),
+        WheelPhase.Visible => Math.Clamp(WheelTimings.OpenOpacity(now - _openStart, _enabled), 0, 1),
         WheelPhase.Collapsing => WheelTimings.CollapseOpacity(now - _phaseStart, _enabled),
         WheelPhase.Dismissing => _dismissFromOpacity * WheelTimings.DismissOpacity(now - _phaseStart, _enabled),
         _ => 1,
@@ -202,7 +202,7 @@ public sealed class WheelAnimation
     {
         if (!_highlights.TryGetValue(index, out var h)) return 0;
         if (!_enabled) return h.To;
-        return h.From + (h.To - h.From) * Easing.EaseOut.Evaluate(Math.Clamp((now - h.Start) / HighlightSeconds, 0, 1));
+        return h.From + (h.To - h.From) * Easing.Decelerate.Evaluate(Math.Clamp((now - h.Start) / HighlightSeconds, 0, 1));
     }
 
     /// <summary>Extra outward push of the picked tile (0 until picked).</summary>

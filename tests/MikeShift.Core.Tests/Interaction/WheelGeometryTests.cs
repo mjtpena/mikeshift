@@ -12,7 +12,7 @@ public class WheelGeometryTests
         return new PointPx(Centre.X + (int)Math.Round(p.X), Centre.Y + (int)Math.Round(p.Y));
     }
 
-    public static IEnumerable<object[]> Counts() => new[] { 1, 2, 5, 8, 12 }.Select(n => new object[] { n });
+    public static IEnumerable<object[]> Counts() => new[] { 2, 5, 8, 12 }.Select(n => new object[] { n });
 
     // ------------------------------------------------------------------ constants
 
@@ -27,7 +27,10 @@ public class WheelGeometryTests
         Assert.Equal(97.5, WheelGeometry.LabelRadius);
         Assert.Equal(9, WheelGeometry.HighlightPush);
         Assert.Equal(18, WheelGeometry.PickPulse);
-        Assert.Equal(11, WheelGeometry.TileCornerRadius);
+        Assert.Equal(8, WheelGeometry.TileCornerRadius);
+        Assert.Equal(64, WheelGeometry.SingleHubRadius);
+        Assert.Equal(40, WheelGeometry.WindowMargin);
+        Assert.Equal(44, WheelGeometry.LabelHeight);
         Assert.Equal(6, WheelGeometry.TileGap);
         Assert.Equal(52, WheelGeometry.HitInnerRadius);
         Assert.Equal(180, WheelGeometry.HitOuterRadius);
@@ -134,7 +137,7 @@ public class WheelGeometryTests
     [Fact]
     public void EveryDirectionOutsideTheHubMapsToATileForEveryCount()
     {
-        foreach (var n in new[] { 1, 2, 3, 5, 8, 12, 13 })
+        foreach (var n in new[] { 2, 3, 5, 8, 12, 13 })
             for (var deg = 0; deg < 360; deg++)
                 foreach (var r in new[] { 54.0, 56, 97.5, 139, 150, 178 })
                 {
@@ -145,10 +148,35 @@ public class WheelGeometryTests
     }
 
     [Fact]
-    public void SingleTileCoversEverything()
+    public void SingleTileIsTheHubButtonInEveryDirection()
     {
         for (var deg = 0; deg < 360; deg += 7)
-            Assert.Equal(0, WheelGeometry.HitTest(Offset(100, deg * Math.PI / 180), Centre, 1, 1.0));
+        {
+            Assert.Equal(0, WheelGeometry.HitTest(Offset(0, deg * Math.PI / 180), Centre, 1, 1.0));   // dead centre
+            Assert.Equal(0, WheelGeometry.HitTest(Offset(40, deg * Math.PI / 180), Centre, 1, 1.0));
+            Assert.Equal(0, WheelGeometry.HitTest(Offset(63, deg * Math.PI / 180), Centre, 1, 1.0));
+        }
+    }
+
+    [Fact]
+    public void SingleTileHasNoRing()
+    {
+        for (var deg = 0; deg < 360; deg += 7)
+        {
+            Assert.Null(WheelGeometry.HitTest(Offset(66, deg * Math.PI / 180), Centre, 1, 1.0));    // just outside the hub button
+            Assert.Null(WheelGeometry.HitTest(Offset(100, deg * Math.PI / 180), Centre, 1, 1.0));   // where the ring would be
+            Assert.Null(WheelGeometry.HitTest(Offset(150, deg * Math.PI / 180), Centre, 1, 1.0));
+        }
+    }
+
+    [Theory]
+    [InlineData(1.0, 64)]
+    [InlineData(1.5, 96)]
+    [InlineData(2.0, 128)]
+    public void SingleTileHubRadiusScalesWithDpi(double dpi, double radiusPx)
+    {
+        Assert.Equal(0, WheelGeometry.HitTest(Offset(radiusPx - 1, 1.0), Centre, 1, dpi));
+        Assert.Null(WheelGeometry.HitTest(Offset(radiusPx + 3, 1.0), Centre, 1, dpi));
     }
 
     [Fact]
@@ -289,10 +317,10 @@ public class WheelGeometryTests
     {
         var plain = WheelGeometry.Segment(1, 8);
         var inset = WheelGeometry.Segment(1, 8, WheelGeometry.TileCornerRadius);
-        Assert.Equal(plain.OuterRadius - 11, inset.OuterRadius, 9);
-        Assert.Equal(plain.InnerRadius + 11, inset.InnerRadius, 9);
+        Assert.Equal(plain.OuterRadius - WheelGeometry.TileCornerRadius, inset.OuterRadius, 9);
+        Assert.Equal(plain.InnerRadius + WheelGeometry.TileCornerRadius, inset.InnerRadius, 9);
         var next = WheelGeometry.Segment(2, 8, WheelGeometry.TileCornerRadius);
-        Assert.Equal(WheelGeometry.TileGap + 22, Distance(inset.OuterEnd, next.OuterStart), 9);
+        Assert.Equal(WheelGeometry.TileGap + 2 * WheelGeometry.TileCornerRadius, Distance(inset.OuterEnd, next.OuterStart), 9);
     }
 
     [Fact]

@@ -613,7 +613,7 @@ internal sealed class ScenarioRun
         if (index < 0) return;
 
         var angle = (index + 0.5) * 2 * Math.PI / count;
-        var radius = 100 * scale;
+        var radius = (count == 1 ? 40 : 100) * scale;   // a single tile is the hub button (radius 64), not a ring
         var target = ((int)Math.Round(wheelCentre.X + radius * Math.Sin(angle)), (int)Math.Round(wheelCentre.Y - radius * Math.Cos(angle)));
         Pointer.Glide(target.Item1, target.Item2, stepPx: 4, stepMs: 10);
         var highlighted = WaitLog(t => t.Contains("highlight: " + tile + " "), 2000);
@@ -674,7 +674,7 @@ internal sealed class ScenarioRun
             case "mouse":
             {
                 var angle = (index + 0.5) * 2 * Math.PI / count;
-                var radius = 100 * scale;
+                var radius = (count == 1 ? 40 : 100) * scale;   // a single tile is the hub button (radius 64), not a ring
                 var target = ((int)Math.Round(wheelCentre.X + radius * Math.Sin(angle)), (int)Math.Round(wheelCentre.Y - radius * Math.Cos(angle)));
                 Pointer.Glide(target.Item1, target.Item2, stepPx: 8, stepMs: 6);
                 Check("hovering the tile highlighted it", WaitLog(t => t.Contains("highlight: " + _s.Tile), 2000), LastLine("highlight:"));

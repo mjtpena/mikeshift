@@ -21,8 +21,13 @@ public static class Program
     {
         WinRT.ComWrappersSupport.InitializeComWrappers();
 
+        // Dev-only: `MikeShift.exe --render-wheel <scenario|all|list> <out.png|dir>` renders the wheel offscreen over a synthetic desktop and exits.
+        // No tray, no hooks, no windows, no single-instance check: it never touches the real screen or the running instance.
+        if (args.Length >= 2 && args[0] == "--render-wheel") return Wheel.WheelPreview.Run(args[1..]);
+
         // The smoke test must work even while a real instance is running, so it skips the single-instance check.
-        var smoke = args.Contains("--smoke-test", StringComparer.Ordinal);
+        var smoke = args.Contains("--smoke-test", StringComparer.Ordinal)
+                    || Environment.GetEnvironmentVariable("MIKESHIFT_ALLOW_MULTIPLE") == "1";   // dev/test: a build under test next to a running instance
         if (!smoke && !RegisterOrRedirect())
             return 0;
 
