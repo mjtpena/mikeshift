@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Used by scripts/coverage.ps1 (dotnet test with the XPlat Code Coverage collector and this file as the settings file).
+     Only Shiftvert.Core and Shiftvert.Cli are measured (Shiftvert.App is WinUI and not unit-tested). Generated code is excluded. -->
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat Code Coverage">
+        <Configuration>
+          <Format>cobertura</Format>
+          <Include>[Shiftvert.Core]*,[Shiftvert.Cli]*</Include>
+          <!-- CsWin32 output (Windows.Win32.*) and other generated types. -->
+          <Exclude>[*]Windows.Win32.*,[*]Windows.Win32,[*]Microsoft.Windows.CsWin32.*</Exclude>
+          <ExcludeByFile>**/*.g.cs,**/*.g.i.cs,**/*.Generated.cs,**/Microsoft.Windows.CsWin32/**</ExcludeByFile>
+          <ExcludeByAttribute>GeneratedCodeAttribute,CompilerGeneratedAttribute,ExcludeFromCodeCoverageAttribute</ExcludeByAttribute>
+          <SkipAutoProps>true</SkipAutoProps>
+          <DeterministicReport>false</DeterministicReport>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>

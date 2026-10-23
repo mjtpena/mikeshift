@@ -16,6 +16,8 @@
     WinUI app for a specific architecture (the app needs an explicit platform if built on its own):
         dotnet build src/Shiftvert.App -p:Platform=x64
         dotnet build src/Shiftvert.App -p:Platform=ARM64
+    Tests with code coverage (HTML + Summary.txt + Cobertura in artifacts/coverage/, per-namespace line/branch % printed):
+        ./scripts/coverage.ps1
     Unsigned MSIX (install needs signing, see packaging/make-dev-cert.ps1 and scripts/release.ps1):
         dotnet build src/Shiftvert.App -c Release -p:Platform=x64 -p:GenerateAppxPackageOnBuild=true -p:AppxPackageSigningEnabled=false -p:AppxBundle=Never
         -> src/Shiftvert.App/AppPackages/Shiftvert.App_<ver>_x64_Test/*.msix
@@ -27,6 +29,7 @@
 
 .PARAMETER Configuration  Debug (default) or Release.
 .PARAMETER Test           Also run `dotnet test Shiftvert.sln` after building.
+.PARAMETER Coverage       Also run scripts/coverage.ps1 (tests under coverlet; report in artifacts/coverage/). Implies the tests; -Test is not needed.
 .PARAMETER Msix           Also build the unsigned MSIX for each platform in -Platforms.
 .PARAMETER Platforms      Platforms for -Msix. Default: x64.
 .PARAMETER Bundle         Also run scripts/release.ps1 (x64 + ARM64 unsigned .msixbundle + SHA256SUMS.txt in artifacts/, always Release).
@@ -43,6 +46,7 @@
 param(
     [ValidateSet('Debug', 'Release')] [string] $Configuration = 'Debug',
     [switch] $Test,
+    [switch] $Coverage,
     [switch] $Msix,
     [string[]] $Platforms = @('x64'),
     [switch] $Bundle,
@@ -65,6 +69,11 @@ try {
 
     if ($Test) {
         Invoke-Step "dotnet test Shiftvert.sln -c $Configuration" { dotnet test Shiftvert.sln -c $Configuration --no-build --nologo }
+    }
+
+    if ($Coverage) {
+        Write-Host '==> scripts/coverage.ps1' -ForegroundColor Cyan
+        & (Join-Path $PSScriptRoot 'coverage.ps1') -Configuration $Configuration -NoBuild
     }
 
     if ($Msix) {
