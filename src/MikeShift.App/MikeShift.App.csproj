@@ -1,0 +1,98 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <AssemblyName>MikeShift</AssemblyName>
+    <RootNamespace>MikeShift.App</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+
+    <!-- WinUI 3 / Windows App SDK, packaged as MSIX, framework bundled (self-contained). -->
+    <UseWinUI>true</UseWinUI>
+    <EnableMsixTooling>true</EnableMsixTooling>
+    <WindowsPackageType>MSIX</WindowsPackageType>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <Platforms>x64;ARM64</Platforms>
+    <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
+    <DefaultLanguage>en-US</DefaultLanguage>
+    <!-- Program.cs provides Main (single-instance redirection happens before XAML starts). -->
+    <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Windows App SDK: only the components MikeShift uses (WinUI, windowing/input, app lifecycle, resources, self-contained deployment).
+         H.NotifyIcon.WinUI depends on the Microsoft.WindowsAppSDK metapackage, and the 2.5.1 metapackage also depends on the AI, ML
+         (ONNX Runtime + DirectML), Search, Widgets and DWrite components. They cannot be removed from the graph, so the metapackage
+         and those components are referenced with every asset excluded: restored, but nothing from them reaches the output or the MSIX. -->
+    <PackageReference Include="Microsoft.WindowsAppSDK" ExcludeAssets="all" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.AI" ExcludeAssets="all" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.ML" ExcludeAssets="all" />
+    <PackageReference Include="Microsoft.Windows.AI.MachineLearning" ExcludeAssets="all" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.Search" ExcludeAssets="all" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.Widgets" ExcludeAssets="all" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.DWrite" ExcludeAssets="all" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.Base" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.Foundation" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.InteractiveExperiences" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.WinUI" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" />
+    <PackageReference Include="Microsoft.Graphics.Win2D" />
+    <PackageReference Include="H.NotifyIcon.WinUI" />
+    <PackageReference Include="WinUIEx" />
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+    <PackageReference Include="Microsoft.Windows.CsWin32" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MikeShift.Core\MikeShift.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Also copied beside the exe so unpackaged dev runs find the tray icon and chime (packaged: same folder in the install dir). -->
+    <Content Include="Assets\**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Manifest Include="$(ApplicationManifest)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- CsWin32: every NativeMethods.txt anywhere in this project is an AdditionalFile (App/Input, App/Wheel, ...). -->
+    <AdditionalFiles Include="**/NativeMethods.txt" Exclude="bin/**;obj/**" />
+    <AdditionalFiles Include="NativeMethods.json" />
+  </ItemGroup>
+
+  <!-- Packaging (W4b) -->
+  <PropertyGroup>
+    <!-- One architecture per package, with the .NET runtime bundled: an MSIX cannot depend on a machine-wide .NET install.
+         Output stays in bin\<Platform>\<Config>\<tfm>\ (no win-x64 subfolder) so existing dev scripts keep working. -->
+    <RuntimeIdentifier Condition="'$(Platform)' == 'x64'">win-x64</RuntimeIdentifier>
+    <RuntimeIdentifier Condition="'$(Platform)' == 'ARM64'">win-arm64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+    <AppxSymbolPackageEnabled>false</AppxSymbolPackageEnabled>
+    <BundleCli Condition="'$(BundleCli)' == ''">true</BundleCli>
+  </PropertyGroup>
+
+  <!-- The console CLI ships inside the package under cli\ (its own self-contained copy: MikeShift.exe and mikeshift.exe/.dll differ only
+       by case, so they cannot share a folder). Package.appxmanifest points the `mikeshift.exe` execution alias at cli\mikeshift.exe. -->
+  <Target Name="BundleMikeShiftCli" BeforeTargets="AssignTargetPaths" Condition="'$(BundleCli)' == 'true' and '$(RuntimeIdentifier)' != ''">
+    <PropertyGroup>
+      <_CliPublishDir>$(MSBuildProjectDirectory)\$(IntermediateOutputPath)cli\</_CliPublishDir>
+      <_CliAssets>$(MSBuildProjectDirectory)\..\MikeShift.Cli\obj\project.assets.json</_CliAssets>
+      <_CliNeedsRestore Condition="!Exists('$(_CliAssets)')">true</_CliNeedsRestore>
+      <_CliNeedsRestore Condition="'$(_CliNeedsRestore)' == '' and !$([System.IO.File]::ReadAllText('$(_CliAssets)').Contains('/$(RuntimeIdentifier)&quot;'))">true</_CliNeedsRestore>
+    </PropertyGroup>
+    <!-- The CLI is not a project reference of the app (that would add its framework-dependent output to the package), so a bare
+         `dotnet build src/MikeShift.App` on a fresh checkout has never restored it. Restore it here, in its own evaluation, but only
+         when its assets are missing or lack this RID: rewriting project.assets.json during a parallel solution build would race. -->
+    <MSBuild Condition="'$(_CliNeedsRestore)' == 'true'" Projects="..\MikeShift.Cli\MikeShift.Cli.csproj" Targets="Restore"
+             Properties="Configuration=$(Configuration);Platform=$(Platform);RuntimeIdentifier=$(RuntimeIdentifier);SelfContained=true;MSBuildRestoreSessionId=$([System.Guid]::NewGuid())" />
+    <MSBuild Projects="..\MikeShift.Cli\MikeShift.Cli.csproj" Targets="Publish"
+             Properties="Configuration=$(Configuration);Platform=$(Platform);RuntimeIdentifier=$(RuntimeIdentifier);SelfContained=true;PublishDir=$(_CliPublishDir)" />
+    <ItemGroup>
+      <_CliFile Include="$(_CliPublishDir)**\*" Exclude="$(_CliPublishDir)**\*.pdb" />
+      <Content Include="@(_CliFile)" Link="cli\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
+  </Target>
+
+</Project>

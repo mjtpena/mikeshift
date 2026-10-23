@@ -162,7 +162,7 @@ internal static partial class Anger
                     Rec.Check("Explorer moved photo.jpg into the other folder (Shift = move, Explorer's rule)", ok);
                     Rec.Check("the original left the source folder, as Explorer's move does", !File.Exists(Path.Combine(s.Work, "photo.jpg")));
                     Thread.Sleep(2500);
-                    Rec.Check("Shiftvert converted nothing (no png in either folder)", !Directory.EnumerateFiles(dest, "*.png").Any() && !Directory.EnumerateFiles(s.Work, "*.png").Any());
+                    Rec.Check("MikeShift converted nothing (no png in either folder)", !Directory.EnumerateFiles(dest, "*.png").Any() && !Directory.EnumerateFiles(s.Work, "*.png").Any());
                     Rec.Check("log: no job was enqueued", !s.Log.Contains("job "));
                     Rec.Check("log: released over nothing, dismissed", s.Log.Contains("released over nothing") || s.Log.Contains("DragLeave"));
                 }

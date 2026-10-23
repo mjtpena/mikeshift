@@ -1,8 +1,8 @@
-# Shiftvert for Windows
+# MikeShift
 
 Start dragging a file in Explorer, hold **Shift**, and a wheel of output formats appears under the cursor. Drop the file on a tile and a converted **copy** appears next to the original. Press **Ctrl** while the wheel is up to switch it to tools (compress, resize, crop, trim, split, merge, zip).
 
-This is a Windows 10 (1809+) / Windows 11 port of [Shiftvert for macOS](https://github.com/roiegold/shiftvert) by roiegold (MIT). It has no network code, no bundled third-party programs, and it never touches your original files.
+MikeShift is a Windows port of [Shiftvert](https://github.com/roiegold/shiftvert) by roiegold (MIT), for Windows 10 (1809+) and Windows 11. It has no network code, no bundled third-party programs, and it never touches your original files.
 
 | Formats page | Tools page | Light theme |
 |:-:|:-:|:-:|
@@ -31,7 +31,7 @@ This is a Windows 10 (1809+) / Windows 11 port of [Shiftvert for macOS](https://
 
 ## Using it
 
-* **Shift-drag**: begin dragging one or more files or folders in Explorer or on the Desktop, then hold Shift. Drop on a tile to convert. Release anywhere else (or press Esc) and Explorer's own drop proceeds as usual. Shiftvert never cancels or changes the drag, and it always asks for a *copy*, so Shift-drag does not move your files.
+* **Shift-drag**: begin dragging one or more files or folders in Explorer or on the Desktop, then hold Shift. Drop on a tile to convert. Release anywhere else (or press Esc) and Explorer's own drop proceeds as usual. MikeShift never cancels or changes the drag, and it always asks for a *copy*, so Shift-drag does not move your files.
 * **Ctrl** while the wheel is up switches between *formats* and *tools*; Shift switches back. A mouse-wheel tick toggles too. (Alt is not the default because Left Alt+Shift is Windows' input-language hotkey; it can be chosen in Settings.)
 * **Convert Files…** (tray menu, Ctrl+O): pick files in a dialog; the same wheel opens in the middle of the screen in *click mode* (arrow keys and Enter, or click a tile; Tab switches pages; Esc or clicking elsewhere closes it). Folders cannot be picked there (a Windows dialog limitation); drag them instead.
 * Several files of the same kind get that kind's tiles; a mixed selection or unknown files get **Zip** only. A drag from something that is not a real file on disk (an Outlook attachment, a file inside a `.zip`, a browser image) shows "Save the file first".
@@ -41,40 +41,40 @@ This is a Windows 10 (1809+) / Windows 11 port of [Shiftvert for macOS](https://
 
 ## Command line
 
-The MSIX puts `shiftvert.exe` on your PATH (an app execution alias, available in new terminals after install). It is the same engine as the wheel and is what the automated tests drive.
+The MSIX puts `mikeshift.exe` on your PATH (an app execution alias, available in new terminals after install). It is the same engine as the wheel and is what the automated tests drive.
 
 ```powershell
-shiftvert --list photo.heic                    # e.g. PNG, JPG, TIFF, GIF, BMP, WebP, PDF, Compress, Resize 50%, Crop, Strip EXIF, Zip (depends on codecs installed)
-shiftvert --run PNG photo.heic                 # prints the output path, exit code 0
-shiftvert --run "Resize 50%" a.jpg b.jpg
-shiftvert --run Merge a.pdf b.pdf              # Merged.pdf next to a.pdf
-shiftvert --run Trim --range 0:05-0:12.5 clip.mp4
-shiftvert --run Crop --crop 100,50,800,600@400x300 photo.jpg
-shiftvert --run Zip "My Folder"
+mikeshift --list photo.heic                    # e.g. PNG, JPG, TIFF, GIF, BMP, WebP, PDF, Compress, Resize 50%, Crop, Strip EXIF, Zip (depends on codecs installed)
+mikeshift --run PNG photo.heic                 # prints the output path, exit code 0
+mikeshift --run "Resize 50%" a.jpg b.jpg
+mikeshift --run Merge a.pdf b.pdf              # Merged.pdf next to a.pdf
+mikeshift --run Trim --range 0:05-0:12.5 clip.mp4
+mikeshift --run Crop --crop 100,50,800,600@400x300 photo.jpg
+mikeshift --run Zip "My Folder"
 ```
 
-Errors go to stderr as `error: …` with exit code 1; an unknown action title lists the available ones; any other flag prints usage and exits 2. Without installing: `dotnet run --project src/Shiftvert.Cli -- --list file.png`.
+Errors go to stderr as `error: …` with exit code 1; an unknown action title lists the available ones; any other flag prints usage and exits 2. Without installing: `dotnet run --project src/MikeShift.Cli -- --list file.png`.
 
 ## Install (sideload)
 
 The MSIX is signed with a certificate you create yourself; Windows only installs packages whose signer it trusts.
 
 ```powershell
-# 1. Create a self-signed code-signing certificate (subject must match the manifest: CN=Shiftvert Dev).
-#    Writes artifacts\dev-cert\ShiftvertDev.pfx (private, git-ignored) and ShiftvertDev.cer.
+# 1. Create a self-signed code-signing certificate (subject must match the manifest: CN=MikeShift Dev).
+#    Writes artifacts\dev-cert\MikeShiftDev.pfx (private, git-ignored) and MikeShiftDev.cer.
 ./packaging/make-dev-cert.ps1 -Password (Read-Host -AsSecureString 'PFX password')
 
 # 2. Trust it once, in an ELEVATED PowerShell (the script prints this line for you; it never does it itself).
-Import-Certificate -FilePath .\artifacts\dev-cert\ShiftvertDev.cer -CertStoreLocation Cert:\LocalMachine\TrustedPeople
+Import-Certificate -FilePath .\artifacts\dev-cert\MikeShiftDev.cer -CertStoreLocation Cert:\LocalMachine\TrustedPeople
 
 # 3. Build x64 + ARM64, bundle, sign, write the checksum.
-./scripts/release.ps1 -PfxPath .\artifacts\dev-cert\ShiftvertDev.pfx -PfxPassword (Read-Host -AsSecureString 'PFX password')
+./scripts/release.ps1 -PfxPath .\artifacts\dev-cert\MikeShiftDev.pfx -PfxPassword (Read-Host -AsSecureString 'PFX password')
 
 # 4. Install (Windows picks the right architecture from the bundle).
-Add-AppxPackage -Path .\artifacts\Shiftvert_0.1.0.0.msixbundle
+Add-AppxPackage -Path .\artifacts\MikeShift_0.1.0.0.msixbundle
 ```
 
-Uninstall: `Get-AppxPackage Shiftvert | Remove-AppxPackage`. Verify a download: compare `Get-FileHash <bundle> -Algorithm SHA256` with `artifacts\SHA256SUMS.txt`.
+Uninstall: `Get-AppxPackage MikeShift | Remove-AppxPackage`. Verify a download: compare `Get-FileHash <bundle> -Algorithm SHA256` with `artifacts\SHA256SUMS.txt`.
 
 The bundle is about 257 MB for both architectures: each architecture carries the .NET 10 runtime, the Windows App SDK components the app uses, and a second self-contained copy of the command-line tool (about 51 MB), so nothing else needs installing. Release signing for public distribution (Store, Azure Trusted Signing or a purchased certificate) is a separate decision that is not made yet.
 
@@ -83,13 +83,13 @@ The bundle is about 257 MB for both architectures: each architecture carries the
 Needs the .NET 10 SDK and the Windows 10/11 SDK 10.0.26100 (Visual Studio is not required).
 
 ```powershell
-./scripts/build.ps1 -Test                      # dotnet build Shiftvert.sln + dotnet test Shiftvert.sln
+./scripts/build.ps1 -Test                      # dotnet build MikeShift.sln + dotnet test MikeShift.sln
 ./scripts/build.ps1 -Configuration Release -Msix -Platforms x64,ARM64   # unsigned per-architecture .msix
-./scripts/release.ps1                          # unsigned artifacts\Shiftvert_<version>.msixbundle + SHA256SUMS.txt
+./scripts/release.ps1                          # unsigned artifacts\MikeShift_<version>.msixbundle + SHA256SUMS.txt
 ./scripts/make-fixtures.ps1                    # sample files for manual testing -> .\fixtures
 ```
 
-or directly: `dotnet build Shiftvert.sln`, `dotnet test Shiftvert.sln`. CI (GitHub Actions, `windows-latest`) runs build + test and uploads the unsigned bundle. `tools/DragHarness` drives scripted Shift-drags against a running build (see [docs/TESTPLAN.md](docs/TESTPLAN.md)). The Windows App SDK is referenced by component (`Directory.Packages.props`), not through the `Microsoft.WindowsAppSDK` metapackage; see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) §7.
+or directly: `dotnet build MikeShift.sln`, `dotnet test MikeShift.sln`. CI (GitHub Actions, `windows-latest`) runs build + test and uploads the unsigned bundle. `tools/DragHarness` drives scripted Shift-drags against a running build (see [docs/TESTPLAN.md](docs/TESTPLAN.md)). The Windows App SDK is referenced by component (`Directory.Packages.props`), not through the `Microsoft.WindowsAppSDK` metapackage; see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) §7.
 
 ## Privacy
 
@@ -97,7 +97,7 @@ or directly: `dotnet build Shiftvert.sln`, `dotnet test Shiftvert.sln`. CI (GitH
 * Originals are never modified or moved: every conversion writes a new file (via a temporary file in the same folder, then a rename, so a failure never leaves a half-written output).
 * The input hook sees only mouse movement, the left button, the wheel and the Shift/Ctrl/Alt/Esc keys, and only to run the gesture. No other key is read or stored.
 * While the wheel is up, a small screenshot of the pixels under it is blurred to make the glass effect; it stays in memory and is discarded when the wheel hides.
-* Settings (chime, toast, tools key) are stored locally in the app's settings; Open at Login is Windows' own startup-task switch. A small diagnostic log (`%LOCALAPPDATA%\Shiftvert\log.txt`) records start-up and errors (never file contents) and is trimmed at 1 MB.
+* Settings (chime, toast, tools key) are stored locally in the app's settings; Open at Login is Windows' own startup-task switch. A small diagnostic log (`%LOCALAPPDATA%\MikeShift\log.txt`) records start-up and errors (never file contents) and is trimmed at 1 MB.
 
 ## More
 
@@ -105,4 +105,4 @@ or directly: `dotnet build Shiftvert.sln`, `dotnet test Shiftvert.sln`. CI (GitH
 * [docs/LIMITS.md](docs/LIMITS.md) everything that works differently on Windows
 * [docs/TESTPLAN.md](docs/TESTPLAN.md) automated tests, the drag harness and the manual checklist
 * [docs/PLAN.md](docs/PLAN.md) the original specification; [docs/WORKPLAN.md](docs/WORKPLAN.md) who built what
-* [LICENSE](LICENSE) (MIT) and [NOTICE](NOTICE) (credit to the original Shiftvert and every third-party licence)
+* [LICENSE](LICENSE) (MIT) and [NOTICE](NOTICE) (credit to the original Shiftvert project and every third-party licence)

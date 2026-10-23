@@ -1,3 +1,5 @@
+> Note (2026-10-23): the product is now called MikeShift; this plan uses its original working name.
+
 # Work plan — how PLAN.md is being delivered
 
 `docs/PLAN.md` is the spec. This file says who builds which part, in which order, and which files each work package owns, so packages can run in parallel without stepping on each other.

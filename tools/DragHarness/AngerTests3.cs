@@ -45,9 +45,9 @@ internal static partial class Anger
         {
             Rec.Begin("x2-desktop", "The real Desktop as the drag source (temp file created on the Desktop and deleted afterwards)");
             var desk = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
-            var name = "shiftvert-anger-desktop.jpg";
+            var name = "mikeshift-anger-desktop.jpg";
             var file = Path.Combine(desk, name);
-            var png = Path.Combine(desk, "shiftvert-anger-desktop.png");
+            var png = Path.Combine(desk, "mikeshift-anger-desktop.png");
             AngerApp? app = null;
             try
             {

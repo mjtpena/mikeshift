@@ -1,4 +1,4 @@
-# Shiftvert for Windows: documentation
+# MikeShift: documentation
 
 The project overview, screenshots, install steps, CLI usage and build commands are in the [root README](../README.md).
 

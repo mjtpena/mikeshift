@@ -25,14 +25,14 @@ jobs:
 
       # Same commands as scripts/build.ps1 -Configuration Release -Test
       - name: Restore
-        run: dotnet restore Shiftvert.sln
+        run: dotnet restore MikeShift.sln
 
       - name: Build (Release)
-        run: dotnet build Shiftvert.sln -c Release --no-restore
+        run: dotnet build MikeShift.sln -c Release --no-restore
 
       # Tests that need a codec this runner lacks (HEIC/HEVC encoders, ...) skip themselves via [SkipIfNoCapability].
       - name: Test (Release)
-        run: dotnet test Shiftvert.sln -c Release --no-build --logger "trx;LogFileName=test-results.trx"
+        run: dotnet test MikeShift.sln -c Release --no-build --logger "trx;LogFileName=test-results.trx"
 
       # Second pass of the same suites under coverlet (scripts/coverage.ps1: merged HTML, Summary.txt and Cobertura in artifacts/coverage).
       # Informational: no threshold is enforced.
@@ -80,7 +80,7 @@ jobs:
       - name: Upload bundle
         uses: actions/upload-artifact@v4
         with:
-          name: shiftvert-msixbundle-unsigned
+          name: mikeshift-msixbundle-unsigned
           path: |
             artifacts/*.msixbundle
             artifacts/SHA256SUMS.txt

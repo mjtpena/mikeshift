@@ -11,13 +11,13 @@ internal static class TrayKit
     private static AutomationElement? ByClass(string cls) =>
         Root.FindFirst(TreeScope.Children, new PropertyCondition(AutomationElement.ClassNameProperty, cls));
 
-    /// <summary>Finds the Shiftvert tray button in the visible taskbar or, after opening "Show Hidden Icons", in the overflow flyout.</summary>
+    /// <summary>Finds the MikeShift tray button in the visible taskbar or, after opening "Show Hidden Icons", in the overflow flyout.</summary>
     public static (AutomationElement? Button, string Where) FindIcon()
     {
         var tray = ByClass("Shell_TrayWnd");
         if (tray is null) return (null, "no taskbar");
         var direct = tray.FindFirst(TreeScope.Descendants, new AndCondition(
-            new PropertyCondition(AutomationElement.NameProperty, "Shiftvert"),
+            new PropertyCondition(AutomationElement.NameProperty, "MikeShift"),
             new PropertyCondition(AutomationElement.ClassNameProperty, "SystemTray.NormalButton")));
         if (direct is not null) return (direct, "taskbar notification area");
         var chevron = tray.FindFirst(TreeScope.Descendants, new AndCondition(
@@ -33,7 +33,7 @@ internal static class TrayKit
         {
             var over = ByClass("TopLevelWindowForOverflowXamlIsland");
             var b = over?.FindFirst(TreeScope.Descendants, new AndCondition(
-                new PropertyCondition(AutomationElement.NameProperty, "Shiftvert"),
+                new PropertyCondition(AutomationElement.NameProperty, "MikeShift"),
                 new PropertyCondition(AutomationElement.ClassNameProperty, "SystemTray.NormalButton")));
             if (b is not null && !b.Current.BoundingRectangle.IsEmpty && !b.Current.IsOffscreen) { Thread.Sleep(400); return (b, "overflow flyout (Show Hidden Icons)"); }
             Thread.Sleep(100);

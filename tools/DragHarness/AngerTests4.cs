@@ -35,7 +35,7 @@ internal static partial class Anger
     private static void RegisterTests4(Dictionary<string, Action> d)
     {
         d["x4a"] = () => Case("x4a-notepad-text", "Text dragged out of a real Notepad window with Shift: no tiles, wheel hides, Notepad unharmed",
-            dir => File.WriteAllText(Path.Combine(dir, "x4a.txt"), "Shiftvert anger test: some selected text to drag out of Notepad, long enough to press on."), s =>
+            dir => File.WriteAllText(Path.Combine(dir, "x4a.txt"), "MikeShift anger test: some selected text to drag out of Notepad, long enough to press on."), s =>
             {
                 Process.Start(new ProcessStartInfo("notepad.exe", "\"" + Path.Combine(s.Work, "x4a.txt") + "\"") { UseShellExecute = true });
                 var np = FindTop("x4a.txt - Notepad");

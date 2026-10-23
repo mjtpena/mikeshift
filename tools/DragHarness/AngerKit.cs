@@ -29,7 +29,7 @@ internal static class AngerNative
     public const uint SWP_NOZORDER = 4, SWP_SHOWWINDOW = 0x40;
 }
 
-/// <summary>A started Shiftvert.exe with its own log (unpackaged), or an attached one (packaged).</summary>
+/// <summary>A started MikeShift.exe with its own log (unpackaged), or an attached one (packaged).</summary>
 internal sealed class AngerApp : IDisposable
 {
     public Process Proc = null!;
@@ -42,9 +42,9 @@ internal sealed class AngerApp : IDisposable
         try { File.Delete(logPath); } catch (IOException) { }
         var psi = new ProcessStartInfo(exe) { UseShellExecute = false, WorkingDirectory = Path.GetDirectoryName(exe)! };
         foreach (var a in args) psi.ArgumentList.Add(a);
-        psi.Environment["SHIFTVERT_LOG"] = logPath;
-        psi.Environment["SHIFTVERT_TRACE"] = "1";
-        psi.Environment["SHIFTVERT_ACCEPT_INJECTED"] = "1";
+        psi.Environment["MIKESHIFT_LOG"] = logPath;
+        psi.Environment["MIKESHIFT_TRACE"] = "1";
+        psi.Environment["MIKESHIFT_ACCEPT_INJECTED"] = "1";
         if (env is not null) foreach (var kv in env) psi.Environment[kv.Key] = kv.Value;
         app.Proc = Process.Start(psi)!;
         if (!app.WaitLog(t => t.Contains("hooks installed") && t.Contains("wheel ready"), 25000))
@@ -362,7 +362,7 @@ internal static class WheelInfo
 
     public static bool Visible()
     {
-        var hwnd = Native.FindWindowW("ShiftvertWheel", null);
+        var hwnd = Native.FindWindowW("MikeShiftWheel", null);
         return hwnd != IntPtr.Zero && Native.IsWindowVisible(hwnd);
     }
 }

@@ -162,7 +162,7 @@ internal static class Native
     }
 }
 
-/// <summary>Synthetic mouse and keyboard input (the same API the wheel's nudge uses; the app's hooks see it as injected, see SHIFTVERT_ACCEPT_INJECTED).</summary>
+/// <summary>Synthetic mouse and keyboard input (the same API the wheel's nudge uses; the app's hooks see it as injected, see MIKESHIFT_ACCEPT_INJECTED).</summary>
 internal static class Pointer
 {
     public static void Send(params Native.INPUT[] inputs) =>

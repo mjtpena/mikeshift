@@ -2,7 +2,7 @@
 
   <!--
     Dev harness for the Shift-drag wheel (W3). NOT part of the shipped package.
-    It starts the real Shiftvert.exe, begins an OLE drag with a shell data object from its own window and drives the pointer and keyboard with
+    It starts the real MikeShift.exe, begins an OLE drag with a shell data object from its own window and drives the pointer and keyboard with
     SendInput (press, move past the threshold, Shift, onto a tile, release), then asserts on the output files and on the app's log.
     Run: dotnet run, project tools/DragHarness, argument  scenario  copy, tools, shiftfirst, multi, esc, nodrop, text, virtual or all
   -->

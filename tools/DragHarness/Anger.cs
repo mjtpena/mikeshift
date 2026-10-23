@@ -137,7 +137,7 @@ internal sealed class Sess
             {
                 string cls;
                 try { cls = w.Current.ClassName; } catch (Exception) { continue; }
-                if (cls == "ShiftvertWheel" || cls == "H.NotifyIcon.TaskbarIcon" || w.Current.IsOffscreen) continue;
+                if (cls == "MikeShiftWheel" || cls == "H.NotifyIcon.TaskbarIcon" || w.Current.IsOffscreen) continue;
                 var texts = w.FindAll(TreeScope.Descendants, new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Text));
                 foreach (AutomationElement t in texts)
                 {
@@ -172,7 +172,7 @@ internal static partial class Anger
     {
         AppExe = appExe;
         RepoRoot = repo;
-        Root = Path.Combine(Path.GetTempPath(), "shiftvert-anger");
+        Root = Path.Combine(Path.GetTempPath(), "mikeshift-anger");
         Directory.CreateDirectory(Root);
         ShotDir = Path.Combine(Root, "shots");
         Directory.CreateDirectory(ShotDir);
