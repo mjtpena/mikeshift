@@ -33,7 +33,7 @@ internal sealed class LocalSettingsStore : IPreferenceStore
         Windows.Storage.ApplicationData.Current.LocalSettings.Values[key] = value;
 }
 
-/// <summary>Unpackaged: <c>%LOCALAPPDATA%\MikeShift\settings.json</c> (flat string map).</summary>
+/// <summary>Unpackaged: <c>%LOCALAPPDATA%\MikeShift\settings.json</c> (flat string map); <c>MIKESHIFT_SETTINGS_PATH</c> points dev/test runs at another file.</summary>
 internal sealed class JsonFileStore : IPreferenceStore
 {
     private readonly string _path;
@@ -41,7 +41,7 @@ internal sealed class JsonFileStore : IPreferenceStore
     private Dictionary<string, string>? _cache;
 
     public JsonFileStore(string? path = null) =>
-        _path = path ?? System.IO.Path.Combine(
+        _path = path ?? Environment.GetEnvironmentVariable("MIKESHIFT_SETTINGS_PATH") ?? System.IO.Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "MikeShift", "settings.json");
 
     public string? Get(string key)
@@ -81,14 +81,14 @@ internal sealed class JsonFileStore : IPreferenceStore
 }
 
 /// <summary>
-/// The user's preferences (PLAN §3.3): <c>chime</c>, <c>showsToast</c>, <c>toolsKey</c>, <c>launched</c>.
+/// The user's preferences (PLAN §3.3): <c>chime</c>, <c>showsToast</c>, <c>toolsKey</c>, <c>showInFolderAfter</c>, <c>launched</c>.
 /// Packaged apps use <c>ApplicationData.LocalSettings</c>; unpackaged runs use a JSON file under
 /// <c>%LOCALAPPDATA%\MikeShift</c>. Open at Login is NOT stored here: it lives in the OS (<see cref="StartupService"/>).
 /// Thread-safe for reads and writes; <see cref="Changed"/> may fire on any thread.
 /// </summary>
 public sealed class Preferences
 {
-    /// <summary>Key: play a chime when a job succeeds (bool, default true).</summary>
+    /// <summary>Key: play a sound when a job succeeds (bool, default false: Windows apps stay quiet unless asked).</summary>
     public const string ChimeKey = "chime";
 
     /// <summary>Key: show the HUD toast (bool, default true).</summary>
@@ -96,6 +96,9 @@ public sealed class Preferences
 
     /// <summary>Key: tools toggle (<see cref="ToolsKey"/> name, default "Ctrl").</summary>
     public const string ToolsKeyKey = "toolsKey";
+
+    /// <summary>Key: open Explorer on the result after a conversion (bool, default false).</summary>
+    public const string ShowInFolderAfterKey = "showInFolderAfter";
 
     /// <summary>Key: the welcome window has been shown once (bool, default false).</summary>
     public const string LaunchedKey = "launched";
@@ -111,10 +114,10 @@ public sealed class Preferences
     /// <summary>Raised after any value changed; the argument is the key.</summary>
     public event Action<string>? Changed;
 
-    /// <summary>Play a short chime when a job succeeds. Default true.</summary>
+    /// <summary>Play a short sound when a job succeeds. Default false (UX review X-02).</summary>
     public bool Chime
     {
-        get => GetBool(ChimeKey, true);
+        get => GetBool(ChimeKey, false);
         set => SetBool(ChimeKey, value);
     }
 
@@ -123,6 +126,13 @@ public sealed class Preferences
     {
         get => GetBool(ShowsToastKey, true);
         set => SetBool(ShowsToastKey, value);
+    }
+
+    /// <summary>Open Explorer with the result selected after every successful conversion. Default false.</summary>
+    public bool ShowInFolderAfter
+    {
+        get => GetBool(ShowInFolderAfterKey, false);
+        set => SetBool(ShowInFolderAfterKey, value);
     }
 
     /// <summary>The key that switches the wheel to tools. Default <see cref="ToolsKey.Ctrl"/>.</summary>
@@ -142,6 +152,18 @@ public sealed class Preferences
         get => GetBool(LaunchedKey, false);
         set => SetBool(LaunchedKey, value);
     }
+
+    /// <summary>A remembered editor window size (client DIPs), or null.</summary>
+    public (int Width, int Height)? GetWindowSize(string name)
+    {
+        var parts = _store.Get("window." + name)?.Split('x');
+        return parts is { Length: 2 } && int.TryParse(parts[0], out var w) && int.TryParse(parts[1], out var h) && w is > 100 and < 10000 && h is > 100 and < 10000
+            ? (w, h)
+            : null;
+    }
+
+    /// <summary>Remembers an editor window size (client DIPs).</summary>
+    public void SetWindowSize(string name, int width, int height) => _store.Set("window." + name, $"{width}x{height}");
 
     private bool GetBool(string key, bool fallback) =>
         bool.TryParse(_store.Get(key), out var b) ? b : fallback;

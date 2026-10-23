@@ -26,7 +26,7 @@ public class RtfReaderCoverageTests
         Assert.Equal("This isn't a valid RTF file.", ex.Message);
     }
 
-    [Fact(Skip = "BUG: RtfReader accepts white space before '{\\rtf' but then parses it as body text, so the first paragraph gets leading spaces (RtfReader.Read ignores 'start' when constructing the Parser)")]
+    [Fact]
     public void Leading_white_space_before_the_signature_is_allowed()
     {
         var m = RtfReader.Read("  \r\n\t{\\rtf1 Hello\\par}");

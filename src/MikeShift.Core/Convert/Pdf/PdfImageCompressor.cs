@@ -133,8 +133,9 @@ internal static class PdfImageCompressor
         var colors = 1;
         var bpc = 8;
 
-        var parmsItem = dict.Elements.GetValue("/DecodeParms");
-        if (parmsItem is PdfArray { Elements.Count: 1 } arr) parmsItem = arr.Elements.GetObject(0);
+        // Not Elements.GetValue: it throws a NullReferenceException inside PDFsharp when the value is a direct dictionary (the usual form).
+        var parmsItem = Resolve(dict.Elements["/DecodeParms"]);
+        if (parmsItem is PdfArray { Elements.Count: 1 } arr) parmsItem = Resolve(arr.Elements[0]);
         if (parmsItem is PdfDictionary parms)
         {
             if (parms.Elements.ContainsKey("/Predictor")) predictor = parms.Elements.GetInteger("/Predictor");
@@ -168,6 +169,9 @@ internal static class PdfImageCompressor
         if (predictor < 10 || colors != comps || columns != width || bpc != 8) return null;
         return UndoPngPredictor(inflated, rowBytes, height, comps);
     }
+
+    /// <summary>Follows an indirect reference; direct objects (and null) pass through.</summary>
+    private static PdfItem? Resolve(PdfItem? item) => item is PdfReference r ? r.Value : item;
 
     private static byte[]? UndoPngPredictor(byte[] data, int rowBytes, int height, int bytesPerPixel)
     {
@@ -238,13 +242,15 @@ internal static class PdfImageCompressor
         var pixels = samples.Length / comps;
         if (pixels == 0) return true;
         var step = Math.Max(1, pixels / 4096);
+        // A gray image has at most 256 distinct values, so "many colours" must be a lower bar than for RGB.
+        var richEnough = comps == 1 ? 64 : 256;
         var seen = new HashSet<int>();
         for (var p = 0; p < pixels; p += step)
         {
             var o = p * comps;
             var key = comps == 1 ? samples[o] : samples[o] | samples[o + 1] << 8 | samples[o + 2] << 16;
             seen.Add(key);
-            if (seen.Count >= 256) return false;
+            if (seen.Count >= richEnough) return false;
         }
         return true;
     }

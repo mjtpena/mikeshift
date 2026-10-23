@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices.WindowsRuntime;
 using Windows.Graphics.Imaging;
+using SkiaSharp;
 using Windows.Storage.Streams;
 
 namespace MikeShift.Core.Pdf;
@@ -33,14 +34,26 @@ internal static class PdfPixels
             transform.InterpolationMode = BitmapInterpolationMode.Fant;
         }
 
+        // Always decode to BGRA: WinRT's GetPixelDataAsync rejects Gray8 ("One or more parameters are invalid") just as the encoder
+        // does, so one-channel rasters are derived from the BGRA pixels (Rec. 601 luma, exact for gray sources).
         var provider = await frame.GetPixelDataAsync(
-            channels == 1 ? BitmapPixelFormat.Gray8 : BitmapPixelFormat.Bgra8,
-            channels == 1 ? BitmapAlphaMode.Ignore : BitmapAlphaMode.Straight,
+            BitmapPixelFormat.Bgra8,
+            BitmapAlphaMode.Straight,
             transform,
             ExifOrientationMode.IgnoreExifOrientation,
             colorManage ? ColorManagementMode.ColorManageToSRgb : ColorManagementMode.DoNotColorManage);
 
-        return new Raster(provider.DetachPixelData(), nw, nh, channels);
+        var bgra = provider.DetachPixelData();
+        return channels == 1 ? new Raster(ToGray(bgra), nw, nh, 1) : new Raster(bgra, nw, nh, 4);
+    }
+
+    /// <summary>BGRA to one-channel luma (alpha ignored); equal colour channels map to themselves exactly.</summary>
+    internal static byte[] ToGray(byte[] bgra)
+    {
+        var gray = new byte[bgra.Length / 4];
+        for (int i = 0, s = 0; i < gray.Length; i++, s += 4)
+            gray[i] = (byte)((299 * bgra[s + 2] + 587 * bgra[s + 1] + 114 * bgra[s] + 500) / 1000);
+        return gray;
     }
 
     /// <summary>The EXIF/TIFF orientation (1-8) of a frame; 1 when absent or unreadable.</summary>
@@ -64,6 +77,10 @@ internal static class PdfPixels
     /// <summary>Encodes pixels as a baseline JPEG at <paramref name="quality"/> (0..1). BGRA alpha is ignored.</summary>
     public static async Task<byte[]> EncodeJpegAsync(Raster r, double quality)
     {
+        // WinRT's BitmapEncoder has no one-channel pixel format ("The bitmap pixel format is unsupported" for Gray8): Skia writes a real
+        // single-component JPEG, which is what a /DeviceGray image needs.
+        if (r.Channels == 1) return EncodeGray(r, SKEncodedImageFormat.Jpeg, (int)Math.Round(Math.Clamp(quality, 0, 1) * 100));
+
         using var ms = new InMemoryRandomAccessStream();
         var options = new BitmapPropertySet
         {
@@ -71,7 +88,7 @@ internal static class PdfPixels
         };
         var encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.JpegEncoderId, ms, options);
         encoder.SetPixelData(
-            r.Channels == 1 ? BitmapPixelFormat.Gray8 : BitmapPixelFormat.Bgra8,
+            BitmapPixelFormat.Bgra8,
             BitmapAlphaMode.Ignore,
             (uint)r.Width, (uint)r.Height, 96, 96, r.Data);
         await encoder.FlushAsync();
@@ -81,14 +98,27 @@ internal static class PdfPixels
     /// <summary>Encodes pixels as a PNG (used when a JPEG of the same page is not wanted).</summary>
     public static async Task<byte[]> EncodePngAsync(Raster r)
     {
+        if (r.Channels == 1) return EncodeGray(r, SKEncodedImageFormat.Png, 100);
+
         using var ms = new InMemoryRandomAccessStream();
         var encoder = await BitmapEncoder.CreateAsync(BitmapEncoder.PngEncoderId, ms);
         encoder.SetPixelData(
-            r.Channels == 1 ? BitmapPixelFormat.Gray8 : BitmapPixelFormat.Bgra8,
+            BitmapPixelFormat.Bgra8,
             BitmapAlphaMode.Ignore,
             (uint)r.Width, (uint)r.Height, 96, 96, r.Data);
         await encoder.FlushAsync();
         return await ReadAllAsync(ms);
+    }
+
+    private static byte[] EncodeGray(Raster r, SKEncodedImageFormat format, int quality)
+    {
+        var info = new SKImageInfo(r.Width, r.Height, SKColorType.Gray8, SKAlphaType.Opaque);
+        using var bmp = new SKBitmap(info);
+        System.Runtime.InteropServices.Marshal.Copy(r.Data, 0, bmp.GetPixels(), Math.Min(r.Data.Length, info.BytesSize));
+        using var image = SKImage.FromBitmap(bmp);
+        using var data = image.Encode(format, quality)
+            ?? throw new InvalidOperationException("The image could not be encoded.");
+        return data.ToArray();
     }
 
     /// <summary>Decodes an image from memory (any WIC format) and returns its first frame as pixels.</summary>

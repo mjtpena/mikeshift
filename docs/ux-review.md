@@ -179,3 +179,43 @@ Severity: P0 blocks use, P1 clearly wrong, P2 polish, P3 nice to have. Evidence 
 4. Tray flyout (T-01/T-02) and copy (see table).
 5. Welcome (F-01) and Settings cards (S-01/S-02).
 6. Everything P2/P3.
+
+## Implementation status (P-B, surfaces other than the wheel)
+
+Screenshots of the result: `docs/screenshots/surfaces-v2/` (captured with `scripts/capture-scene.ps1` from our own windows via PrintWindow; the tray flyout is shown over a synthetic backdrop; the picker's navigation pane is blanked because it lists this PC's own folders). W-items belong to the wheel work package and are not listed. Light theme was exercised with `MIKESHIFT_THEME=light` (XAML theme only; the OS theme was not changed). **Not exercised:** real OS high contrast, Narrator, 150 %/200 % scaling of the XAML windows, ARM64.
+
+| ID | State | How |
+|---|---|---|
+| T-01 | done, other approach | WinUI `MenuFlyout` with Segoe Fluent icons, but opened by our own `TrayFlyoutHost` (H.NotifyIcon's `SecondWindow` mode did not open on Windows App SDK 2.x and forces every item to 32 px). Acrylic, rounded, follows dark/light. |
+| T-02 | done | Header block (icon, "MikeShift", "Shift-drag files to convert"); version moved to Settings > About; "How it works" opens Welcome. |
+| T-03 | done | Sentence case, "Exit", "Check for updates". |
+| T-04 | partly | Tooltip "MikeShift - Shift-drag files to convert". The icon set and the theme-following mono icons came with the rename work; a hand-simplified 4-wedge 16 px mark and a high-contrast icon swap were not done. |
+| T-05 | done | Left click = Convert files…, right click = menu; plus "Show last file in folder" for 60 s after a conversion (X-04). |
+| H-01 | done | Client area sized to the measured content; two lines; wraps to two lines before it trims. |
+| H-02 | done | Cloaked until the second composed frame; created 3 s after start. Evidence: `toast-first-frames.txt`. |
+| H-03 | done, other approach | The white hairline was the classic `WS_EX_WINDOWEDGE`/`WS_DLGFRAME` 3D frame that WinUI re-applies to a borderless presenter; a `WM_NCCALCSIZE` window subclass removes it. DWM border colour per theme, rounded corners from DWM. |
+| H-04 | done | Status glyph (ring, check, warning), detail line, "Show in folder" (`explorer /select`), 6 s when it has an action, paused under the pointer. |
+| H-05 | done | Converting to PNG…, Converting 2 of 5…, "N more in progress". |
+| H-06 | done, not verified with Narrator | `RaiseNotificationEvent` on the title text for every update. |
+| H-07 | done | 167 ms decelerating fade + 8 px rise, 100 ms fade out, none when animations are off. |
+| D-01 | done | `NoticeWindow`: non-modal, topmost, shown without activation unless the user was idle 2.5 s; Show in folder · Close. |
+| D-02 | done | New titles, file names, short reasons, footer; the converters' own sentences are unchanged (the CLI prints them). |
+| D-03 | done | Short text; "Quit MikeShift" default button; a window, not a modal on the start-up path. |
+| D-04 | done | Toast wording for "already in that format" done; click mode now shows `FeedbackCopy.NothingAvailable` (wired by the PM on merge). |
+| E-01 | done | `WindowChrome` on Crop, Trim, Settings, Welcome, dialogs, the action picker. |
+| E-02 | done | Not topmost, in the taskbar and Alt+Tab. |
+| E-03 | done | "Crop 1600 × 900 px, saved as 1600 × 900 px", "Output size", no ticks, `SelectorBar` presets named "Aspect ratio". |
+| E-04 | done | Resizable (min 560 x 560), preview scales, size remembered. |
+| E-05 | partly | Handles expose the RangeValue pattern (value, min, max in seconds). No playback preview and no audio waveform. |
+| E-06 | done | "Start"/"End" headers, tooltip with accepted formats (the parser already took `ss`, `m:ss`, `h:mm:ss.f`). |
+| S-01 | done, other approach | Hand-built `SettingsCard` and expanders instead of the CommunityToolkit package (built for Windows App SDK 1.x; avoiding the risk of mixed WinUI assemblies). |
+| S-02 | done | Text state, accessible names "WebM files, not installed", missing rows first, Store link per row, restart InfoBar when a fresh probe differs. |
+| S-03 | done | Warning `InfoBar` under the Alt choice. |
+| S-04 | done | About card (icon, version, Check for updates, View on GitHub, log folder, licences, Shiftvert credit), show-in-folder option, window clamped, min 480 x 480. No separate privacy page link (the app has none). |
+| F-01 | done | XAML wheel illustration (theme-aware), three numbered steps with keycaps, "Press Ctrl for tools", Try it with Convert files…. |
+| F-02 | done | New copy and a link to `ms-settings:taskbar`. |
+| C-01 | done | Title, "Choose" button, type filter, Pictures then last folder (client GUID), centred on the monitor under the cursor. |
+| X-01 | done | One set of strings in `FeedbackCopy`/`FeedbackPlan`. |
+| X-02 | done | Sound is off by default. |
+| X-03 | done | One title bar, one toast, one dialog and one flyout style. |
+| X-04 | done | Toast "Show in folder" and the 60 s tray entry. |

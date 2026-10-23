@@ -15,8 +15,6 @@ internal sealed class ActionPickerWindow : Window
 {
     private ActionPickerWindow(AppServices services, IReadOnlyList<string> paths)
     {
-        Title = "MikeShift: choose an action";
-        SystemBackdrop = new MicaBackdrop();
 
         var actions = ActionCatalog.For(paths, services.Capabilities);
 
@@ -35,7 +33,8 @@ internal sealed class ActionPickerWindow : Window
         AddGroup(panel, "Tools", actions.Where(a => a.Page == WheelPage.Tool), services, paths);
 
         Content = new ScrollViewer { Content = panel };
-        this.CenterOnScreen(420, 560);
+        Chrome.WindowChrome.Apply(this, "Choose an action");
+        Chrome.WindowChrome.PlaceCentered(this, 420, 592, minWidthDip: 360, minHeightDip: 320);
     }
 
     /// <summary>Shows the picker for <paramref name="paths"/>.</summary>
@@ -43,7 +42,7 @@ internal sealed class ActionPickerWindow : Window
     {
         var window = new ActionPickerWindow(services, paths);
         window.Activate();
-        window.SetForegroundWindow();
+        WinUIEx.WindowExtensions.SetForegroundWindow(window);
     }
 
     private void AddGroup(StackPanel panel, string header, IEnumerable<ActionDef> actions, AppServices services, IReadOnlyList<string> paths)

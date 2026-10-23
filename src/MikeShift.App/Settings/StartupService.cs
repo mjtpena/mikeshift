@@ -3,13 +3,13 @@ using Windows.ApplicationModel;
 
 namespace MikeShift.App.Settings;
 
-/// <summary>Outcome of changing Open at Login.</summary>
+/// <summary>Outcome of changing Open at login.</summary>
 /// <param name="Enabled">The state after the attempt.</param>
 /// <param name="Message">Why it could not be changed (user disabled it in Windows Settings, policy...), or null.</param>
 public sealed record StartupResult(bool Enabled, string? Message);
 
 /// <summary>
-/// Open at Login. Packaged: the manifest's <c>windows.startupTask</c> (<c>MikeShiftStartup</c>), which also shows up in
+/// Open at login. Packaged: the manifest's <c>windows.startupTask</c> (<c>MikeShiftStartup</c>), which also shows up in
 /// Settings → Apps → Startup. Unpackaged (dev runs): the HKCU Run key. Never throws.
 /// </summary>
 public sealed class StartupService
@@ -20,7 +20,7 @@ public sealed class StartupService
     private const string RunKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
     private const string RunValueName = "MikeShift";
 
-    /// <summary>Is Open at Login currently on?</summary>
+    /// <summary>Is Open at login currently on?</summary>
     public async Task<bool> GetEnabledAsync()
     {
         try
@@ -40,7 +40,7 @@ public sealed class StartupService
         }
     }
 
-    /// <summary>Turns Open at Login on or off and reports the resulting state.</summary>
+    /// <summary>Turns Open at login on or off and reports the resulting state.</summary>
     public async Task<StartupResult> SetEnabledAsync(bool enable)
     {
         try
@@ -77,14 +77,14 @@ public sealed class StartupService
                 case StartupTaskState.Enabled or StartupTaskState.EnabledByPolicy:
                     return new StartupResult(true, null);
                 case StartupTaskState.DisabledByUser:
-                    return new StartupResult(false, "Open at Login was turned off in Windows Settings (Apps, Startup). Turn it on there.");
+                    return new StartupResult(false, "Open at login was turned off in Windows Settings (Apps, Startup). Turn it on there.");
                 case StartupTaskState.DisabledByPolicy:
-                    return new StartupResult(false, "Open at Login is disabled by your administrator.");
+                    return new StartupResult(false, "Open at login is disabled by your administrator.");
                 default:
                     var state = await task.RequestEnableAsync();
                     return state is StartupTaskState.Enabled or StartupTaskState.EnabledByPolicy
                         ? new StartupResult(true, null)
-                        : new StartupResult(false, "Windows did not allow Open at Login. Check Settings, Apps, Startup.");
+                        : new StartupResult(false, "Windows did not allow Open at login. Check Settings, Apps, Startup.");
             }
         }
 

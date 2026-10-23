@@ -6,6 +6,14 @@ SetWindowPos
 ShowWindow
 DwmSetWindowAttribute
 DWM_WINDOW_CORNER_PREFERENCE
-MessageBox
 SetForegroundWindow
 WINDOW_EX_STYLE
+GetLastInputInfo
+LASTINPUTINFO
+WINDOW_STYLE
+SetWindowSubclass
+DefSubclassProc
+RemoveWindowSubclass
+WM_NCCALCSIZE
+SetLayeredWindowAttributes
+COLORREF

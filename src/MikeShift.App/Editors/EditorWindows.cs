@@ -1,4 +1,5 @@
 using Microsoft.UI.Windowing;
+using MikeShift.App.Chrome;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media;
 using Windows.Graphics;
@@ -9,57 +10,63 @@ using WinRT.Interop;
 
 namespace MikeShift.App.Editors;
 
-/// <summary>Shared window plumbing for the floating editors: size, placement, topmost, foreground, beep.</summary>
+/// <summary>Shared window plumbing for the editors: chrome, size, placement, foreground, beep.</summary>
 internal static class EditorWindows
 {
+    /// <summary>The height of the title bar that is part of the client area (UX review E-01), in device-independent pixels.</summary>
+    public const int TitleBarDip = 32;
+
     /// <summary>
-    /// Makes <paramref name="window"/> a fixed-size, topmost, taskbar-less window with the given client size (in DIPs),
-    /// centred on the monitor under the cursor (the monitor the user is working on).
+    /// Gives <paramref name="window"/> the shared chrome (Mica, icon, themed title bar with <paramref name="title"/>) and a client size
+    /// in DIPs (content area below the title bar), centred on the monitor under the cursor. Editors are ordinary windows: they have a
+    /// taskbar button and appear in Alt+Tab while a task is in progress (E-02), and they can be minimised.
     /// </summary>
-    public static void Setup(Window window, string title, int clientWidthDip, int clientHeightDip)
+    public static void Setup(Window window, string title, int clientWidthDip, int clientHeightDip, bool resizable = false, int minWidthDip = 0, int minHeightDip = 0)
     {
-        window.Title = title;
-        window.SystemBackdrop = new MicaBackdrop();
+        WindowChrome.Apply(window, title);
 
         var presenter = OverlappedPresenter.Create();
-        presenter.IsResizable = false;
-        presenter.IsMaximizable = false;
-        presenter.IsMinimizable = false;
-        presenter.IsAlwaysOnTop = true;
+        presenter.IsResizable = resizable;
+        presenter.IsMaximizable = resizable;
+        presenter.IsMinimizable = true;
+        presenter.IsAlwaysOnTop = false;
         window.AppWindow.SetPresenter(presenter);
-        window.AppWindow.IsShownInSwitchers = false;
+        window.AppWindow.IsShownInSwitchers = true;
 
-        var icon = Path.Combine(AppContext.BaseDirectory, "Assets", "MikeShift.ico");
-        if (File.Exists(icon))
+        WindowChrome.PlaceCentered(window, clientWidthDip, clientHeightDip + TitleBarDip, minWidthDip, minHeightDip + (minHeightDip > 0 ? TitleBarDip : 0));
+    }
+
+    /// <summary>The window's last client size in DIPs for <paramref name="key"/> (clamped to the minimum), or the default.</summary>
+    public static (int Width, int Height) RememberedSize(string key, int defaultWidth, int defaultHeight, int minWidth, int minHeight)
+    {
+        try
         {
-            try { window.AppWindow.SetIcon(icon); }
-            catch (Exception) { /* cosmetic */ }
+            if (App.Current.Services.Preferences.GetWindowSize(key) is { } size)
+                return (Math.Max(minWidth, size.Width), Math.Max(minHeight, size.Height));
         }
-
-        PInvoke.GetCursorPos(out var cursor);
-        var work = DisplayArea.GetFromPoint(new PointInt32(cursor.X, cursor.Y), DisplayAreaFallback.Nearest).WorkArea;
-
-        // Move onto the target monitor first so GetDpiForWindow reports that monitor's scale.
-        window.AppWindow.Move(new PointInt32(work.X, work.Y));
-        var hwnd = new HWND(WindowNative.GetWindowHandle(window));
-        var dpi = PInvoke.GetDpiForWindow(hwnd);
-        var scale = dpi == 0 ? 1.0 : dpi / 96.0;
-
-        var width = (int)Math.Round(clientWidthDip * scale);
-        var height = (int)Math.Round(clientHeightDip * scale);
-        window.AppWindow.ResizeClient(new SizeInt32(width, height));
-
-        var outer = window.AppWindow.Size;
-        if (outer.Height > work.Height)
+        catch (Exception)
         {
-            // Small screens: shrink to fit; the content scrolls.
-            window.AppWindow.Resize(new SizeInt32(outer.Width, work.Height));
-            outer = window.AppWindow.Size;
+            // preferences unavailable (tests): use the default
         }
+        return (defaultWidth, defaultHeight);
+    }
 
-        window.AppWindow.Move(new PointInt32(
-            work.X + Math.Max(0, (work.Width - outer.Width) / 2),
-            work.Y + Math.Max(0, (work.Height - outer.Height) / 2)));
+    /// <summary>Remembers the window's current client size (DIPs, below the title bar) for <paramref name="key"/>.</summary>
+    public static void RememberSize(Window window, string key)
+    {
+        try
+        {
+            if (window.AppWindow.Presenter is OverlappedPresenter { State: not OverlappedPresenterState.Restored }) return; // maximised or minimised
+            var hwnd = new HWND(WindowNative.GetWindowHandle(window));
+            var dpi = PInvoke.GetDpiForWindow(hwnd);
+            var scale = dpi == 0 ? 1.0 : dpi / 96.0;
+            var client = window.AppWindow.ClientSize;
+            App.Current.Services.Preferences.SetWindowSize(key, (int)Math.Round(client.Width / scale), (int)Math.Round(client.Height / scale) - TitleBarDip);
+        }
+        catch (Exception)
+        {
+            // cosmetic
+        }
     }
 
     /// <summary>Shows the window and takes the foreground even when the app was not the active one.</summary>

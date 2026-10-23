@@ -892,7 +892,7 @@ internal sealed class WheelController : IDisposable
     {
         if (actions.Count == 0)
         {
-            _services.Hud.Show("Nothing to do with those files");
+            _services.Hud.Show(MikeShift.Core.Feedback.FeedbackCopy.NothingAvailable);
             return;
         }
 

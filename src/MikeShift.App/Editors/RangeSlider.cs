@@ -2,6 +2,8 @@ using Microsoft.UI;
 using Microsoft.UI.Input;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
+using Microsoft.UI.Xaml.Automation.Peers;
+using Microsoft.UI.Xaml.Automation.Provider;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Markup;
@@ -48,6 +50,8 @@ internal sealed class RangeSlider : UserControl
         HorizontalContentAlignment = HorizontalAlignment.Stretch;
         _startThumb = new ThumbControl(isStart: true, "Trim start");
         _endThumb = new ThumbControl(isStart: false, "Trim end");
+        _startThumb.Bind(() => (_model?.Start.TotalSeconds ?? 0, 0, _model?.End.TotalSeconds ?? 0), t => SetFromAutomation(Which.Start, t));
+        _endThumb.Bind(() => (_model?.End.TotalSeconds ?? 0, _model?.Start.TotalSeconds ?? 0, _model?.Duration.TotalSeconds ?? 0), t => SetFromAutomation(Which.End, t));
         _startThumb.KeyDown += (_, e) => OnThumbKey(Which.Start, e);
         _endThumb.KeyDown += (_, e) => OnThumbKey(Which.End, e);
 
@@ -212,6 +216,16 @@ internal sealed class RangeSlider : UserControl
         e.Handled = true;
     }
 
+    /// <summary>Screen readers set a handle through the RangeValue pattern (seconds).</summary>
+    private void SetFromAutomation(Which which, double seconds)
+    {
+        if (_model is null) return;
+        var t = TimeSpan.FromSeconds(seconds);
+        if (which == Which.Start) _model.SetStart(t);
+        else _model.SetEnd(t);
+        UserEdited?.Invoke();
+    }
+
     /// <summary>A focusable handle: grip on a rounded accent bar.</summary>
     private sealed class ThumbControl : ContentControl
     {
@@ -232,6 +246,35 @@ internal sealed class RangeSlider : UserControl
                 "</Border>");
         }
 
+        private Func<(double Value, double Min, double Max)> _read = () => (0, 0, 0);
+        private Action<double> _write = _ => { };
+
         public void Describe(string name) => AutomationProperties.SetName(this, name);
+
+        /// <summary>Connects the handle's value (seconds, with the range it may take) so it can be read and set by assistive technology.</summary>
+        public void Bind(Func<(double Value, double Min, double Max)> read, Action<double> write)
+        {
+            _read = read;
+            _write = write;
+        }
+
+        protected override AutomationPeer OnCreateAutomationPeer() => new ThumbPeer(this);
+
+        /// <summary>A handle is a slider with a value in seconds (it was a plain group, so Narrator could not read or change it).</summary>
+        private sealed class ThumbPeer(ThumbControl owner) : FrameworkElementAutomationPeer(owner), IRangeValueProvider
+        {
+            protected override AutomationControlType GetAutomationControlTypeCore() => AutomationControlType.Slider;
+
+            protected override object GetPatternCore(PatternInterface patternInterface) =>
+                patternInterface == PatternInterface.RangeValue ? this : base.GetPatternCore(patternInterface);
+
+            public double Value => owner._read().Value;
+            public double Minimum => owner._read().Min;
+            public double Maximum => owner._read().Max;
+            public double SmallChange => 0.1;
+            public double LargeChange => 1;
+            public bool IsReadOnly => false;
+            public void SetValue(double value) => owner._write(value);
+        }
     }
 }

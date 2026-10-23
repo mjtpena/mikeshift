@@ -6,6 +6,7 @@ using MikeShift.App.Settings;
 using MikeShift.App.Tray;
 using MikeShift.App.Wheel;
 using MikeShift.Core;
+using MikeShift.Core.Feedback;
 
 namespace MikeShift.App;
 
@@ -21,6 +22,8 @@ public partial class App : Application
     public App()
     {
         InitializeComponent();
+        Chrome.WindowChrome.ApplyForcedTheme(this);
+        UnhandledException += (_, e) => Wheel.WheelLog.Error("unhandled: " + e.Message, e.Exception);
         _smokeTest = Environment.GetCommandLineArgs().Contains("--smoke-test", StringComparer.Ordinal);
 
         // There is no main window: closing Settings or Welcome must never end the process.
@@ -59,23 +62,32 @@ public partial class App : Application
         _ = Task.Run(() => Capabilities.Current);
 
         // W3 wiring: the input monitor + wheel thread, and the click-mode wheel for Convert Files….
-        _drag = DragCoordinator.Start(Services);
+        _drag = DragCoordinator.Start(Services, installHooks: Environment.GetEnvironmentVariable("MIKESHIFT_NO_HOOKS") != "1");
         if (_drag is not null) Tray.ConvertFilesRequested += _drag.ShowClickMode;
         // Crop/Trim editors for interactive actions; dev flags `--crop <img>` / `--trim <media>` open them directly.
         Editors.EditorRegistration.Register(Services.Interaction);
         Editors.EditorRegistration.TryHandleDevArgs(Environment.GetCommandLineArgs());
 
+        // Build the (hidden) toast window a little after start-up so the first result does not wait for XAML to initialise.
+        var prewarm = dispatcher.CreateTimer();
+        prewarm.Interval = TimeSpan.FromSeconds(3);
+        prewarm.IsRepeating = false;
+        prewarm.Tick += (_, _) => Services.Hud.Prewarm();
+        prewarm.Start();
+
         var args2 = Environment.GetCommandLineArgs();
         dispatcher.TryEnqueue(() =>
         {
             if (IsElevated())
-                Services.Dialogs.ShowError("MikeShift is running as administrator",
-                    "Windows does not let a normal Explorer window drag files onto an administrator program, and the other way round, " +
-                    "so Shift-drag will not work as expected. Quit MikeShift and start it again without \"Run as administrator\".");
+                Services.Dialogs.Show(new DialogContent(FeedbackCopy.ElevatedTitle, FeedbackCopy.ElevatedBody, [], null, DialogSeverity.Warning,
+                    [new DialogButton("Close", DialogCommand.Close), new DialogButton("Quit MikeShift", DialogCommand.QuitApp)]));
 
             if (args2.Contains("--show-welcome", StringComparer.Ordinal)) Services.Preferences.Launched = false;
             WelcomeWindow.ShowIfFirstRun(Services);
             if (args2.Contains("--show-settings", StringComparer.Ordinal)) SettingsWindow.ShowSingleton(Services);
+
+            // Dev/test hook: `MikeShift.exe --scene <name>` shows one canned UI state (see DevScenes).
+            DevScenes.TryRun(args2, Services, Tray);
 
             // Dev/test hook: `MikeShift.exe --convert <path>...` behaves like Convert Files… with those paths.
             var convertAt = Array.IndexOf(args2, "--convert");

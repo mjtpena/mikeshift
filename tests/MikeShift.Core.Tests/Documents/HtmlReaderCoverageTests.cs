@@ -54,7 +54,7 @@ public class HtmlReaderCoverageTests
         Assert.Empty(Html("<p title=\"unterminated>text</p>").Blocks);
     }
 
-    [Fact(Skip = "BUG: HtmlReader.Tag() skips one extra character after an attribute that starts with '=' (e.g. <p =x>), swallowing the '>' and the text that follows")]
+    [Fact]
     public void A_nameless_attribute_does_not_swallow_the_following_text()
     {
         Assert.Equal(["ok"], Texts(Html("<p =oops>ok</p>")));
