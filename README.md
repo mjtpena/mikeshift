@@ -104,5 +104,6 @@ or directly: `dotnet build MikeShift.sln`, `dotnet test MikeShift.sln`. CI (GitH
 * [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) projects, threading, how drag detection and the wheel work, memory behaviour, Microsoft API references
 * [docs/LIMITS.md](docs/LIMITS.md) everything that works differently on Windows
 * [docs/TESTPLAN.md](docs/TESTPLAN.md) automated tests, the drag harness and the manual checklist
+* [assets/brand/mikeshift.svg](assets/brand/mikeshift.svg) the icon source (`scripts/make-icons.ps1` renders every icon; preview: [docs/screenshots/brand/icon-sheet.png](docs/screenshots/brand/icon-sheet.png))
 * [docs/PLAN.md](docs/PLAN.md) the original specification; [docs/WORKPLAN.md](docs/WORKPLAN.md) who built what
 * [LICENSE](LICENSE) (MIT) and [NOTICE](NOTICE) (credit to the original Shiftvert project and every third-party licence)

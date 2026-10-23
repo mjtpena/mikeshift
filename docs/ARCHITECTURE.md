@@ -15,9 +15,11 @@ src/
 tests/
   MikeShift.Core.Tests/    xUnit; fixtures are generated at test time
   MikeShift.Cli.Tests/     launches the real mikeshift.exe as a child process
+tools/IconGen/            build-time icon generator: renders assets/brand/mikeshift.svg into every MSIX logo, .ico and docs/screenshots/brand/icon-sheet.png (not shipped)
 tools/DragHarness/         scripted Shift-drags (real mouse/keyboard input + an OLE drag source) against a running MikeShift.exe
 packaging/make-dev-cert.ps1   self-signed signing certificate for sideloading
-scripts/                   build.ps1, release.ps1, make-fixtures.ps1
+scripts/                   build.ps1, release.ps1, make-fixtures.ps1, make-icons.ps1
+assets/brand/mikeshift.svg  hand-written source of the app mark
 ```
 
 **MikeShift.Core** (namespace `MikeShift.Core.*`)
@@ -36,7 +38,7 @@ scripts/                   build.ps1, release.ps1, make-fixtures.ps1
 | `Feedback/` | `FeedbackPlan` and `JobLedger`: what the toast and dialogs say, and the "N still working" bookkeeping | built, unit-tested |
 | `Cli/CliRunner.cs` | the whole command line, callable in-process | built |
 
-**MikeShift.App** folders: `Tray/` (tray icon and menu, Convert Files… dialog, a plain action list used only if the wheel could not start), `Jobs/` (`JobRunner`, `UiInteraction`), `Hud/` (non-activating toast window, chime, dialogs), `Settings/` (preferences, Open at Login, settings window), `FirstRun/` (welcome window), `Input/` (low-level input monitor), `Wheel/` (the wheel window, renderer, drop target, controller, UI Automation, `DragCoordinator`), `Editors/` (Crop editor, Trim dialog, media probe for the preview), `MemoryTrim.cs`, `Program.cs` (single-instance entry point).
+**MikeShift.App** folders: `Tray/` (tray icon and menu, Convert Files… dialog, a plain action list used only if the wheel could not start), `Jobs/` (`JobRunner`, `UiInteraction`), `Hud/` (non-activating toast window, chime, dialogs), `Settings/` (preferences, Open at Login, settings window), `FirstRun/` (welcome window), `Input/` (low-level input monitor), `Wheel/` (the wheel window, renderer, drop target, controller, UI Automation, `DragCoordinator`), `Editors/` (Crop editor, Trim dialog, media probe for the preview), `MemoryTrim.cs`, `Program.cs` (single-instance entry point). The tray icon is monochrome and follows the taskbar theme: `tray-dark-taskbar.ico` (white glyph) or `tray-light-taskbar.ico` (dark glyph), switched live from `UISettings.ColorValuesChanged` (`Tray/TaskbarTheme.cs`, which reads `SystemUsesLightTheme`). Regenerate all icons with `scripts/make-icons.ps1`; the preview sheet is `docs/screenshots/brand/icon-sheet.png`.
 
 Native calls use CsWin32 (source-generated P/Invoke). Every `NativeMethods.txt` in a project is picked up, so each folder lists the Win32 functions it needs next to the code that uses them.
 
