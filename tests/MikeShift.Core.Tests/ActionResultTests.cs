@@ -5,30 +5,7 @@ namespace MikeShift.Core.Tests;
 public class ActionResultTests
 {
     [Fact]
-    public void Toast_texts_follow_the_plan()
-    {
-        Assert.Equal("photo 2.png", new ActionResult
-        {
-            Total = 1,
-            Outputs = [new ActionOutput(@"C:\a\photo.heic", @"C:\a\photo 2.png", false)],
-        }.ToastText);
-
-        Assert.Equal("3 files saved", new ActionResult
-        {
-            Total = 3,
-            Outputs = [.. Enumerable.Range(1, 3).Select(i => new ActionOutput($@"C:\a\{i}.heic", $@"C:\a\{i}.png", false))],
-        }.ToastText);
-
-        Assert.Equal("2 saved, 1 skipped", new ActionResult
-        {
-            Total = 3,
-            Outputs = [.. Enumerable.Range(1, 2).Select(i => new ActionOutput($@"C:\a\{i}.heic", $@"C:\a\{i}.png", false))],
-            Failures = [new ActionFailure(@"C:\a\3.heic", "bad")],
-        }.ToastText);
-    }
-
-    [Fact]
-    public void Toast_appends_already_and_downloads_notes()
+    public void Downloads_fallback_is_reported()
     {
         var r = new ActionResult
         {
@@ -37,7 +14,6 @@ public class ActionResultTests
             AlreadyInFormat = 2,
             AlreadyLabel = "PNG",
         };
-        Assert.Equal("1.png · 2 already PNG · in Downloads", r.ToastText);
         Assert.True(r.AnyDownloadsFallback);
     }
 

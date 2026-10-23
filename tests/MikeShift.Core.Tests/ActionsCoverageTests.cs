@@ -3,6 +3,7 @@ using System.Security.AccessControl;
 using System.Security.Principal;
 using MikeShift.Core;
 using MikeShift.Core.Actions;
+using MikeShift.Core.Feedback;
 
 namespace MikeShift.Core.Tests;
 
@@ -21,7 +22,7 @@ public class ActionsCoverageTests
         Assert.Equal(@"C:\a\out.jpg", o.Path);
         Assert.False(o.UsedDownloadsFallback);
         Assert.True(r.Succeeded);
-        Assert.Equal("out.jpg", r.ToastText);
+        Assert.Equal("Saved out.jpg · Next to the original", FeedbackPlan.ToastFor(r).Text);
     }
 
     [Fact]
@@ -29,7 +30,7 @@ public class ActionsCoverageTests
     {
         var r = ActionResult.Single(1, @"C:\a\in.png", new CommitResult(@"C:\dl\in.jpg", true));
         Assert.True(r.AnyDownloadsFallback);
-        Assert.Equal("in.jpg · in Downloads", r.ToastText);
+        Assert.Equal("Saved in.jpg · In Downloads (that folder isn't writable)", FeedbackPlan.ToastFor(r).Text);
     }
 
     [Fact]
@@ -38,7 +39,7 @@ public class ActionsCoverageTests
         var one = ActionResult.Failed(1, @"C:\a\x.png", "no luck");
         Assert.True(one.AllFailed);
         Assert.Equal("no luck", one.AllFailedMessage);
-        Assert.Equal("no luck", one.ToastText);
+        Assert.Equal("Couldn't convert x.png", FeedbackPlan.ToastFor(one).Title);
 
         var many = ActionResult.Failed(4, @"C:\a\x.png", "no luck");
         Assert.Equal("None of the 4 files could be converted: no luck", many.AllFailedMessage);
@@ -48,10 +49,10 @@ public class ActionsCoverageTests
     [Fact]
     public void Toast_of_a_cancelled_run_and_of_an_empty_run()
     {
-        Assert.Equal("Cancelled", new ActionResult { Total = 2, Cancelled = true }.ToastText);
-        Assert.Equal("", new ActionResult { Total = 0 }.ToastText);
+        Assert.Equal("Cancelled", FeedbackPlan.ToastFor(new ActionResult { Total = 2, Cancelled = true }).Text);
+        Assert.Equal("Nothing to convert", FeedbackPlan.ToastFor(new ActionResult { Total = 0 }).Text);
         // Only "already" skips: the note stands alone, with no leading separator.
-        Assert.Equal("2 already converted", new ActionResult { Total = 2, AlreadyInFormat = 2 }.ToastText);
+        Assert.Equal(FeedbackCopy.AlreadyThatFormat, FeedbackPlan.ToastFor(new ActionResult { Total = 2, AlreadyInFormat = 2 }).Text);
     }
 
     [Fact]

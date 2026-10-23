@@ -1,5 +1,3 @@
-using System.Text;
-
 namespace MikeShift.Core.Actions;
 
 /// <summary>One file or folder an action produced.</summary>
@@ -79,40 +77,6 @@ public sealed record ActionResult
             if (Failures.Count > MaxListedFailures)
                 lines.Add($"…and {Failures.Count - MaxListedFailures} more");
             return lines;
-        }
-    }
-
-    /// <summary>
-    /// The HUD toast text: "photo 2.png", "3 files saved", "2 saved, 1 skipped" (skipped = failed), plus
-    /// " · 2 already PNG" and " · in Downloads" when applicable. Empty only when nothing happened at all.
-    /// </summary>
-    public string ToastText
-    {
-        get
-        {
-            var sb = new StringBuilder();
-            if (Outputs.Count == 1 && Failures.Count == 0)
-                sb.Append(System.IO.Path.GetFileName(Outputs[0].Path.TrimEnd('\\', '/')));
-            else if (Outputs.Count > 0 && Failures.Count == 0)
-                sb.Append(Outputs.Count).Append(" files saved");
-            else if (Outputs.Count > 0)
-                sb.Append(Outputs.Count).Append(" saved, ").Append(Failures.Count).Append(" skipped");
-            else if (Failures.Count > 0)
-                sb.Append(AllFailedMessage);
-            else if (Cancelled)
-                sb.Append("Cancelled");
-
-            if (AlreadyInFormat > 0)
-            {
-                if (sb.Length > 0) sb.Append(" · ");
-                sb.Append(AlreadyInFormat).Append(" already ").Append(AlreadyLabel ?? "converted");
-            }
-            if (AnyDownloadsFallback)
-            {
-                if (sb.Length > 0) sb.Append(" · ");
-                sb.Append("in Downloads");
-            }
-            return sb.ToString();
         }
     }
 

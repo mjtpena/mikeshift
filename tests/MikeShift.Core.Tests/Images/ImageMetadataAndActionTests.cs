@@ -91,7 +91,7 @@ public class ImageActionTests
         Assert.Equal(1, result.AlreadyInFormat);
         Assert.Equal("PNG", result.AlreadyLabel);
         Assert.Equal([tmp.Combine("b.png")], result.Outputs.Select(o => o.Path).ToArray());
-        Assert.Contains("1 already PNG", result.ToastText);
+        Assert.Contains("1 already PNG", MikeShift.Core.Feedback.FeedbackPlan.ToastFor(result).Text);
         Assert.False(File.Exists(tmp.Combine("a 2.png")));
     }
 

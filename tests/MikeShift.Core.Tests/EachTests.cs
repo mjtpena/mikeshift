@@ -1,5 +1,6 @@
 using MikeShift.Core;
 using MikeShift.Core.Actions;
+using MikeShift.Core.Feedback;
 
 namespace MikeShift.Core.Tests;
 
@@ -35,7 +36,7 @@ public class EachTests
         Assert.Equal(4, result.Outputs.Count);
         Assert.Empty(result.Failures);
         Assert.True(result.Succeeded);
-        Assert.Equal("4 files saved", result.ToastText);
+        Assert.Equal("Saved 4 files · Next to the originals", FeedbackPlan.ToastFor(result).Text);
     }
 
     [Fact]
@@ -48,7 +49,7 @@ public class EachTests
         Assert.Equal("bad file2.png", failure.Message);
         Assert.True(result.PartialFailure);
         Assert.False(result.AllFailed);
-        Assert.Equal("2 saved, 1 skipped", result.ToastText);
+        Assert.Equal("Saved 2 of 3 · 1 couldn't be converted", FeedbackPlan.ToastFor(result).Text);
         Assert.Equal(["file2.png: bad file2.png"], result.FailureLines);
     }
 
@@ -59,7 +60,7 @@ public class EachTests
 
         Assert.True(result.AllFailed);
         Assert.Equal("None of the 3 files could be converted: bad file1.png", result.AllFailedMessage);
-        Assert.Equal(result.AllFailedMessage, result.ToastText);
+        Assert.Equal("None of the 3 files could be converted", FeedbackPlan.ToastFor(result).Title);
     }
 
     [Fact]
@@ -105,7 +106,7 @@ public class EachTests
         Assert.Equal([@"C:\in\b.jpg"], converted);
         Assert.Equal(2, result.AlreadyInFormat);
         Assert.Single(result.Outputs);
-        Assert.Equal("b.png · 2 already PNG", result.ToastText);
+        Assert.Equal("Saved b.png · Next to the original · 2 already PNG", FeedbackPlan.ToastFor(result).Text);
         Assert.False(result.AllFailed);
     }
 
@@ -117,7 +118,7 @@ public class EachTests
         Assert.Empty(result.Outputs);
         Assert.Empty(result.Failures);
         Assert.False(result.AllFailed);
-        Assert.Equal("1 already PNG", result.ToastText);
+        Assert.Equal("This file is already PNG", FeedbackPlan.ToastFor(result).Text);
     }
 
     [Fact]
@@ -169,7 +170,7 @@ public class EachTests
         Assert.False(result.Outputs[0].UsedDownloadsFallback);
         Assert.True(result.Outputs[1].UsedDownloadsFallback);
         Assert.True(result.AnyDownloadsFallback);
-        Assert.Equal("2 files saved · in Downloads", result.ToastText);
+        Assert.Equal("Saved 2 files · Some are in Downloads (that folder isn't writable)", FeedbackPlan.ToastFor(result).Text);
     }
 
     [Fact]
@@ -178,7 +179,7 @@ public class EachTests
         var result = await Each.RunAsync([@"C:\in\doc.pdf"], Ctx,
             (_, _) => Task.FromResult(@"C:\in\doc pages"), CancellationToken.None);
         Assert.False(result.AnyDownloadsFallback);
-        Assert.Equal("doc pages", result.ToastText);
+        Assert.Equal("Saved doc pages · Next to the original", FeedbackPlan.ToastFor(result).Text);
     }
 
     [Fact]

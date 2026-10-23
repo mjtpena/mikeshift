@@ -242,7 +242,7 @@ public class ZipTests
         var output = Assert.Single(result.Outputs);
         Assert.True(output.UsedDownloadsFallback);
         Assert.Equal(tmp.Combine("__downloads", "a.zip"), output.Path);
-        Assert.EndsWith("in Downloads", result.ToastText);
+        Assert.Contains("In Downloads", MikeShift.Core.Feedback.FeedbackPlan.ToastFor(result).Text);
     }
 
     [Fact]
