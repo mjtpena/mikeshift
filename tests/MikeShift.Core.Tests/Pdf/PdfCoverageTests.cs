@@ -243,7 +243,7 @@ public class PdfCoverageTests
         Assert.Equal((8, 6), (scaled.Width, scaled.Height));
     }
 
-    [Fact(Skip = "BUG: WinRT BitmapEncoder rejects Gray8 pixel data (the bitmap pixel format is unsupported), so PdfPixels.EncodePngAsync/EncodeJpegAsync cannot encode one-channel rasters")]
+    [Fact]
     public async Task One_channel_rasters_round_trip_through_png_and_jpeg()
     {
         var gray = new PdfPixels.Raster([.. Enumerable.Range(0, 64).Select(i => (byte)(i * 4))], 8, 8, 1);
@@ -478,7 +478,7 @@ public class PdfCoverageTests
         }
     }
 
-    [Fact(Skip = "BUG: PdfPixels.EncodeJpegAsync/EncodePngAsync fail for one-channel (Gray8) rasters (the bitmap pixel format is unsupported), so DeviceGray images are never recompressed by PDF Compress; the failure is swallowed in PdfImageCompressor.RecompressAsync")]
+    [Fact]
     public async Task Gray_flate_images_are_recompressed()
     {
         var gray = GrayOf(Photo(300, 200, seed: 2));
@@ -490,7 +490,7 @@ public class PdfCoverageTests
         }
     }
 
-    [Fact(Skip = "BUG: PdfImageCompressor.DecodeFlate calls Elements.GetValue(DecodeParms) which throws NullReferenceException inside PDFsharp when /DecodeParms is a direct dictionary (the usual form), so every Flate image with a PNG predictor is silently skipped")]
+    [Fact]
     public async Task Flate_images_with_a_direct_png_predictor_dictionary_are_recompressed()
     {
         var bgra = Photo(160, 120, seed: 4);

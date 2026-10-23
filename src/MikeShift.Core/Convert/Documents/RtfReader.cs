@@ -20,7 +20,7 @@ public static partial class RtfReader
         while (start < data.Length && data[start] is (byte)' ' or (byte)'\r' or (byte)'\n' or (byte)'\t') start++;
         if (data.Length - start < 5 || data[start] != '{' || data[start + 1] != '\\' || data[start + 2] != 'r' || data[start + 3] != 't' || data[start + 4] != 'f')
             throw new ConversionException("This isn't a valid RTF file.");
-        return new Parser(Encoding.Latin1.GetString(data)).Parse();
+        return new Parser(Encoding.Latin1.GetString(data, start, data.Length - start)).Parse();
     }
 
     public static DocModel Read(string rtf) => Read(Encoding.Latin1.GetBytes(rtf));

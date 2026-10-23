@@ -362,11 +362,11 @@ public class OdtDocxReaderCoverageTests
             P("unknown rstyle", "", "<w:rStyle w:val=\"Nope\"/>"), styles));
         var runs = Paras(m).Select(p => p.Runs.Single()).Select(r => (r.Text, r.Bold, r.Italic, r.Underline)).ToArray();
         Assert.Equal(
-            [("inherits", true, true, false), ("off", false, false, false), ("charstyle", true, false, true), ("plainstyle", false, false, false),
+            [("inherits", true, true, true), ("off", false, false, false), ("charstyle", true, false, true), ("plainstyle", false, false, false),
              ("direct", true, true, true), ("unknown rstyle", false, false, false)], runs);
     }
 
-    [Fact(Skip = "BUG: DocxReader applies bold/italic from a paragraph style's run properties but drops underline (ReadParagraph starts the Fmt with underline=false instead of the style chain's)")]
+    [Fact]
     public void A_paragraph_style_with_underline_underlines_its_text()
     {
         const string styles = "<w:style w:type=\"paragraph\" w:styleId=\"Under\"><w:name w:val=\"Under\"/><w:rPr><w:u w:val=\"single\"/></w:rPr></w:style>";

@@ -120,6 +120,7 @@ public static class HtmlReader
                 if (ch == '/') { selfClosing = p + 1 < n && html[p + 1] == '>'; p++; continue; }
 
                 var aStart = p;
+                var tokenStart = p;
                 while (p < n && !char.IsWhiteSpace(html[p]) && html[p] != '=' && html[p] != '>' && html[p] != '/') p++;
                 var aName = html[aStart..p].ToLowerInvariant();
                 while (p < n && char.IsWhiteSpace(html[p])) p++;
@@ -144,7 +145,7 @@ public static class HtmlReader
                     }
                 }
                 if (aName.Length > 0 && attrs is not null) attrs[aName] = value;
-                if (aName.Length == 0) p++; // guard against '=' with no name
+                if (p == tokenStart) p++; // always make progress (cannot normally happen: a lone '=' is consumed above)
             }
             _i = p;
 

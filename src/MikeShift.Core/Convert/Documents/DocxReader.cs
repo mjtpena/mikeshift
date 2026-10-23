@@ -255,6 +255,7 @@ public static partial class DocxReader
 
             var chainBold = Chain(styleId).Any(s => s.Bold);
             var chainItalic = Chain(styleId).Any(s => s.Italic);
+            var chainUnderline = Chain(styleId).Any(s => s.Underline);
             var current = NewParagraph();
             var emittedAny = false;
 
@@ -269,7 +270,7 @@ public static partial class DocxReader
             }
 
             var heading = current.Kind == ParagraphKind.Heading;
-            WalkInline(p.ChildElements, new Fmt(heading ? false : chainBold, heading ? false : chainItalic, false, null), current: () => current,
+            WalkInline(p.ChildElements, new Fmt(heading ? false : chainBold, heading ? false : chainItalic, chainUnderline, null), current: () => current,
                 onPageBreak: () =>
                 {
                     Flush(force: false);
