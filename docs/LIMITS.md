@@ -9,6 +9,7 @@ Everything that works differently from the macOS original, depends on the machin
 | **MOV output** (video) | Media Foundation has no QuickTime muxer. MOV files can be read; they convert to MP4, M4V, WMV, GIF, M4A or MP3. |
 | **AVIF output** (images) | Windows has no AVIF encoder and none is bundled. AVIF files can be read when the free "AV1 Video Extension" is installed. |
 | **Folders in Convert Files…** | The Windows file dialog cannot select files and folders in one dialog (turning on folder picking turns files off), so Convert Files… picks **files** only. To convert or zip a folder, Shift-drag it from Explorer. |
+| **Ctrl+O for Convert Files…** | The tray menu's **Convert Files…** has an access key (press the underlined letter) but no Ctrl+O shortcut. PLAN §1.1 asked for Ctrl+O, but a global Ctrl+O would hijack the Open command of whatever program has focus, so this is a deliberate deviation. |
 | **Alt as the default tools key** | Left Alt+Shift is Windows' default input-language hotkey, and releasing Alt can send a menu-activation message to Explorer. The default is Ctrl (plus a mouse-wheel tick); Alt remains selectable in Settings with that caveat. |
 | **Automatic updates, a Store listing, public signing** | Not built. "Check for Updates…" just opens a releases page in your browser (the app never goes online itself; the URL still points at the upstream macOS project and needs to be pointed at this project's releases). Sideloading needs a certificate you trust (see README). |
 | **Dithered GIFs** | GIF export reduces each frame to at most 256 colours (a per-frame median-cut palette) with no dithering, so gradients show banding. It is also limited to the first 15 s, 10 fps and 480 px on the long side. |
@@ -16,7 +17,7 @@ Everything that works differently from the macOS original, depends on the machin
 
 ## Depends on what is installed on the PC
 
-The app probes the machine at startup and hides tiles that cannot work, rather than offering them and failing.
+The app probes the machine at startup and hides tiles that cannot work, rather than offering them and failing. The probe takes a fraction of a second on a warm PC and longer on a cold one; a Shift-drag that starts before it has finished shows a reduced set of tiles for a moment (no HEIC, WebP or media tiles) and then fills in the rest while you are still dragging.
 
 | Capability | Needed for | What happens without it |
 |---|---|---|
@@ -26,7 +27,7 @@ The app probes the machine at startup and hides tiles that cannot work, rather t
 | **HEVC / VP9 / AV1 decoders** | Reading such videos | The video is not recognised (Zip only) or fails with "Windows can't decode the video in this file." |
 | **Web Media Extensions** (Microsoft Store, free) | Reading `.webm` (VP8/VP9/Opus/Vorbis) | **WebM input depends on the Web Media Extensions** and on the installed Media Foundation codecs. The probe checks that WebM actually opens; if not, `.webm` files are unknown files (Zip only). |
 | **MP3 / FLAC / H.264 / AAC encoder MFTs** | MP3, FLAC, MP4/M4V, M4A, video and audio Compress | The matching tiles are hidden. FLAC encoding needs Windows 10 1703 or later. |
-| **Microsoft Word** | Legacy `.doc` input; higher-fidelity PDF export from DOCX | **Legacy `.doc` needs Word**: without it `.doc` files get no document conversions ("Legacy .doc files need Microsoft Word to be installed."). A `.doc` that is not an OLE2/ZIP/RTF/plain-text file is refused before Word is started ("This isn't a valid Word document (.doc); it may be damaged."). Without Word, PDF is produced by Shiftvert's own text layout (below). Word runs invisibly in the background on a private copy of the file, with alerts off, and is always quit afterwards; each conversion takes a second or two longer than the built-in converters because Word has to start. |
+| **Microsoft Word** | Legacy `.doc` input; higher-fidelity PDF export from DOCX | **Legacy `.doc` needs Word**: without it `.doc` files get no document conversions ("Legacy .doc files need Microsoft Word to be installed."). A `.doc` that is not an OLE2/ZIP/RTF/plain-text file is refused before Word is started ("This isn't a valid Word document (.doc); it may be damaged."). Without Word, PDF is produced by Shiftvert's own text layout (below). Word runs invisibly in the background on a private copy of the file, with alerts off, and is always quit afterwards; each conversion takes a second or two longer than the built-in converters because Word has to start. Word conversions run one at a time. A conversion that has not finished after **90 s** (a hung Word, a dialog nobody can see) is stopped and fails with "Word didn't respond, so the conversion was stopped."; Shiftvert ends only the Word process it started itself, never one you already had open, and does the same when you cancel. |
 
 ## Where Windows hides things from Shiftvert
 
@@ -47,6 +48,7 @@ Messages are shown in the toast or dialog; the CLI prints them as `error: …`. 
 * Decodes blank (usually a truncated HEIC/AVIF or a missing codec): "Couldn't read this image. It decoded as blank, so the file may be damaged or a codec is missing." Otherwise "Couldn't read this image. The file may be damaged." / "… or in a format Windows can't open."
 * Compress, Resize and Crop refuse animated images ("Animated images can't be … without losing the animation") and multi-page files such as multi-page TIFF ("This file has N pages, and only the first would be kept, so it can't be …").
 * Compress keeps the result only if it is at least 5 % smaller: "This image is already small, so compressing it wouldn't save much space." JPEG output is flattened on white; images with real transparency compress to PNG (or HEIC when available).
+* Crop is refused up front, before the editor opens, for animated GIF, PNG and WebP and for multi-page TIFF, so you never crop and then get an error. For HEIC photos on a PC without a HEIF encoder the **Compress** tile is hidden (it would have nothing to save the result as; see the HEIF row above).
 * Crop: "The crop area is outside the image." / "The cropped picture would be too large."
 * "There isn't enough memory to process this image."
 
@@ -54,13 +56,15 @@ Messages are shown in the toast or dialog; the CLI prints them as `error: …`. 
 * Password-protected: "This PDF is password-protected." Damaged: "This PDF is damaged and can't be read." / "This file isn't a valid PDF." A `.pdf` without the `%PDF` header is not treated as a PDF, and a misnamed PDF is. "This PDF has no pages." Files over 2 GB: "This PDF is too large to process."
 * PDF to image: up to 2× scale and 8000 px on the long side, white background, using the Windows PDF renderer (so rendering matches what Windows draws, not Acrobat). "Page N could not be rendered."
 * PDF to TXT: no extractable text: "probably a scan" (no OCR). Hebrew text stored in reverse is refused rather than written reversed.
-* PDF Compress recompresses images only (skips images with masks/soft masks), keeps the result only if smaller ("This PDF is already small — compressing it wouldn't make it any smaller."), never touches encrypted files.
+* **Any encrypted PDF is refused** by Split, Merge, Compress, PDF to TXT and PDF to images, including one that opens without a password but carries owner-password restrictions (no printing, no copying): Shiftvert does not work around restrictions the owner set.
+* PDF Compress recompresses images only (skips images with masks/soft masks) and keeps the result only if smaller ("This PDF is already small — compressing it wouldn't make it any smaller.").
 
 **Documents**
 * DOCX and ODT must start with the ZIP signature `PK`: "This isn't a valid DOCX file (it may be password-protected or damaged)." Damaged packages: "This DOCX file is damaged and can't be read." / "… has no document body." RTF: "This isn't a valid RTF file." ODT: "This ODT file has no content." / "… is too large to convert."
 * **Documents that contain pictures offer TXT only**, because the converters do not carry pictures across (parity with the original): "This document contains pictures, so it can only be converted to TXT."
 * **PDF from documents uses Shiftvert's own text layout** (PDFsharp: fixed 54 pt margins, black text, simple paragraphs, headings, lists and simple ruled tables, hard page breaks). **It will not match Word's pagination, fonts or styling** (no columns, floating objects, headers/footers or tracked changes). For DOCX with Word installed, PDF is exported by Word instead (falling back to this layout if Word fails). Very long documents are refused: "This document is too long to convert to PDF." (2,000,000 characters; 400,000 for right-to-left text).
 * **Hebrew and other right-to-left text in PDF output is laid out in visual order** by a small reordering step (PDFsharp draws glyphs left to right); **there is no Arabic contextual shaping**, so Arabic letters appear in their isolated forms. Use DOCX→PDF through Word for those.
+* **Non-Latin text in PDF output uses the fonts installed in Windows**: CJK in Yu Gothic, Korean in Malgun Gothic, Indic scripts in Nirmala UI, Thai and Myanmar in Leelawadee UI, symbols in Segoe UI Symbol and emoji in Segoe UI Emoji. If a font is missing on the PC, that text shows as boxes. Emoji are monochrome (no colour glyphs), and there is no complex-script shaping beyond the right-to-left reordering above, so scripts that need contextual forms or reordering of marks look plainer than in Word.
 * RTF is read as a practical subset (text, paragraphs, basic character formatting); HTML is read tolerantly as text structure only and never fetches anything.
 
 **Video and audio**
@@ -72,11 +76,11 @@ Messages are shown in the toast or dialog; the CLI prints them as `error: …`. 
 * GIF: first 15 s, 10 fps, long side at most 480 px, no dithering (above).
 
 **Zip**
-* Named pipes, sockets and device files are refused ("… is a pipe, socket or device and can't be zipped."); folder loops through reparse points are not followed. "Nothing to zip." / "… no longer exists."
+* Named pipes, sockets and device files are refused ("… is a pipe, socket or device and can't be zipped."). Folders that are cloud placeholders (OneDrive "online only" and the like) are included (zipping downloads them), but symbolic links and junctions are skipped, so a folder loop cannot happen. "Nothing to zip." / "… no longer exists."
 
 ## Output location
 
-Outputs are written next to the original. If that folder is not writable (read-only share, protected folder), they go to your **Downloads** folder and the toast says "in Downloads". Names never overwrite: ` 2`, ` 3`… are appended. A failed conversion leaves no output and no temporary file behind.
+Outputs are written next to the original. If that folder is not writable (read-only share, protected folder), they go to your **Downloads** folder and the toast says "in Downloads". Names never overwrite: ` 2`, ` 3`… are appended. A failed conversion leaves no output and no temporary file behind. While a job runs, its temporary output lives in a hidden folder named `.name.guid.shiftvert-tmp` next to where the result will go; it is moved into place when the job finishes. If Shiftvert is killed or Windows crashes in the middle of a job, that folder can be left behind and is safe to delete.
 
 ## Packaging, memory and platform
 

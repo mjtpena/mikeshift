@@ -26,8 +26,8 @@ scripts/                   build.ps1, release.ps1, make-fixtures.ps1
 |---|---|---|
 | `Actions/` | `ActionDef`, `ActionCatalog.For(paths, capabilities)` (which tiles for a selection), `Each` (per-file batching, partial failures), `ZipAction`, `SpecialFiles` (pipes/sockets/devices are never read) | built |
 | `Actions/Catalog/` | the ordered action list per category (Image, Pdf, Video, Audio, Document) | built |
-| `Kind.cs`, `Capabilities.cs` | file classification (`Kind.Of`, and `Kind.CommonOf` for whole selections); what this machine can do (HEIF encode, WebP, MP3/FLAC/H.264/AAC encoders, HEVC/VP9/AV1 decoders, WebM, Word) | built |
-| `Convert/Naming.cs` | output names (`base + suffix + ext`, ` 2`, ` 3` on collision), write to a temp file in the target folder then move, Downloads fallback | built |
+| `Kind.cs`, `Capabilities.cs` | file classification (`Kind.Of`, and `Kind.CommonOf` for whole selections); what this machine can do (HEIF encode, WebP, MP3/FLAC/H.264/AAC encoders, HEVC/VP9/AV1 decoders, WebM, Word), probed once; `Capabilities.Current` waits for the probe, `TryGetCurrent` / `IsProbed` / `CurrentAsync` never block (see §5) | built |
+| `Convert/Naming.cs` | output names (`base + suffix + ext`, ` 2`, ` 3` on collision); work happens in a hidden `.name.guid.shiftvert-tmp` folder next to the target (a crash leaves nothing visible), then one move into place; Downloads fallback | built |
 | `Convert/Images`, `Convert/Pdf` | image and PDF converters | built |
 | `Convert/Media` | video and audio converters (Media Foundation), GIF export, AIFF reader/writer, lossless MP4 re-wrap | built |
 | `Convert/Documents` | document model plus DOCX/ODT/RTF/HTML/TXT readers and writers, PDF writer, Word automation | built |
@@ -100,7 +100,7 @@ A tray app sits resident all day, so what it holds while idle matters more than 
 * **A left-button press anywhere** re-creates it if it was released (`PrewarmIfCold`: device plus one throw-away frame, about 100 ms), long before a drag has moved and Shift is pressed, so the wheel latency does not change. While the device is warm, every press pushes the release time out.
 * The blurred glass snapshot is dropped when the wheel hides; the 380 px pixel buffer goes with the device.
 * A few seconds after an editor closes or a job finishes, `MemoryTrim.CompactSoon` does the same compaction (an editor holds a decoded preview and a lot of XAML state).
-* Toast, Settings and Welcome windows are created on first use. Codec probing (`Capabilities.Current`) runs once in the background at start-up.
+* Toast, Settings and Welcome windows are created on first use. Codec probing (`Capabilities.Current`) runs once in the background at start-up. Nothing on the UI or OLE thread waits for it: the wheel's `DragEnter` uses `Capabilities.TryGetCurrent`, and if the probe has not finished it builds the first catalog from `Capabilities.Quick()` (no optional codec assumed, only the Word registry check) and replaces the tiles when `CurrentAsync` completes, keeping the page and re-hitting the pointer; the job runner reads the capabilities on its worker thread, and click mode builds its catalog off the UI thread.
 * Measured on the development PC (Release, self-contained, 20 to 30 s after start): working set 198 MB → about 17 MB, private working set 94 MB → about 5 MB (private bytes, i.e. committed, about 57 MB). During a gesture the working set goes up again (a wheel on screen: about 115 MB private working set for a click-mode launch; an editor: about 190 MB) and is handed back afterwards. `SHIFTVERT_TRIM_MS` changes the 15 s (dev/test only).
 
 ## 6. Converters
@@ -115,7 +115,7 @@ A tray app sits resident all day, so what it holds while idle matters more than 
 | Documents | Open XML SDK for DOCX; hand-written ODT/RTF/HTML/TXT readers and writers around a common `DocModel`; PDFsharp for PDF output; Word automation (COM) for legacy `.doc` and, when installed, DOCX→PDF | pictures: TXT only (parity); see LIMITS |
 | Zip | `System.IO.Compression` | UTC timestamps, reparse-loop and special-file refusal |
 
-Every converter writes through `Naming` (temp file next to the target, then move), so a failed job leaves no partial output, and hashes of the inputs are asserted unchanged in tests. Corrupt input is covered by a matrix test: truncated, misnamed and empty files through every offered action must end in `error: …` (exit 1) or a valid output, never a crash, a hang over 30 s, or a stray file.
+Every converter writes through `Naming` (a hidden `.name.guid.shiftvert-tmp` folder next to the target, then a move into place), so a failed job leaves no partial output, and hashes of the inputs are asserted unchanged in tests. Corrupt input is covered by a matrix test: truncated, misnamed and empty files through every offered action must end in `error: …` (exit 1) or a valid output, never a crash, a hang over 30 s (120 s for a legacy `.doc`, which goes through Word and its own 90 s kill switch), or a stray file. Word conversions run one at a time per process (instances started together stall each other), and the process-wide list of WINWORD.EXE processes is only used to find and kill the one instance a conversion started. The CLI ends with `TerminateProcess` after flushing its output (`FastExit`): the capability probe loads the GPU encoder stack (D3D/DXGI and the vendor driver), and tearing that down at normal process exit can fail-fast inside dxgi.dll on some PCs (observed at exit of the test host), which a caller would see as a crashed child instead of the exit code.
 
 ## 7. Packaging
 
