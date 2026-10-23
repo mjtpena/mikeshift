@@ -186,7 +186,7 @@ Screenshots of the result: `docs/screenshots/surfaces-v2/` (captured with `scrip
 
 | ID | State | How |
 |---|---|---|
-| T-01 | done, other approach | WinUI `MenuFlyout` with Segoe Fluent icons, but opened by our own `TrayFlyoutHost` (H.NotifyIcon's `SecondWindow` mode did not open on Windows App SDK 2.x and forces every item to 32 px). Acrylic, rounded, follows dark/light. |
+| T-01 | done, other approach | WinUI `MenuFlyout` with Segoe Fluent icons, but opened by our own `TrayFlyoutHost` (H.NotifyIcon's `SecondWindow` mode did not open on Windows App SDK 2.x and forces every item to 32 px). Acrylic, rounded, follows dark/light. Takes keyboard focus (Esc, arrows, Enter, Space; `FlyoutShowMode.Standard`) and closes when another window is activated (O-1, verified with real input: `x5g`, `x5i`). |
 | T-02 | done | Header block (icon, "MikeShift", "Shift-drag files to convert"); version moved to Settings > About; "How it works" opens Welcome. |
 | T-03 | done | Sentence case, "Exit", "Check for updates". |
 | T-04 | partly | Tooltip "MikeShift - Shift-drag files to convert". The icon set and the theme-following mono icons came with the rename work; a hand-simplified 4-wedge 16 px mark and a high-contrast icon swap were not done. |

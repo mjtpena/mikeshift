@@ -282,6 +282,8 @@ internal static partial class Anger
         RegisterTests5(d);
         RegisterTests6(d);
         RegisterTests7(d);
+        RegisterTests8(d);
+        RegisterTests8b(d);
         return d;
     }
 }

@@ -18,7 +18,7 @@ namespace MikeShift.App.Tray;
 /// not constrained to that window (<see cref="FlyoutBase.ShouldConstrainToRootBounds"/> = false), so WinUI gives it its own popup
 /// window with the system acrylic, shadow, rounded corners and open animation, and it follows light, dark and high contrast like any
 /// other Windows 11 menu. It opens above the pointer when the pointer is in the lower half of its monitor (a bottom taskbar) and below
-/// it otherwise, and it closes on any click outside or Esc (transient show mode).
+/// it otherwise. It takes keyboard focus (Esc, arrows, Enter, Space) and closes on any click outside, Esc or a switch to another window.
 /// </summary>
 internal sealed class TrayFlyoutHost : IDisposable
 {
@@ -46,7 +46,7 @@ internal sealed class TrayFlyoutHost : IDisposable
         // The window itself is invisible; it only has to exist at the pointer and be the foreground window so the flyout is light-dismissed.
         window.AppWindow.MoveAndResize(new RectInt32(cursor.X, cursor.Y, 2, 2));
         window.AppWindow.Show(activateWindow: false);
-        EditorWindows.ShowInForeground(window);
+        TakeForeground(window);
 
         if (_flyout is not null) _flyout.Closed -= OnClosed;
         _flyout = flyout;
@@ -54,7 +54,9 @@ internal sealed class TrayFlyoutHost : IDisposable
         flyout.Closed += OnClosed;
         var options = new FlyoutShowOptions
         {
-            ShowMode = FlyoutShowMode.Transient,
+            // Standard, not Transient: a transient flyout never takes focus, so Esc, the arrows and Enter went to the empty host window.
+            // Standard moves keyboard focus into the menu (focus rings only appear for keyboard use) and is light-dismissed all the same.
+            ShowMode = FlyoutShowMode.Standard,
             Placement = below
                 ? (alignRight ? FlyoutPlacementMode.BottomEdgeAlignedRight : FlyoutPlacementMode.BottomEdgeAlignedLeft)
                 : (alignRight ? FlyoutPlacementMode.TopEdgeAlignedRight : FlyoutPlacementMode.TopEdgeAlignedLeft),
@@ -77,6 +79,21 @@ internal sealed class TrayFlyoutHost : IDisposable
 
     /// <summary>Closes the flyout if it is open.</summary>
     public void Hide() => _flyout?.Hide();
+
+    /// <summary>
+    /// Makes <paramref name="window"/> the foreground window. The process that handles a tray callback may take the foreground with a
+    /// plain <c>SetForegroundWindow</c>, and that keeps Windows' activation state honest: the thread-attach trick of
+    /// <see cref="EditorWindows.ShowInForeground"/> left the host "active" after another window had taken the foreground, so the flyout
+    /// (which closes when its window is deactivated) never closed on a switch to another app. The trick stays as the fallback for when
+    /// the process has no foreground rights (a second launch forwarding to this instance, dev scenes).
+    /// </summary>
+    private static void TakeForeground(Window window)
+    {
+        window.Activate();
+        var hwnd = new HWND(WindowNative.GetWindowHandle(window));
+        PInvoke.SetForegroundWindow(hwnd);
+        if (PInvoke.GetForegroundWindow() != hwnd) EditorWindows.ShowInForeground(window);
+    }
 
     private void EnsureWindow()
     {
