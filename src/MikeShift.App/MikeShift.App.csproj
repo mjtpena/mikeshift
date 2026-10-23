@@ -74,8 +74,12 @@
     <BundleCli Condition="'$(BundleCli)' == ''">true</BundleCli>
   </PropertyGroup>
 
-  <!-- The console CLI ships inside the package under cli\ (its own self-contained copy: MikeShift.exe and mikeshift.exe/.dll differ only
-       by case, so they cannot share a folder). Package.appxmanifest points the `mikeshift.exe` execution alias at cli\mikeshift.exe. -->
+  <!-- The console CLI ships in the package root next to the tray app and runs on the tray app's bundled .NET runtime (a second copy of the
+       runtime cost about 51 MB per architecture). It is published self-contained, which produces the four files that make an exe a
+       self-contained app (MikeShift.Cli.exe, .dll, .runtimeconfig.json, .deps.json); only those are taken, because every other file of that
+       publish is byte-for-byte what this project already ships (VerifyBundledCliSharesRuntime checks that on every build). The CLI's
+       assembly is MikeShift.Cli, not mikeshift: MikeShift.exe/.dll and mikeshift.exe/.dll would be the same file names on Windows.
+       Package.appxmanifest points the `mikeshift.exe` execution alias at MikeShift.Cli.exe. -->
   <Target Name="BundleMikeShiftCli" BeforeTargets="AssignTargetPaths" Condition="'$(BundleCli)' == 'true' and '$(RuntimeIdentifier)' != ''">
     <PropertyGroup>
       <_CliPublishDir>$(MSBuildProjectDirectory)\$(IntermediateOutputPath)cli\</_CliPublishDir>
@@ -91,9 +95,39 @@
     <MSBuild Projects="..\MikeShift.Cli\MikeShift.Cli.csproj" Targets="Publish"
              Properties="Configuration=$(Configuration);Platform=$(Platform);RuntimeIdentifier=$(RuntimeIdentifier);SelfContained=true;PublishDir=$(_CliPublishDir)" />
     <ItemGroup>
-      <_CliFile Include="$(_CliPublishDir)**\*" Exclude="$(_CliPublishDir)**\*.pdb" />
-      <Content Include="@(_CliFile)" Link="cli\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+      <_CliOwnFile Include="$(_CliPublishDir)MikeShift.Cli.exe;$(_CliPublishDir)MikeShift.Cli.dll;$(_CliPublishDir)MikeShift.Cli.runtimeconfig.json;$(_CliPublishDir)MikeShift.Cli.deps.json" />
+      <Content Include="@(_CliOwnFile)" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     </ItemGroup>
+  </Target>
+
+  <!-- The CLI uses this project's runtime and libraries, so every other file of its self-contained publish must be identical to the one this
+       project outputs under the same name (same runtime pack, same Core, same dependencies). If a dependency ever differs (a different
+       version of a shared package, say), the CLI would load the wrong assembly in the package: fail the build instead of shipping that. -->
+  <Target Name="VerifyBundledCliSharesRuntime" AfterTargets="CopyFilesToOutputDirectory"
+          Condition="'$(BundleCli)' == 'true' and '$(RuntimeIdentifier)' != ''">
+    <ItemGroup>
+      <_CliPublished Include="$(_CliPublishDir)**\*" Exclude="$(_CliPublishDir)**\*.pdb;@(_CliOwnFile)" />
+      <_CliSharedFile Include="@(_CliPublished)">
+        <Rel>$([MSBuild]::MakeRelative('$(_CliPublishDir)', '%(FullPath)'))</Rel>
+      </_CliSharedFile>
+      <_AppSideFile Include="$(OutDir)%(_CliSharedFile.Rel)" Condition="Exists('$(OutDir)%(_CliSharedFile.Rel)')">
+        <Rel>%(_CliSharedFile.Rel)</Rel>
+      </_AppSideFile>
+    </ItemGroup>
+    <GetFileHash Files="@(_CliSharedFile)" Algorithm="SHA256">
+      <Output TaskParameter="Items" ItemName="_CliSharedHashed" />
+    </GetFileHash>
+    <GetFileHash Files="@(_AppSideFile)" Algorithm="SHA256">
+      <Output TaskParameter="Items" ItemName="_AppSideHashed" />
+    </GetFileHash>
+    <ItemGroup>
+      <_CliKey Include="@(_CliSharedHashed->'%(Rel)|%(FileHash)')" />
+      <_AppKey Include="@(_AppSideHashed->'%(Rel)|%(FileHash)')" />
+      <_CliUnshared Include="@(_CliKey)" Exclude="@(_AppKey)" />
+    </ItemGroup>
+    <Message Importance="normal" Text="The bundled CLI shares @(_CliKey->Count()) files with the app (checked by hash)." />
+    <Error Condition="'@(_CliUnshared)' != ''"
+           Text="The bundled command-line tool must run on this app's own runtime files, but these files of its publish differ from the app's or are missing from the app output: @(_CliUnshared->'%(Identity)', ', ')" />
   </Target>
 
 </Project>

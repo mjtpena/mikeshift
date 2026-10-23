@@ -14,14 +14,14 @@ dotnet test tests/MikeShift.Core.Tests --filter "FullyQualifiedName~Naming"     
 | Project | What it covers | How |
 |---|---|---|
 | `tests/MikeShift.Core.Tests` | Naming and collision handling, `Kind.Of`/`Kind.CommonOf`, `ActionCatalog.For`, capability gating with fake `Capabilities`, every image / PDF / video / audio / document / Zip converter (round trips, size guards, "already small"), the crop and trim models, feedback wording (`FeedbackPlan`, `JobLedger`), `DragSession`, `ModifierTracker`, wheel geometry, placement, model and animation, easing, **hardening** (below) | In-process xUnit. Fixtures are generated at test time (`Infrastructure/Fixtures*.cs`). `OriginalsGuard` hashes every input before and after each converter test and fails if an original changed. |
-| `tests/MikeShift.Cli.Tests` | The real `mikeshift.exe` run as a child process on fixtures: exit codes, printed output paths, usage errors, Zip, image, PDF, media and document commands, corrupt-input cases | Exercises WIC and Media Foundation on CI machines too. |
+| `tests/MikeShift.Cli.Tests` | The real `MikeShift.Cli.exe` run as a child process on fixtures: exit codes, printed output paths, usage errors, Zip, image, PDF, media and document commands, corrupt-input cases | Exercises WIC and Media Foundation on CI machines too. |
 
 Tests that need a codec the machine lacks (HEIC/HEVC encoders and the like) are skipped with `[SkipIfNoCapability]`, never deleted; skipped counts differ between machines. On the development machine (2026-10-23, after W5a): **929 Core tests and 70 CLI tests pass, 0 skipped, 0 warnings.**
 
 **Hardening (PLAN Phase 6, "fuzz-ish inputs")** — `Core.Tests/Hardening/HardeningTests.cs` and `Cli.Tests/HardeningCliTests.cs`:
 
 * A corpus of truncated PNG, JPG, MP4, WAV, PDF and DOCX files (cut at 0, 1, 4, 12 bytes, a quarter, a half and one byte short), misnamed files (PNG bytes named `.pdf`, PDF bytes named `.png`/`.jpg`, DOCX bytes named `.pdf`/`.png`/`.odt`/`.doc`, random bytes named `.docx`/`.doc`/`.odt`/`.rtf`/`.png`/`.jpg`/`.pdf`/`.mp4`/`.mp3`/…), and zero-byte files of 23 extensions goes through `Kind.Of`, `ActionCatalog.For` and **every action the catalog offers** via `CliRunner` (about 280 runs). Each must end with exit code 0 or 1; on 1 an `error:` line and no stack trace; within 30 s; with no stray, partial or temporary file next to the original and the original byte-identical. A guard test proves the matrix is not passing just because everything fails.
-* The same for a representative 18 cases through the real `mikeshift.exe` process.
+* The same for a representative 18 cases through the real `MikeShift.Cli.exe` process.
 * Selections: 500 JPEGs through `ActionCatalog.For` with a cold `Kind` cache in under 2 s (about 20 ms with `Kind.CommonOf`; the per-file path measured about 225 ms for tiny JPEGs here and 2.5 s for real photos on the reviewer's machine); a 500-file mixed selection is Zip only and fast; a large selection whose last file is a misnamed PDF, or that contains a folder or a vanished file, is Zip only; small selections still classify misnamed files by content.
 * Findings fixed on the way: a `.doc` made of random bytes was "converted" by Word into a garbage document (now refused before Word starts); 500-file classification (above).
 
@@ -42,11 +42,12 @@ The script runs the `FixtureExport` test with `MIKESHIFT_FIXTURES_OUT` set, so t
 | Check | Result |
 |---|---|
 | `dotnet build MikeShift.sln` and `dotnet test MikeShift.sln` | pass |
-| Unsigned x64 and ARM64 MSIX build (`makeappx` validates the manifest, including the `Cli` application, its `desktop4:Subsystem="console"` alias and that `cli\mikeshift.exe` is in the package) | pass |
-| Package contents: self-contained runtime present (`coreclr.dll`), `cli\mikeshift.exe` + `MikeShift.exe` side by side, no name collision; no `onnxruntime.dll`, `DirectML.dll` or other Windows AI payload (W5a) | pass |
-| `cli\mikeshift.exe --list <file>` and `--bogus` from an unpacked package run on the build machine | pass (exit codes 0 and 2) |
+| Unsigned x64 and ARM64 MSIX build (`makeappx` validates the manifest, including the `Cli` application, its `desktop4:Subsystem="console"` alias and that `MikeShift.Cli.exe` is in the package) | pass |
+| Package contents: self-contained runtime present (`coreclr.dll`), `MikeShift.Cli.exe` + `MikeShift.exe` side by side in the package root, no name collision, no `cli\` folder; no `onnxruntime.dll`, `DirectML.dll` or other Windows AI payload (W5a) | pass |
+| `MikeShift.Cli.exe --list`, `--run JPG`, `--run "Resize 50%"`, `--run Zip` and `--bogus` from an unpacked x64 package run on the build machine (the CLI on the tray app's shared runtime); manifest: `Cli` application and the `mikeshift.exe` alias both point at `MikeShift.Cli.exe` | pass (exit codes 0 and 2) |
+| Unpacked package: `MikeShift.exe --smoke-test` exits 0; a Release build ignores `MIKESHIFT_LOG` without `--dev` and honours it with `--dev` | pass |
 | Unpackaged `MikeShift.exe --smoke-test` (self-contained Release build starts the tray and the wheel, then exits), before and after the Windows App SDK slimming | pass (exit 0) |
-| `scripts/release.ps1` unsigned: `.msixbundle` + `SHA256SUMS.txt`; hash matches `sha256sum` | pass; 304.8 MB before W5a, **256.8 MB** after (Windows App SDK by component) |
+| `scripts/release.ps1` unsigned: `.msixbundle` + `SHA256SUMS.txt`; hash matches `sha256sum` | pass; 304.8 MB before W5a, 256.8 MB after (Windows App SDK by component), 258.5 MB measured before sharing the runtime with the CLI, **157.9 MB** after (x64 80.1 MB, ARM64 77.8 MB per package) |
 | `scripts/release.ps1` signed with a throwaway certificate created by `make-dev-cert.ps1` in the CurrentUser store only; signer subject `CN=MikeShift Dev`; certificate and PFX deleted afterwards | pass (signature present; not trusted on this machine, as expected) |
 | Installing the bundle, the alias in a fresh terminal, uninstall | **not run** (needs the certificate trusted in LocalMachine\TrustedPeople; see checklist item 16). Because the Windows App SDK packages changed in W5a, install the slimmed bundle at least once before release. |
 

@@ -9,7 +9,7 @@
         dotnet build MikeShift.sln
     Everything, Release:
         dotnet build MikeShift.sln -c Release
-    All tests (Core + CLI; the CLI tests launch the built mikeshift.exe):
+    All tests (Core + CLI; the CLI tests launch the built MikeShift.Cli.exe):
         dotnet test MikeShift.sln
     One test project / filter:
         dotnet test tests/MikeShift.Core.Tests --filter "FullyQualifiedName~Naming"
@@ -21,7 +21,7 @@
     Unsigned MSIX (install needs signing, see packaging/make-dev-cert.ps1 and scripts/release.ps1):
         dotnet build src/MikeShift.App -c Release -p:Platform=x64 -p:GenerateAppxPackageOnBuild=true -p:AppxPackageSigningEnabled=false -p:AppxBundle=Never
         -> src/MikeShift.App/AppPackages/MikeShift.App_<ver>_x64_Test/*.msix
-        The package also contains the console CLI (cli\mikeshift.exe, published self-contained by the app build; opt out with -p:BundleCli=false).
+        The package also contains the console CLI (MikeShift.Cli.exe in the package root, running on the app's runtime; opt out with -p:BundleCli=false).
     Release bundle (x64 + ARM64 .msixbundle + SHA256SUMS.txt in artifacts/; signed if a pfx is given):
         ./scripts/release.ps1 [-PfxPath <pfx> -PfxPassword <securestring>]
 

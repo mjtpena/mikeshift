@@ -80,7 +80,7 @@ Add-AppxPackage -Path .\artifacts\MikeShift_0.1.0.0.msixbundle
 
 Uninstall: `Get-AppxPackage MikeShift | Remove-AppxPackage`. Verify a download: compare `Get-FileHash <bundle> -Algorithm SHA256` with `artifacts\SHA256SUMS.txt`.
 
-The bundle is about 257 MB for both architectures: each architecture carries the .NET 10 runtime, the Windows App SDK components the app uses, and a second self-contained copy of the command-line tool (about 51 MB), so nothing else needs installing. Release signing for public distribution (Store, Azure Trusted Signing or a purchased certificate) is a separate decision that is not made yet.
+The bundle is about 158 MB for both architectures (about 80 MB per architecture): each architecture carries the .NET 10 runtime and the Windows App SDK components the app uses, and the command-line tool runs on that same runtime, so nothing else needs installing. Release signing for public distribution (Store, Azure Trusted Signing or a purchased certificate) is a separate decision that is not made yet.
 
 ## Build from source
 
