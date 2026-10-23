@@ -42,7 +42,11 @@
         Description="Shift-drag a file to convert it."
         BackgroundColor="transparent"
         Square150x150Logo="Assets\Square150x150Logo.png"
-        Square44x44Logo="Assets\Square44x44Logo.png" />
+        Square44x44Logo="Assets\Square44x44Logo.png">
+        <!-- Logos are generated from assets\brand\mikeshift.svg by scripts\make-icons.ps1 (scale-100..400, targetsize-16..256 and unplated variants). -->
+        <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png" />
+        <uap:SplashScreen Image="Assets\SplashScreen.png" />
+      </uap:VisualElements>
 
       <Extensions>
         <!-- Open at Login (StartupService, TaskId must match). Disabled until the user turns it on. -->

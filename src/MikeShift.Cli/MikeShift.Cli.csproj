@@ -5,6 +5,7 @@
     <AssemblyName>mikeshift</AssemblyName>
     <RootNamespace>MikeShift.Cli</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>../MikeShift.App/Assets/MikeShift.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>

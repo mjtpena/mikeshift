@@ -5,6 +5,7 @@
     <AssemblyName>MikeShift</AssemblyName>
     <RootNamespace>MikeShift.App</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets/MikeShift.ico</ApplicationIcon>
 
     <!-- WinUI 3 / Windows App SDK, packaged as MSIX, framework bundled (self-contained). -->
     <UseWinUI>true</UseWinUI>
