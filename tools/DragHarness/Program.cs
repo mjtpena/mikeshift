@@ -82,6 +82,21 @@ internal static class Program
             Console.Error.WriteLine("App not found: " + app + " (build the solution first, or pass --app)");
             return 2;
         }
+        if (args.Contains("--anger"))
+        {
+            // "Test in anger": real Explorer as the drag source (AngerKit.cs, Anger*.cs). Runs on an MTA thread (UI Automation).
+            if (!args.Contains("--attach") && Native.FindWindowW("ShiftvertWheel", null) != IntPtr.Zero)
+            {
+                Console.Error.WriteLine("A Shiftvert process is already running; quit it first (or pass --attach).");
+                return 2;
+            }
+            var rc = 0;
+            var t = new Thread(() => rc = Anger.Run(args, app, repo)) { Name = "anger" };
+            t.SetApartmentState(ApartmentState.MTA);
+            t.Start();
+            t.Join();
+            return rc;
+        }
         if (Native.FindWindowW("ShiftvertWheel", null) != IntPtr.Zero)
         {
             Console.Error.WriteLine("A Shiftvert process is already running; quit it first (the harness needs its own instance and log).");
