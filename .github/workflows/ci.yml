@@ -82,6 +82,7 @@ jobs:
         with:
           name: mikeshift-msixbundle-unsigned
           path: |
+            artifacts/*.msix
             artifacts/*.msixbundle
             artifacts/SHA256SUMS.txt
           if-no-files-found: error

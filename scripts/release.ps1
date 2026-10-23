@@ -1,19 +1,23 @@
 <#
 .SYNOPSIS
-  Builds the x64 + ARM64 MSIX packages, bundles them into one .msixbundle, optionally signs it, and writes SHA256SUMS.txt.
+  Builds the x64 + ARM64 MSIX packages, writes each as a standalone .msix AND bundles both into one .msixbundle, optionally signs
+  everything, and writes SHA256SUMS.txt.
 
 .DESCRIPTION
   Output (default <repo>\artifacts\):
-      MikeShift_<version>.msixbundle
-      SHA256SUMS.txt                      (sha256sum format: "<hash>  <file>", verify with `sha256sum -c` or Get-FileHash)
+      MikeShift_<version>_x64.msix        one download per PC type: x64 for most PCs
+      MikeShift_<version>_arm64.msix      arm64 for Snapdragon / ARM PCs (each about half the size of the bundle)
+      MikeShift_<version>.msixbundle      both architectures in one file (Windows picks the right one)
+      SHA256SUMS.txt                      sha256sum format ("<hash>  <file>") for all three files; verify with `sha256sum -c` or Get-FileHash
 
   Steps:
     1. For each platform: dotnet build src/MikeShift.App -c Release -p:Platform=<p> -p:GenerateAppxPackageOnBuild=true
                           -p:AppxPackageSigningEnabled=false -p:AppxBundle=Never      (same command CI and scripts/build.ps1 -Msix use)
     2. If -PfxPath is given, sign each per-architecture .msix, so the packages inside the bundle carry the same publisher signature.
-    3. makeappx bundle  -> artifacts\MikeShift_<version>.msixbundle
-    4. If -PfxPath is given, signtool sign the bundle (SHA-256; optional RFC 3161 timestamp).
-    5. SHA256SUMS.txt.
+    3. Copy each (signed) per-architecture package to artifacts\MikeShift_<version>_<arch>.msix.
+    4. makeappx bundle  -> artifacts\MikeShift_<version>.msixbundle
+    5. If -PfxPath is given, signtool sign the bundle (SHA-256; optional RFC 3161 timestamp).
+    6. SHA256SUMS.txt.
 
   Unsigned bundles cannot be installed; they are what CI uploads. Sign with the dev cert (packaging\make-dev-cert.ps1) or your
   release certificate. The signing certificate subject must equal the manifest Publisher (CN=MikeShift Dev for the dev cert).
@@ -158,10 +162,17 @@ try {
     if (Test-Path $staging) { Remove-Item -LiteralPath $staging -Recurse -Force }
     New-Item -ItemType Directory -Force -Path $staging | Out-Null
 
+    # Standalone per-architecture packages (what a user downloads for one PC: half the size of the bundle).
+    $standalone = @()
     foreach ($m in $msixFiles) {
         $dest = Join-Path $staging (Split-Path -Leaf $m)
         Copy-Item -LiteralPath $m -Destination $dest
         if ($signing) { Sign-File $dest }
+        $arch = if ((Split-Path -Leaf $m) -match '_(x64|arm64)\.msix$') { $Matches[1] } else { throw "Cannot tell the architecture of $m" }
+        $standalonePath = Join-Path $OutDir "MikeShift_$($version)_$arch.msix"
+        if (Test-Path $standalonePath) { Remove-Item -LiteralPath $standalonePath -Force }
+        Copy-Item -LiteralPath $dest -Destination $standalonePath
+        $standalone += $standalonePath
     }
 
     $bundlePath = Join-Path $OutDir "MikeShift_$version.msixbundle"
@@ -172,13 +183,18 @@ try {
     if ($signing) { Sign-File $bundlePath }
 
     # --- checksums ----------------------------------------------------------------------------------------------------------
-    $hash = (Get-FileHash -LiteralPath $bundlePath -Algorithm SHA256).Hash.ToLowerInvariant()
+    $deliverables = @($standalone) + @($bundlePath)
+    $lines = foreach ($f in $deliverables) {
+        '{0}  {1}' -f (Get-FileHash -LiteralPath $f -Algorithm SHA256).Hash.ToLowerInvariant(), (Split-Path -Leaf $f)
+    }
     $sumsPath = Join-Path $OutDir 'SHA256SUMS.txt'
-    [System.IO.File]::WriteAllText($sumsPath, "$hash  $(Split-Path -Leaf $bundlePath)`n", (New-Object System.Text.UTF8Encoding($false)))
+    [System.IO.File]::WriteAllText($sumsPath, (($lines -join "`n") + "`n"), (New-Object System.Text.UTF8Encoding($false)))
 
     Write-Host ''
-    Write-Host "Bundle : $bundlePath  ($([math]::Round((Get-Item $bundlePath).Length / 1MB, 1)) MB, $(if ($signing) { 'signed' } else { 'UNSIGNED - cannot be installed until signed' }))" -ForegroundColor Green
-    Write-Host "SHA-256: $hash"
+    $state = if ($signing) { 'signed' } else { 'UNSIGNED - cannot be installed until signed' }
+    foreach ($f in $deliverables) {
+        Write-Host ('{0,-38} {1,7:N1} MB  {2}' -f (Split-Path -Leaf $f), ((Get-Item $f).Length / 1MB), $state) -ForegroundColor Green
+    }
     Write-Host "Sums   : $sumsPath"
     if (-not $signing) {
         Write-Host 'Sign it with: ./scripts/release.ps1 -PfxPath <pfx> -PfxPassword (Read-Host -AsSecureString) -SkipBuild   (see packaging/make-dev-cert.ps1)'

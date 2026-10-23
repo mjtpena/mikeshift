@@ -71,16 +71,17 @@ The MSIX is signed with a certificate you create yourself; Windows only installs
 # 2. Trust it once, in an ELEVATED PowerShell (the script prints this line for you; it never does it itself).
 Import-Certificate -FilePath .\artifacts\dev-cert\MikeShiftDev.cer -CertStoreLocation Cert:\LocalMachine\TrustedPeople
 
-# 3. Build x64 + ARM64, bundle, sign, write the checksum.
+# 3. Build x64 + ARM64, sign, write the per-PC packages, the bundle and the checksums.
 ./scripts/release.ps1 -PfxPath .\artifacts\dev-cert\MikeShiftDev.pfx -PfxPassword (Read-Host -AsSecureString 'PFX password')
 
-# 4. Install (Windows picks the right architecture from the bundle).
-Add-AppxPackage -Path .\artifacts\MikeShift_0.1.0.0.msixbundle
+# 4. Install the file for your PC: _x64 for most PCs, _arm64 for Snapdragon / ARM PCs.
+#    (The .msixbundle holds both and Windows picks the right one, but it is twice the download.)
+Add-AppxPackage -Path .\artifacts\MikeShift_0.1.0.0_x64.msix
 ```
 
-Uninstall: `Get-AppxPackage MikeShift | Remove-AppxPackage`. Verify a download: compare `Get-FileHash <bundle> -Algorithm SHA256` with `artifacts\SHA256SUMS.txt`.
+Uninstall: `Get-AppxPackage MikeShift | Remove-AppxPackage`. Verify a download: compare `Get-FileHash <file> -Algorithm SHA256` with that file's line in `artifacts\SHA256SUMS.txt`.
 
-The bundle is about 158 MB for both architectures (about 80 MB per architecture): each architecture carries the .NET 10 runtime and the Windows App SDK components the app uses, and the command-line tool runs on that same runtime, so nothing else needs installing. Release signing for public distribution (Store, Azure Trusted Signing or a purchased certificate) is a separate decision that is not made yet.
+**Download the file for your PC**: `MikeShift_<version>_x64.msix` (about 80 MB) for most PCs, `MikeShift_<version>_arm64.msix` (about 78 MB) for Snapdragon / ARM PCs. Each is a complete app for one architecture. The combined bundle is about 158 MB for both architectures: each architecture carries the .NET 10 runtime and the Windows App SDK components the app uses, and the command-line tool runs on that same runtime, so nothing else needs installing. Release signing for public distribution (Store, Azure Trusted Signing or a purchased certificate) is a separate decision that is not made yet.
 
 ## Build from source
 
