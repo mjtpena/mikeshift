@@ -15,7 +15,7 @@ namespace MikeShift.App.Jobs;
 public sealed record JobFinishedEventArgs(int JobId, ActionDef Action, ActionResult Result);
 
 /// <summary>
-/// Runs actions off the UI thread and tells the user how it went (PLAN §3.3): HUD toast, optional chime, modal dialog
+/// Runs actions off the UI thread and tells the user how it went (PLAN §3.3): HUD toast, optional chime, a non-blocking dialog
 /// for failures. Several jobs may run at once ("N still working…"). Thread-safe; <see cref="Enqueue"/> may be called from
 /// any thread. Decisions about WHAT to say live in <see cref="FeedbackPlan"/> (unit-tested in Core).
 /// </summary>
@@ -73,11 +73,11 @@ public sealed class JobRunner
         var id = _ledger.Begin();
 
         if (!action.Interactive)
-            ShowToast(FeedbackPlan.StartText(action, _ledger.OthersRunning(id)));
+            ShowToast(FeedbackPlan.StartToast(action, _ledger.OthersRunning(id)));
 
         IInteraction inner = interaction ?? DefaultInteraction ?? NoInteraction.Instance;
         var notifying = new NotifyingInteraction(inner, () =>
-            _dispatcher.TryEnqueue(() => ShowToast(FeedbackPlan.StartText(action, _ledger.OthersRunning(id)))));
+            _dispatcher.TryEnqueue(() => ShowToast(FeedbackPlan.StartToast(action, _ledger.OthersRunning(id)))));
 
         var progress = new ToastProgress(this, action, id, snapshot.Length);
         var ct = _shutdown.Token;
@@ -133,21 +133,22 @@ public sealed class JobRunner
         var others = _ledger.RunningCount;
         var plan = FeedbackPlan.For(result, others, _prefs.Chime, _prefs.ShowsToast);
 
-        if (plan.ToastText is { } text) _hud.Show(text);
-        else if (others > 0 && _prefs.ShowsToast) _hud.Show($"{others} still working…");
+        if (plan.Toast is { } toast) _hud.Show(toast);
+        else if (others > 0 && _prefs.ShowsToast) _hud.Show(FeedbackPlan.StillWorkingToast(others));
         else _hud.Hide();
 
         if (plan.Chime) _chime.Play();
+        if (_prefs.ShowInFolderAfter && result.Outputs.Count > 0) ShellReveal.ShowInFolder(result.Outputs[0].Path);
         JobFinished?.Invoke(this, new JobFinishedEventArgs(id, action, result));
 
-        // Last: the dialog is modal and blocks this callback.
+        // The dialog does not block: later jobs keep their toasts and chimes.
         if (plan.Dialog is { } dialog)
-            _dialogs.ShowError(dialog.Title, dialog.Body);
+            _dialogs.Show(dialog);
     }
 
-    private void ShowToast(string text)
+    private void ShowToast(ToastContent content)
     {
-        if (_prefs.ShowsToast) _hud.Show(text);
+        if (_prefs.ShowsToast) _hud.Show(content);
     }
 
     /// <summary>Turns per-file progress ("photo.heic") into toast updates for multi-file jobs.</summary>
@@ -174,10 +175,7 @@ public sealed class JobRunner
             if (_total <= 1 || _action.Interactive || string.Equals(value, _action.Title, StringComparison.OrdinalIgnoreCase)) return;
             var n = Interlocked.Increment(ref _seen);
             _owner._dispatcher.TryEnqueue(() =>
-            {
-                var text = FeedbackPlan.WithBackgroundJobs($"{value} ({Math.Min(n, _total)} of {_total})", _owner._ledger.OthersRunning(_id));
-                _owner.ShowToast(text);
-            });
+                _owner.ShowToast(FeedbackPlan.ProgressToast(_action, value, n, _total, _owner._ledger.OthersRunning(_id))));
         }
     }
 }

@@ -19,7 +19,7 @@ public sealed class AppServices
         Startup = new StartupService();
         Hud = new HudController(dispatcher);
         Chime = new ChimePlayer();
-        Dialogs = new Win32DialogService();
+        Dialogs = new FluentDialogService();
         Interaction = new UiInteraction(dispatcher, Hud);
         Jobs = new JobRunner(dispatcher, Preferences, Hud, Dialogs, Chime) { DefaultInteraction = Interaction };
     }
@@ -39,8 +39,8 @@ public sealed class AppServices
     /// <summary>The success chime.</summary>
     public ChimePlayer Chime { get; }
 
-    /// <summary>Modal failure/warning dialogs.</summary>
-    public Win32DialogService Dialogs { get; }
+    /// <summary>Failure and warning dialogs (Fluent windows, never modal).</summary>
+    public FluentDialogService Dialogs { get; }
 
     /// <summary>How Crop/Trim ask the user for input; W4a attaches the editors here.</summary>
     public UiInteraction Interaction { get; }

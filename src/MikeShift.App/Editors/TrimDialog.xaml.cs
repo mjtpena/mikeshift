@@ -26,7 +26,7 @@ public sealed partial class TrimDialog : Window
     private TrimDialog(string path, StorageFile? file, TimeSpan duration, string? error)
     {
         InitializeComponent();
-        EditorWindows.Setup(this, $"Trim — {Path.GetFileName(path)}", ClientWidth, ClientHeight);
+        EditorWindows.Setup(this, $"Trim - {Path.GetFileName(path)}", ClientWidth, ClientHeight);
         Closed += (_, _) => _closed.Cancel();
 
         if (file is null || duration < TimeRangeModel.MinLength)

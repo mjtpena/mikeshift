@@ -17,15 +17,26 @@ public sealed partial class WelcomeWindow : Window
         this.CenterOnScreen(620, 640);
     }
 
+    private static WelcomeWindow? s_instance;
+
     /// <summary>Shows the welcome window if it has never been shown, and records that it was.</summary>
     public static void ShowIfFirstRun(AppServices services)
     {
         if (services.Preferences.Launched) return;
         services.Preferences.Launched = true;
+        Show(services);
+    }
 
-        var window = new WelcomeWindow(services);
-        window.Activate();
-        window.SetForegroundWindow();
+    /// <summary>Shows the welcome window ("How it works" in the tray menu), or brings the open one to the front.</summary>
+    public static void Show(AppServices services)
+    {
+        if (s_instance is null)
+        {
+            s_instance = new WelcomeWindow(services);
+            s_instance.Closed += (_, _) => s_instance = null;
+        }
+        s_instance.Activate();
+        s_instance.SetForegroundWindow();
     }
 
     private async void OnStartClicked(object sender, RoutedEventArgs e)

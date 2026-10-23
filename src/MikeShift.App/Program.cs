@@ -21,8 +21,10 @@ public static class Program
     {
         WinRT.ComWrappersSupport.InitializeComWrappers();
 
-        // The smoke test must work even while a real instance is running, so it skips the single-instance check.
-        var smoke = args.Contains("--smoke-test", StringComparer.Ordinal);
+        // The smoke test (and dev scenes, MIKESHIFT_NO_SINGLE_INSTANCE=1) must work even while a real instance is running,
+        // so they skip the single-instance check.
+        var smoke = args.Contains("--smoke-test", StringComparer.Ordinal)
+            || Environment.GetEnvironmentVariable("MIKESHIFT_NO_SINGLE_INSTANCE") == "1";
         if (!smoke && !RegisterOrRedirect())
             return 0;
 

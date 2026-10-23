@@ -28,7 +28,7 @@ public sealed partial class CropEditorWindow : Window
     private CropEditorWindow(string path, PreviewImage? preview, string? error)
     {
         InitializeComponent();
-        EditorWindows.Setup(this, $"Crop — {Path.GetFileName(path)}", ClientWidth, ClientHeight);
+        EditorWindows.Setup(this, $"Crop - {Path.GetFileName(path)}", ClientWidth, ClientHeight);
 
         if (preview is null)
         {

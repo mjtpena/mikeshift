@@ -1,28 +1,48 @@
-using Windows.Win32;
-using Windows.Win32.Foundation;
-using Windows.Win32.UI.WindowsAndMessaging;
+using MikeShift.Core.Feedback;
 
 namespace MikeShift.App.Hud;
 
-/// <summary>Modal dialogs for failures and warnings.</summary>
+/// <summary>Failure and warning dialogs. Never blocks the caller.</summary>
 public interface IDialogService
 {
-    /// <summary>Shows a modal error/warning dialog. Blocks (with a message pump) until dismissed; UI thread only.</summary>
-    void ShowError(string title, string body);
+    /// <summary>Shows <paramref name="content"/> in a Fluent dialog window and returns at once. UI thread only.</summary>
+    void Show(DialogContent content);
 }
 
 /// <summary>
-/// Native <c>MessageBox</c>: needs no XAML window host (the app has no main window), is always topmost and keeps the
-/// system look. Used for "None of the N files could be converted…", the partial-failure list and the elevation warning.
+/// Shows <see cref="NoticeWindow"/>s (UX review D-01): themed, non-modal, topmost, so a failure never holds up the toasts and chimes
+/// of the jobs that are still running. Button commands (Show in folder, Quit MikeShift) are handled here.
 /// </summary>
-public sealed class Win32DialogService : IDialogService
+public sealed class FluentDialogService : IDialogService
 {
-    public void ShowError(string title, string body) => Show(title, body, MESSAGEBOX_STYLE.MB_ICONWARNING);
+    /// <summary>The most recent dialog (tests and the capture harness).</summary>
+    internal NoticeWindow? Last { get; private set; }
 
-    /// <summary>Shows an informational dialog.</summary>
-    public void ShowInfo(string title, string body) => Show(title, body, MESSAGEBOX_STYLE.MB_ICONINFORMATION);
+    public void Show(DialogContent content)
+    {
+        try
+        {
+            var window = new NoticeWindow(content, Execute);
+            Last = window;
+            window.ShowDialog();
+        }
+        catch (Exception ex)
+        {
+            // A dialog is never worth a crash; the log has the reason.
+            Wheel.WheelLog.Error("dialog failed", ex);
+        }
+    }
 
-    private static void Show(string title, string body, MESSAGEBOX_STYLE icon) =>
-        PInvoke.MessageBox(HWND.Null, body, title,
-            MESSAGEBOX_STYLE.MB_OK | icon | MESSAGEBOX_STYLE.MB_SETFOREGROUND | MESSAGEBOX_STYLE.MB_TOPMOST);
+    private static void Execute(DialogButton button)
+    {
+        switch (button.Command)
+        {
+            case DialogCommand.ShowInFolder when button.Path is { } path:
+                ShellReveal.ShowInFolder(path);
+                break;
+            case DialogCommand.QuitApp:
+                App.Current.Quit();
+                break;
+        }
+    }
 }

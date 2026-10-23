@@ -1,27 +1,52 @@
 using CommunityToolkit.Mvvm.Input;
 using H.NotifyIcon;
-using H.NotifyIcon.Core;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Imaging;
+using MikeShift.App.Chrome;
+using MikeShift.App.FirstRun;
+using MikeShift.App.Hud;
 using MikeShift.App.Settings;
+using MikeShift.Core.Feedback;
 using Windows.UI.ViewManagement;
 using Windows.Win32;
 using Windows.Win32.UI.WindowsAndMessaging;
 
 namespace MikeShift.App.Tray;
 
+/// <summary>Content of the tray flyout's header row (bound by <c>TrayHeaderStyle</c>).</summary>
+[Microsoft.UI.Xaml.Data.Bindable]
+public sealed class TrayHeader(string title, string hint, string iconUri)
+{
+    public string Title { get; set; } = title;
+    public string Hint { get; set; } = hint;
+    public string IconUri { get; set; } = iconUri;
+}
+
 /// <summary>
-/// The notification-area icon and its menu (PLAN §1.1): header hint, Convert Files…, Open at Login, Settings…,
-/// Check for Updates…, Version, Quit. No window, no taskbar button. The menu is a native popup menu built fresh each time
-/// it opens so the Open at Login checkmark is always current.
+/// The notification-area icon and its menu (PLAN §1.1, UX review T-01 to T-05): a Fluent flyout (a WinUI <c>MenuFlyout</c> opened by
+/// <see cref="TrayFlyoutHost"/>, so it follows light, dark and high contrast and has rounded corners and icons) with a header,
+/// Convert files…, Open at login, Settings, How it works, Check for updates and Exit. The check mark and the "last converted" entry
+/// are updated in place when their state changes. Left click goes straight to Convert files…, right click
+/// opens the menu. No window, no taskbar button.
 /// </summary>
 public sealed class TrayController : IDisposable
 {
-    /// <summary>Where "Check for Updates…" goes. The app itself never touches the network; the browser does.</summary>
+    /// <summary>Where "Check for updates" goes. The app itself never touches the network; the browser does.</summary>
     public const string ReleasesUrl = "https://github.com/mjtpena/mikeshift/releases";
+
+    /// <summary>The "last converted" menu entry is offered for this long after a job finished.</summary>
+    public static readonly TimeSpan LastConvertedWindow = TimeSpan.FromSeconds(60);
+
+    private const string IconFont = "Segoe Fluent Icons";
 
     private readonly AppServices _services;
     private TaskbarIcon? _icon;
+    private MenuFlyout? _flyout;
+    private readonly TrayFlyoutHost _host = new();
     private bool _openAtLogin;
-    private bool _menuOpen;
+    private bool _pickerOpen;
     private System.Drawing.Icon? _iconForDarkTaskbar;
     private System.Drawing.Icon? _iconForLightTaskbar;
     private bool? _lightTaskbar;
@@ -30,13 +55,16 @@ public sealed class TrayController : IDisposable
     public TrayController(AppServices services) => _services = services;
 
     /// <summary>
-    /// Convert Files… picked these files. W3 attaches a handler that opens the wheel at the screen centre in click mode.
+    /// Convert files… picked these files. W3 attaches a handler that opens the wheel at the screen centre in click mode.
     /// While no handler is attached the temporary action picker is shown instead.
     /// </summary>
     public event Action<IReadOnlyList<string>>? ConvertFilesRequested;
 
     /// <summary>True while the tray icon exists in the notification area.</summary>
     public bool IsCreated => _icon?.IsCreated == true;
+
+    /// <summary>The flyout (tests and the capture harness; UI thread only).</summary>
+    internal MenuFlyout? Flyout => _flyout;
 
     /// <summary>Creates the tray icon. Call once on the UI thread.</summary>
     public void Create()
@@ -48,11 +76,15 @@ public sealed class TrayController : IDisposable
         _iconForLightTaskbar = LoadIcon("tray-light-taskbar.ico", size);
         _lightTaskbar = TaskbarTheme.IsLight();
 
+        // The flyout is opened by TrayFlyoutHost (H.NotifyIcon's own second-window mode did not open reliably on Windows App SDK 2.x);
+        // its items are created once and updated in place when their state changes (a job finishing, Open at login changing).
+        _flyout = BuildFlyout();
+
         _icon = new TaskbarIcon
         {
-            ToolTipText = "MikeShift",
+            ToolTipText = FeedbackCopy.TrayTooltip,
             NoLeftClickDelay = true,
-            LeftClickCommand = new RelayCommand(ShowMenuAtCursor),
+            LeftClickCommand = new RelayCommand(OnLeftClick),
             RightClickCommand = new RelayCommand(ShowMenuAtCursor),
         };
         var initial = (_lightTaskbar.Value ? _iconForLightTaskbar : _iconForDarkTaskbar) ?? LoadIcon("MikeShift.ico", size);
@@ -60,6 +92,10 @@ public sealed class TrayController : IDisposable
         _icon.ForceCreate(enablesEfficiencyMode: false);
 
         WatchTaskbarTheme();
+        _services.Jobs.JobFinished += (_, _) => UpdateLastItem();
+        _lastTimer = _services.Dispatcher.CreateTimer();
+        _lastTimer.IsRepeating = false;
+        _lastTimer.Tick += (_, _) => UpdateLastItem();
         _ = RefreshOpenAtLoginAsync();
     }
 
@@ -108,31 +144,41 @@ public sealed class TrayController : IDisposable
         if (icon is not null) _icon.UpdateIcon(icon);
     }
 
-    /// <summary>Pops the menu at the cursor (tray click, or a second launch of the app).</summary>
+    /// <summary>Left click: the primary action, picking files to convert (Windows convention: left click is the main surface).</summary>
+    private void OnLeftClick() => ConvertFiles();
+
+    /// <summary>Pops the menu at the cursor (right click, a second launch of the app, dev scenes).</summary>
     public void ShowMenuAtCursor()
     {
-        if (_icon?.TrayIcon is not { } tray || _menuOpen) return;
-
-        _menuOpen = true;
+        if (_flyout is null) return;
+        PInvoke.GetCursorPos(out var p);
         try
         {
-            var menu = BuildMenu();
-            PInvoke.GetCursorPos(out var p);
-            PInvoke.SetForegroundWindow(new Windows.Win32.Foundation.HWND(tray.WindowHandle));
-            menu.Show(tray.WindowHandle, p.X, p.Y);
+            UpdateLastItem();
+            UpdateLoginItem();
+            _host.Show(_flyout, new Windows.Graphics.PointInt32(p.X, p.Y));
+            _ = RefreshOpenAtLoginAsync(); // the check mark is current for the next open
+        }
+        catch (Exception ex)
+        {
+            Wheel.WheelLog.Error("tray menu failed", ex);
+        }
+    }
+
+    /// <summary>Convert files…: file picker, then <see cref="ConvertFilesRequested"/> (or the temporary picker).</summary>
+    public void ConvertFiles()
+    {
+        if (_pickerOpen) return;
+        _pickerOpen = true;
+        try
+        {
+            var paths = FilePicker.PickFiles();
+            if (paths.Count > 0) RequestConvert(paths);
         }
         finally
         {
-            _menuOpen = false;
+            _pickerOpen = false;
         }
-        _ = RefreshOpenAtLoginAsync();
-    }
-
-    /// <summary>Convert Files…: file picker, then <see cref="ConvertFilesRequested"/> (or the temporary picker).</summary>
-    public void ConvertFiles()
-    {
-        var paths = FilePicker.PickFiles();
-        if (paths.Count > 0) RequestConvert(paths);
     }
 
     /// <summary>Raises <see cref="ConvertFilesRequested"/> for <paramref name="paths"/>; falls back to the temporary action picker.</summary>
@@ -142,41 +188,105 @@ public sealed class TrayController : IDisposable
         else ActionPickerWindow.Show(_services, paths);
     }
 
-    /// <summary>Toggles Open at Login and reports a problem (e.g. disabled in Windows Settings) on the HUD.</summary>
+    /// <summary>Toggles Open at login and reports a problem (e.g. disabled in Windows Settings) on the HUD.</summary>
     public async Task ToggleOpenAtLoginAsync()
     {
         var result = await _services.Startup.SetEnabledAsync(!_openAtLogin);
         _openAtLogin = result.Enabled;
-        if (result.Message is { } message) _services.Hud.Show(message);
+        UpdateLoginItem();
+        if (result.Message is { } message) _services.Hud.Show(new ToastContent(message, null, ToastKind.Warning));
     }
 
-    private PopupMenu BuildMenu()
+    // ---- the flyout ----
+
+    private MenuFlyoutItem? _lastItem;
+    private ToggleMenuFlyoutItem? _loginItem;
+    private string? _lastPath;
+
+    private MenuFlyout BuildFlyout()
     {
         void Post(Action action) => _services.Dispatcher.TryEnqueue(() => action());
+        var flyout = new MenuFlyout();
 
-        var menu = new PopupMenu();
-        menu.Items.Add(new PopupMenuItem("Shift-drag files to convert", (_, _) => { }) { Enabled = false });
-        menu.Items.Add(new PopupMenuSeparator());
-        // Access key (C) instead of a "Ctrl+O" label: a global Ctrl+O hotkey would hijack Open in every other app.
-        menu.Items.Add(new PopupMenuItem("&Convert Files…", (_, _) => Post(ConvertFiles)));
-        menu.Items.Add(new PopupMenuItem("Open at Login", (_, _) => Post(() => _ = ToggleOpenAtLoginAsync())) { Checked = _openAtLogin });
-        menu.Items.Add(new PopupMenuItem("Settings…", (_, _) => Post(() => SettingsWindow.ShowSingleton(_services))));
-        menu.Items.Add(new PopupMenuSeparator());
-        menu.Items.Add(new PopupMenuItem("Check for Updates…", (_, _) => Post(OpenReleasesPage)));
-        menu.Items.Add(new PopupMenuItem($"Version {PackageInfo.VersionText}", (_, _) => { }) { Enabled = false });
-        menu.Items.Add(new PopupMenuSeparator());
-        menu.Items.Add(new PopupMenuItem("Quit", (_, _) => Post(() => ((App)Microsoft.UI.Xaml.Application.Current).Quit())));
-        return menu;
+        // T-02: the header teaches the gesture (instead of a greyed-out row) and names the product. A separator, because the
+        // second-window host forces every real item to 32 px, and a separator is exempt (and not focusable or clickable).
+        flyout.Items.Add(new MenuFlyoutSeparator
+        {
+            Style = (Style)Application.Current.Resources["TrayHeaderStyle"],
+            Tag = new TrayHeader(FeedbackCopy.AppName, "Shift-drag files to convert", new Uri(WindowChrome.AssetPath("Square44x44Logo.targetsize-48_altform-unplated.png")).AbsoluteUri),
+        });
+        flyout.Items.Add(new MenuFlyoutSeparator());
+
+        flyout.Items.Add(Item("Convert files…", "\uE8E5", "C", () => Post(ConvertFiles)));
+        _lastItem = Item("Show last file in folder", "\uE838", "F", () => Post(() => { if (_lastPath is { } path) ShellReveal.ShowInFolder(path); }));
+        _lastItem.Visibility = Visibility.Collapsed;
+        flyout.Items.Add(_lastItem);
+
+        _loginItem = new ToggleMenuFlyoutItem { Text = "Open at login", AccessKey = "L" };
+        _loginItem.Click += (_, _) => Post(() => _ = ToggleOpenAtLoginAsync());
+        flyout.Items.Add(_loginItem);
+        flyout.Items.Add(Item("Settings", "\uE713", "S", () => Post(() => SettingsWindow.ShowSingleton(_services))));
+        flyout.Items.Add(new MenuFlyoutSeparator());
+        flyout.Items.Add(Item("How it works", "\uE897", "H", () => Post(() => WelcomeWindow.Show(_services))));
+        flyout.Items.Add(Item("Check for updates", "\uE896", "U", () => Post(OpenReleasesPage)));
+        flyout.Items.Add(new MenuFlyoutSeparator());
+        flyout.Items.Add(Item("Exit", "\uE7E8", "X", () => Post(() => ((App)Application.Current).Quit())));
+        return flyout;
+    }
+
+    private Microsoft.UI.Dispatching.DispatcherQueueTimer? _lastTimer;
+
+    /// <summary>Shows "Show photo.png in folder" for a minute after a job wrote something (UX review X-04), then hides it again.</summary>
+    private void UpdateLastItem()
+    {
+        _lastPath = LastConverted();
+        if (_lastItem is null) return;
+        _lastItem.Visibility = _lastPath is null ? Visibility.Collapsed : Visibility.Visible;
+        if (_lastPath is null) return;
+        _lastItem.Text = $"Show {Path.GetFileName(_lastPath.TrimEnd('\\', '/'))} in folder";
+        _lastTimer?.Stop();
+        if (_lastTimer is not null)
+        {
+            _lastTimer.Interval = LastConvertedWindow + TimeSpan.FromSeconds(1);
+            _lastTimer.Start();
+        }
+    }
+
+    private void UpdateLoginItem()
+    {
+        if (_loginItem is not null) _loginItem.IsChecked = _openAtLogin;
+    }
+
+    private static MenuFlyoutItem Item(string text, string glyph, string accessKey, Action onClick)
+    {
+        var item = new MenuFlyoutItem { Text = text, Icon = Glyph(glyph), AccessKey = accessKey };
+        item.Click += (_, _) => onClick();
+        return item;
+    }
+
+    private static FontIcon Glyph(string glyph) => new() { Glyph = glyph, FontFamily = new FontFamily(IconFont) };
+
+    /// <summary>The first output of the last job, for one minute after it finished (UX review X-04).</summary>
+    private string? LastConverted()
+    {
+        var finished = _services.Jobs.LastFinishedAt;
+        var outputs = _services.Jobs.LastOutputs;
+        return finished is { } at && DateTimeOffset.UtcNow - at <= LastConvertedWindow && outputs.Count > 0 ? outputs[0] : null;
     }
 
     private static void OpenReleasesPage() => _ = Windows.System.Launcher.LaunchUriAsync(new Uri(ReleasesUrl));
 
-    private async Task RefreshOpenAtLoginAsync() => _openAtLogin = await _services.Startup.GetEnabledAsync();
+    private async Task RefreshOpenAtLoginAsync()
+    {
+        _openAtLogin = await _services.Startup.GetEnabledAsync();
+        UpdateLoginItem();
+    }
 
     public void Dispose()
     {
         if (_uiSettings is not null) _uiSettings.ColorValuesChanged -= OnColorValuesChanged;
         _uiSettings = null;
+        _host.Dispose();
         _icon?.Dispose();
         _icon = null;
         _iconForDarkTaskbar?.Dispose();
