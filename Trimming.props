@@ -62,17 +62,21 @@
     <Exec Command="&quot;$(_MikeShiftDotnet)&quot; run --file &quot;$(_ComScanTool)&quot; -- --list &quot;$(_ComScanList)&quot; --linked &quot;$(_ComScanLinkedDir)&quot;" />
   </Target>
 
-  <!-- Two kinds of ILLink warning that are not ours to fix. This is the linker's own run; our code is checked by the trim analyzers at compile
-       time, where every IL2xxx is an error.
-         IL2104  "assembly X produced trim warnings": reported for the two Windows SDK projection assemblies (Microsoft.Windows.SDK.NET and
-                 WinRT.Runtime; with -p:TrimmerSingleWarn=false they show 70 x IL2081, all in the ABI.* generic-collection fallbacks of the
-                 WinRT marshalling, for generic instantiations nothing in this app uses). No other assembly produces it.
-         IL2026  one warning, from System.Private.CoreLib's ComActivator: "Built-in COM support is not trim compatible". That is the framework's
-                 notice for BuiltInComInteropSupport=true, which the [ComImport] interop needs (above).
-       The property is only changed for the linker run, not for the compiler. Anything else the linker reports is still an error. -->
-  <Target Name="MikeShiftILLinkKnownWarnings" BeforeTargets="_RunILLink">
+  <!-- Trim warnings of the linker run that are not ours to fix, suppressed one by one where the framework raises them and NOT with a NoWarn
+       (which would hide the same code from our own assemblies): tools/ILLink.FrameworkSuppressions.xml, passed to ILLink as link-attributes, attaches
+       an UnconditionalSuppressMessage to System.Private.CoreLib's ComActivator.GetClassFactoryForTypeInternal (IL2026, "Built-in COM support is
+       not trim compatible", the framework's notice for BuiltInComInteropSupport=true above) and to the assemblies Microsoft.Windows.SDK.NET and
+       WinRT.Runtime (IL2104, 70 x IL2081 in the unused ABI.* generic-collection fallbacks of the WinRT marshalling). MikeShift.* assemblies
+       are linked with TrimmerSingleWarn=false (the SDK's default for the app and its project references; the CLI is set explicitly in
+       MikeShift.App.csproj), so every warning in them is reported in full, as an error (TreatWarningsAsErrors). Anything else the linker
+       reports, in any assembly, fails the build. Edit the XML, then rebuild the app project (the linker step re-runs when this file changes
+       or the project is rebuilt clean, as release.ps1 does). -->
+  <PropertyGroup>
+    <_MikeShiftLinkSuppressions>$(MSBuildThisFileDirectory)tools\ILLink.FrameworkSuppressions.xml</_MikeShiftLinkSuppressions>
+  </PropertyGroup>
+  <Target Name="MikeShiftILLinkKnownWarnings" BeforeTargets="_RunILLink" Condition="'$(PublishTrimmed)' == 'true'">
     <PropertyGroup>
-      <NoWarn>$(NoWarn);IL2104;IL2026</NoWarn>
+      <_ExtraTrimmerArgs>$(_ExtraTrimmerArgs) --link-attributes "$(_MikeShiftLinkSuppressions)"</_ExtraTrimmerArgs>
     </PropertyGroup>
   </Target>
 </Project>

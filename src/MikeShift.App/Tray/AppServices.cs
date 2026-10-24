@@ -16,6 +16,12 @@ public sealed class AppServices
     {
         Dispatcher = dispatcher;
         Preferences = new Preferences();
+        // Word is opt-in (the app is "fully local" unless the user turns it on): the capability snapshots report Word from this switch.
+        Capabilities.WordAllowed = Preferences.UseWord;
+        Preferences.Changed += key =>
+        {
+            if (key == Preferences.UseWordKey) Capabilities.WordAllowed = Preferences.UseWord;
+        };
         Startup = new StartupService();
         Hud = new HudController(dispatcher);
         Chime = new ChimePlayer();

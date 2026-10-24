@@ -193,6 +193,53 @@ public class WheelCalloutTests
         Assert.Equal("Only Zip works for these files", WheelCallout.ForDrag(m, false, HintEmphasis.Quiet)!.Text);
     }
 
+    // ------------------------------------------------------------------ Word is off (a setting explains the missing tiles)
+
+    [Fact]
+    public void ADocWithWordOffGetsTheTurnOnWordPillInsteadOfOnlyZip()
+    {
+        using var tmp = new TempDir();
+        var paths = new[] { tmp.WriteFile("old.doc", Fixtures.Noise(64)) };
+        var caps = Capabilities.All.WithWord(false);
+        var note = WheelText.WordNote(paths, caps);
+        Assert.Equal("Turn on Microsoft Word in Settings to convert .doc files", note);
+
+        var m = Model(actions: ActionCatalog.For(paths, caps));
+        Assert.True(m.IsSingleTile);
+        var c = WheelCallout.ForDrag(m, false, HintEmphasis.Prominent, note)!;
+        Assert.Equal(WheelText.TurnOnWord, c.Text);
+        Assert.Equal(CalloutTone.Caution, c.Tone);
+        Assert.Equal(WheelCallout.InfoGlyph, c.Glyph);
+        Assert.Equal("Only Zip works for these files", WheelCallout.ForDrag(m, false, HintEmphasis.Prominent)!.Text); // no note: the old line
+
+        var click = WheelCallout.ForClick(Model(WheelMode.Click, ActionCatalog.For(paths, caps)), "old.doc", note);
+        Assert.Equal(WheelText.TurnOnWord, click.Main!.Text);
+        Assert.Equal(CalloutTone.Caution, click.Main.Tone);
+        Assert.NotEmpty(click.Secondary!.KeyHints); // the keys stay
+    }
+
+    [Fact]
+    public void TheWordNoteOnlyAppearsWhenTurningWordOnWouldHelp()
+    {
+        using var tmp = new TempDir();
+        var doc = tmp.WriteFile("old.doc", Fixtures.Noise(64));
+        var docx = tmp.WriteFile("a.docx", Fixtures.DocxSample());
+        Assert.NotNull(WheelText.WordNote([doc], Capabilities.All.WithWord(false)));
+        Assert.NotNull(WheelText.WordNote([doc, doc], Capabilities.All.WithWord(false)));
+        Assert.Null(WheelText.WordNote([doc], Capabilities.All));                       // Word on: the tiles are there
+        Assert.Null(WheelText.WordNote([doc], Capabilities.None));                      // Word not installed: the setting would change nothing
+        Assert.Null(WheelText.WordNote([docx], Capabilities.All.WithWord(false)));      // docx never needs Word
+        Assert.Null(WheelText.WordNote([doc, tmp.WriteFile("a.png", Fixtures.Png())], Capabilities.All.WithWord(false))); // mixed: only Zip either way
+    }
+
+    [Fact]
+    public void ANoteNeverReplacesRealFormatTiles()
+    {
+        var m = Model();
+        Assert.NotEqual(WheelText.TurnOnWord, WheelCallout.ForDrag(m, false, HintEmphasis.Prominent, WheelText.TurnOnWord)!.Text);
+        Assert.NotEqual(WheelText.TurnOnWord, WheelCallout.ForClick(m, "3 images", WheelText.TurnOnWord).Main!.Text);
+    }
+
     [Fact]
     public void ASingleFormatWithToolsAvailableIsNotTheOnlyOptionPill()
     {

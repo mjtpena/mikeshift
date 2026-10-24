@@ -79,13 +79,17 @@ public static class WheelCallout
     /// there is only one tile; otherwise the pill names the highlighted tile ("Convert to PNG") and shows the key hints (always for the first
     /// wheels, only while nothing is highlighted afterwards).
     /// </summary>
-    public static CalloutContent? ForDrag(WheelModel model, bool virtualFiles, HintEmphasis emphasis)
+    public static CalloutContent? ForDrag(WheelModel model, bool virtualFiles, HintEmphasis emphasis, string? note = null)
     {
         if (virtualFiles)
             return new CalloutContent(WheelText.SaveFirst, CalloutTone.Caution, InfoGlyph);
 
         var tiles = model.CurrentActions;
         if (tiles.Count == 0) return null;
+
+        // A note (see WheelText.WordNote) explains why there are no format tiles; it replaces the "Only Zip" line.
+        if (note is not null && model.Formats.Count == 0)
+            return new CalloutContent(note, CalloutTone.Caution, InfoGlyph);
 
         if (tiles.Count == 1 && !model.HasBothPages)
             return new CalloutContent(WheelText.OnlyOption(tiles[0].Title));
@@ -100,11 +104,12 @@ public static class WheelCallout
 
     /// <summary>
     /// The pills of a click-mode wheel: what is selected above the disc, the keys below it
-    /// ("↑↓←→ Select · Enter Convert · Tab Tools · Esc Close").
+    /// ("↑↓←→ Select · Enter Convert · Tab Tools · Esc Close"); a <paramref name="note"/> that explains the missing format tiles takes the place of the selection.
     /// </summary>
-    public static WheelCallouts ForClick(WheelModel model, string selectionSummary)
+    public static WheelCallouts ForClick(WheelModel model, string selectionSummary, string? note = null)
     {
-        var main = string.IsNullOrEmpty(selectionSummary) ? null : new CalloutContent(selectionSummary);
+        var main = note is not null && model.Formats.Count == 0 ? new CalloutContent(note, CalloutTone.Caution, InfoGlyph)
+            : string.IsNullOrEmpty(selectionSummary) ? null : new CalloutContent(selectionSummary);
         return new WheelCallouts(main, new CalloutContent(null, Hints: ClickHints(model), Emphasis: HintEmphasis.Prominent));
     }
 

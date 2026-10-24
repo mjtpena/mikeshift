@@ -87,6 +87,8 @@ internal sealed class WheelController : IDisposable
     private HintEmphasis _emphasis = HintEmphasis.Prominent;
     private CalloutSide? _calloutSide;
     private string _selectionSummary = "";
+    /// <summary>Why a selection has no format tiles when the reason is a setting (Word is off for .doc files), or null. See <see cref="WheelText.WordNote"/>.</summary>
+    private string? _settingNote;
     private readonly WheelHintStore _hintStore = new();
     private IReadOnlyList<string> _paths = [];
     private System.Runtime.InteropServices.ComTypes.IDataObject? _dataObject;
@@ -430,6 +432,7 @@ internal sealed class WheelController : IDisposable
         _paths = [];
         _haveActions = false;
         _virtualFiles = false;
+        _settingNote = null;
         _outgoing = [];
         _dataObject = null;
         _forcedDismissTick = 0;
@@ -506,6 +509,7 @@ internal sealed class WheelController : IDisposable
         _paths = [];
         _haveActions = false;
         _virtualFiles = false;
+        _settingNote = null;
         _outgoing = [];
         _needsFrame = false;
         _nudgeRetryTick = 0;
@@ -676,6 +680,7 @@ internal sealed class WheelController : IDisposable
             return;
         }
         var page = _dragModel.Page;
+        _settingNote = SettingNoteFor(paths);
         _dragModel.SetActions(actions);
         if (page != _dragModel.Page) _dragModel.SetPage(page);
         _session.SetPage(_dragModel.Page);
@@ -691,6 +696,7 @@ internal sealed class WheelController : IDisposable
             return;
         }
         _haveActions = true;
+        _settingNote = SettingNoteFor(paths);
         _dragModel.ToolsKey = _session.ToolsKey;
         // The first ~20 wheels teach the Ctrl/Shift keys loudly (keycaps in the pill), later ones only whisper.
         if (actions.Count > 0) _emphasis = _hintStore.BeginWheel();
@@ -700,6 +706,13 @@ internal sealed class WheelController : IDisposable
         _session.SetPage(_dragModel.Page);
         WheelLog.Stage("tiles: " + string.Join(",", _dragModel.Formats.Select(a => a.Title)) + " | " + string.Join(",", _dragModel.Tools.Select(a => a.Title)));
         if (_lastPointer is { } p) _dragModel.PointerMoved(p, _rect.Centre, _dpi);
+    }
+
+    // Never blocks (a conservative snapshot until the startup probe is done); Word's installed/allowed state is part of that snapshot.
+    private string? SettingNoteFor(IReadOnlyList<string> paths)
+    {
+        _services.TryGetCapabilities(out var caps);
+        return WheelText.WordNote(paths, caps);
     }
 
     private PointPx? _lastPointer;
@@ -907,6 +920,7 @@ internal sealed class WheelController : IDisposable
         _selectionSummary = summary;
         _paths = paths.ToArray();
         _virtualFiles = false;
+        _settingNote = SettingNoteFor(paths);
         _outgoing = [];
 
         PInvoke.GetCursorPos(out var cursor);
@@ -974,12 +988,12 @@ internal sealed class WheelController : IDisposable
     /// </summary>
     private WheelCallouts BuildCallouts(WheelModel model)
     {
-        if (_mode == Mode.Click) return WheelCallout.ForClick(model, _selectionSummary);
+        if (_mode == Mode.Click) return WheelCallout.ForClick(model, _selectionSummary, _settingNote);
         if (_mode != Mode.Drag) return WheelCallouts.None;
 
         if (_lastPointer is { } pointer)
             _calloutSide = WheelCallout.SideFor((pointer.Y - _rect.Centre.Y) / _dpi, _calloutSide);
-        return new WheelCallouts(WheelCallout.ForDrag(model, _virtualFiles, _emphasis));
+        return new WheelCallouts(WheelCallout.ForDrag(model, _virtualFiles, _emphasis, _settingNote));
     }
 
     private void RenderFrame()

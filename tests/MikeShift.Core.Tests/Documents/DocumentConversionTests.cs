@@ -613,17 +613,61 @@ public class DocumentConversionTests
 
     // ------------------------------------------------------------------ Word COM (skipped when Word is not installed)
 
-    [SkipIfNoCapability(nameof(Capabilities.WordCom))]
+    /// <summary>This PC's capabilities with the "Use Microsoft Word" permission granted (Word is opt-in; Current has it off).</summary>
+    private static Capabilities WordOn => Capabilities.Current.WithWord(true);
+
+    /// <summary>This PC's capabilities with Word installed but NOT allowed: the default of the app and the CLI.</summary>
+    private static Capabilities WordOff => Capabilities.Current.WithWord(false);
+
+    [SkipIfNoCapability(nameof(Capabilities.WordInstalled))]
+    public async Task Without_permission_docx_to_pdf_uses_the_built_in_converter_and_never_starts_Word()
+    {
+        using var tmp = new TempDir();
+        var input = Sample(tmp, "docx");
+        Assert.True(Capabilities.Current.WordInstalled);
+        Assert.False(WordOff.WordCom);
+
+        var before = WordPids();
+        var task = ConvertAsync(input, DocFormat.Pdf, WordOff);
+        var started = new HashSet<int>();
+        while (!task.IsCompleted)
+        {
+            started.UnionWith(WordPids().Except(before));
+            await Task.WhenAny(task, Task.Delay(20));
+        }
+        var output = await task;
+        started.UnionWith(WordPids().Except(before));
+
+        Assert.Empty(started);
+        Assert.Contains("Quarterly Report", PdfFlat(output));
+        // The built-in writer says so in the PDF's producer; Word's exporter would not.
+        Assert.Contains("PDFsharp", Encoding.Latin1.GetString(File.ReadAllBytes(output)));
+    }
+
+    [SkipIfNoCapability(nameof(Capabilities.WordInstalled))]
+    public async Task Without_permission_a_legacy_doc_is_refused_with_a_pointer_to_the_setting_and_Word_is_never_started()
+    {
+        using var tmp = new TempDir();
+        var doc = tmp.WriteFile("legacy.doc", Encoding.ASCII.GetBytes(Fixtures.RtfSample()));
+        var before = WordPids();
+
+        var ex = await Assert.ThrowsAsync<ConversionException>(() => ConvertAsync(doc, DocFormat.Txt, WordOff));
+
+        Assert.Contains("Turn on Microsoft Word in Settings", ex.Message);
+        Assert.Empty(WordPids().Except(before));
+    }
+
+    [SkipIfNoCapability(nameof(Capabilities.WordInstalled))]
     public async Task Word_exports_docx_to_pdf()
     {
         using var tmp = new TempDir();
         var input = Sample(tmp, "docx");
         using var guard = OriginalsGuard.Watch(input);
-        var output = await ConvertAsync(input, DocFormat.Pdf, Capabilities.Current);
+        var output = await ConvertAsync(input, DocFormat.Pdf, WordOn);
         Assert.Contains("Quarterly Report", PdfFlat(output));
     }
 
-    [SkipIfNoCapability(nameof(Capabilities.WordCom))]
+    [SkipIfNoCapability(nameof(Capabilities.WordInstalled))]
     public async Task Word_converts_a_legacy_doc_to_the_other_formats()
     {
         using var tmp = new TempDir();
@@ -632,10 +676,10 @@ public class DocumentConversionTests
         using var guard = OriginalsGuard.Watch(doc);
         foreach (var f in new[] { DocFormat.Pdf, DocFormat.Docx, DocFormat.Rtf, DocFormat.Txt, DocFormat.Html })
         {
-            var output = await ConvertAsync(doc, f, Capabilities.Current);
+            var output = await ConvertAsync(doc, f, WordOn);
             Assert.True(new FileInfo(output).Length > 0, f.ToString());
         }
-        Assert.Contains("Quarterly Report", File.ReadAllText(await ConvertAsync(doc, DocFormat.Txt, Capabilities.Current)));
+        Assert.Contains("Quarterly Report", File.ReadAllText(await ConvertAsync(doc, DocFormat.Txt, WordOn)));
     }
 
     private static HashSet<int> WordPids() =>
@@ -659,7 +703,7 @@ public class DocumentConversionTests
         }
     }
 
-    [SkipIfNoCapability(nameof(Capabilities.WordCom))]
+    [SkipIfNoCapability(nameof(Capabilities.WordInstalled))]
     public async Task Word_fails_fast_with_a_clear_message_on_a_password_protected_doc()
     {
         using var tmp = new TempDir();
@@ -667,14 +711,14 @@ public class DocumentConversionTests
         MakePasswordProtectedDoc(path);
 
         var clock = System.Diagnostics.Stopwatch.StartNew();
-        var ex = await Assert.ThrowsAsync<ConversionException>(() => ConvertAsync(path, DocFormat.Txt, Capabilities.Current));
+        var ex = await Assert.ThrowsAsync<ConversionException>(() => ConvertAsync(path, DocFormat.Txt, WordOn));
 
         Assert.Contains("password", ex.Message, StringComparison.OrdinalIgnoreCase);
         Assert.True(clock.Elapsed < TimeSpan.FromSeconds(60), clock.Elapsed.ToString());
         Assert.Empty(Directory.GetFileSystemEntries(tmp.Path, "*.mikeshift-tmp"));
     }
 
-    [SkipIfNoCapability(nameof(Capabilities.WordCom))]
+    [SkipIfNoCapability(nameof(Capabilities.WordInstalled))]
     public async Task Word_conversion_that_times_out_is_killed_and_reports_it()
     {
         using var tmp = new TempDir();
@@ -684,7 +728,7 @@ public class DocumentConversionTests
         WordInterop.Timeout = TimeSpan.FromMilliseconds(100); // Word needs far longer than this just to start
         try
         {
-            var ex = await Assert.ThrowsAsync<ConversionException>(() => ConvertAsync(doc, DocFormat.Txt, Capabilities.Current));
+            var ex = await Assert.ThrowsAsync<ConversionException>(() => ConvertAsync(doc, DocFormat.Txt, WordOn));
             Assert.Contains("didn't respond", ex.Message);
         }
         finally
@@ -696,7 +740,7 @@ public class DocumentConversionTests
         Assert.Empty(Directory.GetFileSystemEntries(tmp.Path, "*.mikeshift-tmp"));
     }
 
-    [SkipIfNoCapability(nameof(Capabilities.WordCom))]
+    [SkipIfNoCapability(nameof(Capabilities.WordInstalled))]
     public async Task Word_conversion_honours_cancellation_and_kills_its_Word()
     {
         using var tmp = new TempDir();
@@ -705,7 +749,7 @@ public class DocumentConversionTests
         using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
-            DocumentConverter.ToFormatAsync(doc, DocFormat.Txt, Capabilities.Current, cts.Token));
+            DocumentConverter.ToFormatAsync(doc, DocFormat.Txt, WordOn, cts.Token));
 
         await AssertNoNewWordProcess(before);
     }

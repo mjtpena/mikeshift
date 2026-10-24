@@ -242,7 +242,8 @@ public class DocumentIntegrityTests
     [SlowFact, Trait("Category", "Slow")]
     public async Task Docx_to_pdf_through_Word_is_a_real_pdf_with_all_the_words()
     {
-        if (!Capabilities.Current.WordCom) return;
+        if (!Capabilities.Current.WordInstalled) return;
+        using var wordOn = Kit.WithCaps(Capabilities.Current.WithWord(true)); // Word is opt-in: this test is the opt-in
         using var tmp = new TempDir();
         var input = tmp.WriteFile("report.docx", Fixtures.DocxSample());
 

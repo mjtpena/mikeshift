@@ -85,8 +85,8 @@ public class CapabilitiesTests
     {
         var quick = Capabilities.Quick();
         using var key = Registry.ClassesRoot.OpenSubKey("Word.Application");
-        Assert.Equal(key is not null, quick.WordCom);
-        Assert.Equal(Capabilities.None with { WordCom = quick.WordCom }, quick);
+        Assert.Equal(key is not null, quick.WordInstalled);
+        Assert.Equal(Capabilities.None with { WordInstalled = quick.WordInstalled, WordCom = quick.WordCom }, quick);
     }
 
     [Fact]
@@ -101,11 +101,37 @@ public class CapabilitiesTests
     }
 
     [Fact]
-    public void WordCom_matches_the_registry()
+    public void WordInstalled_matches_the_registry()
     {
         using var key = Registry.ClassesRoot.OpenSubKey("Word.Application");
-        Assert.Equal(key is not null, Capabilities.Probe().WordCom);
+        Assert.Equal(key is not null, Capabilities.Probe().WordInstalled);
     }
+
+    // ------------------------------------------------------------------ Word is opt-in
+
+    [Fact]
+    public void Word_is_off_by_default_even_where_it_is_installed()
+    {
+        Assert.False(Capabilities.WordAllowedByDefault);
+        Assert.False(Capabilities.WordAllowed);
+        Assert.False(Capabilities.Current.WordCom);
+        Assert.False(Capabilities.Quick().WordCom);
+        Assert.False(Capabilities.Probe().WordCom);
+        Assert.False(Capabilities.None.WordCom);
+    }
+
+    [Fact]
+    public void WithWord_grants_Word_only_where_it_is_installed()
+    {
+        var installed = Capabilities.None with { WordInstalled = true };
+        Assert.True(installed.WithWord(true).WordCom);
+        Assert.False(installed.WithWord(false).WordCom);
+        Assert.False((Capabilities.None.WithWord(true)).WordCom); // not installed: nothing to allow
+        Assert.False((Capabilities.All.WithWord(false)).WordCom);
+        Assert.True(Capabilities.All.WithWord(false).WordInstalled); // still known to be there
+        Assert.Same(Capabilities.All, Capabilities.All.WithWord(true));
+    }
+
 
     [Fact]
     public void Tool_glyphs_exist_in_the_installed_icon_font()

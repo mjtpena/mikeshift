@@ -17,6 +17,18 @@ public static class WheelText
     /// <summary>Shown (pill, hub tooltip, shell drop description) when the drag carries virtual files that cannot be converted in place.</summary>
     public const string SaveFirst = "Save the file first, then drag it";
 
+    /// <summary>Shown (pill) instead of the "Only Zip works" explanation when legacy .doc files are selected, Word is installed and the user has not turned it on.</summary>
+    public const string TurnOnWord = "Turn on Microsoft Word in Settings to convert .doc files";
+
+    /// <summary>
+    /// <see cref="TurnOnWord"/> when <paramref name="paths"/> contain a legacy .doc that only Word can read, Word is installed and the
+    /// "Use Microsoft Word" setting is off; otherwise null. (Without Word installed, turning the setting on would change nothing.)
+    /// </summary>
+    public static string? WordNote(IReadOnlyList<string> paths, Capabilities caps) =>
+        caps.WordInstalled && !caps.WordCom && paths.Any(p => Kind.ExtensionOf(p) == "doc") && Kind.CommonOf(paths) == Category.Document
+            ? TurnOnWord
+            : null;
+
     /// <summary>The idle hub title of <paramref name="page"/>.</summary>
     public static string PageTitle(WheelPage page) => page == WheelPage.Format ? FormatTitle : ToolTitle;
 

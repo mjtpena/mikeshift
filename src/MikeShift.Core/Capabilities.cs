@@ -44,8 +44,25 @@ public sealed record Capabilities
     /// <summary>Media Foundation can open <c>.webm</c> files. Probed by W2c.</summary>
     public bool WebmOpen { get; init; }
 
-    /// <summary>Microsoft Word is installed (<c>HKCR\Word.Application</c>); enables legacy .doc and high-fidelity PDF export. Probed by W1.</summary>
+    /// <summary>Microsoft Word is installed (<c>HKCR\Word.Application</c>). Informational: MikeShift only drives Word when <see cref="WordCom"/> is true.</summary>
+    public bool WordInstalled { get; init; }
+
+    /// <summary>
+    /// Word is installed AND the user allowed MikeShift to use it (the "Use Microsoft Word" setting; <c>--use-word</c> on the command line).
+    /// Only then do legacy .doc input and Word's own DOCX-to-PDF export exist; otherwise MikeShift stays fully local and never starts Word
+    /// (Word connects to Microsoft services on its own). The only flag the converters and the catalog consult for Word.
+    /// </summary>
     public bool WordCom { get; init; }
+
+    /// <summary>
+    /// This snapshot with Word allowed or not: <see cref="WordCom"/> becomes <paramref name="allowed"/> and <see cref="WordInstalled"/>
+    /// (never true when Word is not installed).
+    /// </summary>
+    public Capabilities WithWord(bool allowed)
+    {
+        var com = allowed && WordInstalled;
+        return com == WordCom ? this : this with { WordCom = com };
+    }
 
     /// <summary>Everything available. The default for tests and for <c>ActionCatalog</c> unit tests.</summary>
     public static Capabilities All { get; } = new()
@@ -53,7 +70,7 @@ public sealed record Capabilities
         HeifEncode = true, WebpEncode = true, AvifDecode = true,
         Mp3Encode = true, FlacEncode = true, H264Encode = true, AacEncode = true,
         HevcDecode = true, Vp9Decode = true, Av1Decode = true, WebmOpen = true,
-        WordCom = true,
+        WordInstalled = true, WordCom = true,
     };
 
     /// <summary>Nothing optional available (every flag false).</summary>
@@ -61,12 +78,29 @@ public sealed record Capabilities
 
     private static readonly ProbeCache s_cache = new(Probe, Quick);
 
+    /// <summary>The default of the "Use Microsoft Word" setting: off. MikeShift is fully local unless the user turns Word on.</summary>
+    public const bool WordAllowedByDefault = false;
+
+    private static volatile bool s_wordAllowed = WordAllowedByDefault;
+
+    /// <summary>
+    /// The host's permission to use Word, process-wide and off by default. The tray app sets it from the "Use Microsoft Word" preference
+    /// (and again when that changes); the command line leaves it off and decides per run (<c>--use-word</c>). Every snapshot this class
+    /// hands out (<see cref="Current"/>, <see cref="TryGetCurrent"/>, <see cref="Quick"/>, <see cref="Probe"/>) reports
+    /// <see cref="WordCom"/> from it, so flipping it takes effect on the next catalog or job without re-probing codecs.
+    /// </summary>
+    public static bool WordAllowed
+    {
+        get => s_wordAllowed;
+        set => s_wordAllowed = value;
+    }
+
     /// <summary>
     /// The probe result for this machine, computed once per process (thread-safe). The first access runs the probe and can take
     /// a second or more (WIC HEIF encode, Media Foundation transforms), so UI and message-loop threads must not call this before
     /// <see cref="IsProbed"/> is true: use <see cref="TryGetCurrent"/> or <see cref="CurrentAsync"/> instead.
     /// </summary>
-    public static Capabilities Current => s_cache.Value;
+    public static Capabilities Current => ApplyWordPolicy(s_cache.Value);
 
     /// <summary>True once the machine probe has finished, so <see cref="Current"/> returns immediately.</summary>
     public static bool IsProbed => s_cache.IsReady;
@@ -76,16 +110,21 @@ public sealed record Capabilities
     /// conservative <paramref name="capabilities"/> snapshot (<see cref="Quick"/>) so callers can show something right away and
     /// refresh when <see cref="CurrentAsync"/> completes.
     /// </summary>
-    public static bool TryGetCurrent(out Capabilities capabilities) => s_cache.TryGet(out capabilities);
+    public static bool TryGetCurrent(out Capabilities capabilities)
+    {
+        var probed = s_cache.TryGet(out var caps);
+        capabilities = ApplyWordPolicy(caps);
+        return probed;
+    }
 
     /// <summary>The probe result, awaited. Starts the probe on a thread-pool thread if nothing has yet; completes when it is done.</summary>
-    public static Task<Capabilities> CurrentAsync => s_cache.ValueAsync;
+    public static Task<Capabilities> CurrentAsync => WithPolicyAsync(s_cache.ValueAsync);
 
     /// <summary>
     /// What is known without running any codec probe: nothing optional is assumed to exist, except that Word is detected (one
     /// registry read). Tiles built from this are a safe subset of the real ones.
     /// </summary>
-    public static Capabilities Quick() => new() { WordCom = DetectWord() };
+    public static Capabilities Quick() => WithDetectedWord(new Capabilities());
 
     /// <summary>
     /// Probes this machine now (uncached). Composes <see cref="ImageProbe.ProbeCapabilities"/> (W2a),
@@ -94,7 +133,7 @@ public sealed record Capabilities
     /// </summary>
     public static Capabilities Probe()
     {
-        var caps = new Capabilities { WordCom = DetectWord() };
+        var caps = WithDetectedWord(new Capabilities());
         caps = Safe(() => ImageProbe.ProbeCapabilities(caps), caps);
         caps = Safe(() => MediaProbe.ProbeCapabilities(caps), caps);
         return caps;
@@ -105,6 +144,15 @@ public sealed record Capabilities
         try { return probe(); }
         catch (Exception) { return fallback; }
     }
+
+    private static Capabilities WithDetectedWord(Capabilities caps) =>
+        (caps with { WordInstalled = DetectWord() }).WithWord(WordAllowed);
+
+    private static async Task<Capabilities> WithPolicyAsync(Task<Capabilities> probe) =>
+        ApplyWordPolicy(await probe.ConfigureAwait(false));
+
+    // The cached probe was made when the permission may have been different.
+    private static Capabilities ApplyWordPolicy(Capabilities cached) => cached.WithWord(WordAllowed);
 
     private static bool DetectWord()
     {
