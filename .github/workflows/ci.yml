@@ -61,10 +61,11 @@ jobs:
 
   msix:
     # Separate job so a packaging problem never hides a converter regression.
-    # scripts/release.ps1 builds the x64 and ARM64 MSIX (each with the CLI bundled in cli\), bundles them with makeappx and writes
-    # SHA256SUMS.txt. No certificate is available here, so the bundle is UNSIGNED: it cannot be installed, it proves that packaging works.
+    # scripts/release.ps1 -Flavor all builds both flavours (sideload: Windows App SDK bundled; store: shared Windows App Runtime) for x64 and
+    # ARM64, each a clean IL-trimmed build with the CLI bundled, writes the per-architecture .msix files, bundles them with makeappx and writes
+    # SHA256SUMS.txt. No certificate is available here, so the packages are UNSIGNED: they cannot be installed, it proves that packaging works.
     runs-on: windows-latest
-    timeout-minutes: 45
+    timeout-minutes: 90
     needs: build-and-test
     steps:
       - uses: actions/checkout@v4
@@ -73,19 +74,19 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
-      - name: Build unsigned .msixbundle
+      - name: Build unsigned packages (both flavours)
         shell: pwsh
-        run: ./scripts/release.ps1
+        run: ./scripts/release.ps1 -Flavor all
 
-      - name: Upload bundle
+      - name: Upload packages
         uses: actions/upload-artifact@v4
         with:
-          name: mikeshift-msixbundle-unsigned
+          name: mikeshift-msix-unsigned
           path: |
             artifacts/*.msix
             artifacts/*.msixbundle
             artifacts/SHA256SUMS.txt
           if-no-files-found: error
-          # The bundle is ~300 MB and already compressed.
+          # The packages (about 270 MB for both flavours) are already compressed.
           compression-level: 0
           retention-days: 14
