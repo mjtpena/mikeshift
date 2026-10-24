@@ -5,11 +5,10 @@ using MikeShift.App.Input;
 using MikeShift.App.Tray;
 using MikeShift.Core;
 using MikeShift.Core.Actions;
+using MikeShift.Core.Feedback;
 using MikeShift.Core.Interaction;
 using Windows.Win32;
 using Windows.Win32.UI.Input.KeyboardAndMouse;
-using AppToolsKey = MikeShift.App.Settings.ToolsKey;
-using CoreToolsKey = MikeShift.Core.Interaction.ToolsKey;
 using Preferences = MikeShift.App.Settings.Preferences;
 
 namespace MikeShift.App.Wheel;
@@ -152,9 +151,10 @@ internal sealed class WheelController : IDisposable
             _dropTarget.Register();
         }
 
-        _session = new DragSession(AsyncInput.CreateSessionOptions(Map(_services.Preferences.ToolsKey)));
+        _session = new DragSession(AsyncInput.CreateSessionOptions(_services.Preferences.ToolsKey, _services.Preferences.ArmKey));
         _session.Command += OnSessionCommand;
         _dragModel.ToolsKey = _session.ToolsKey;
+        _dragModel.ArmKey = _session.ArmKey;
         _dragModel.Changed += change => OnModelChanged(_dragModel, change);
         _clickModel.Changed += change => OnModelChanged(_clickModel, change);
         _clickModel.ActionPicked += OnClickPicked;
@@ -258,22 +258,18 @@ internal sealed class WheelController : IDisposable
         WheelLog.Info($"renderer released after {TrimAfterMs} ms idle (managed heap {before / 1024} KB -> {GC.GetTotalMemory(false) / 1024} KB, working set trimmed)");
     }
 
-    private static CoreToolsKey Map(AppToolsKey key) => key switch
-    {
-        AppToolsKey.MouseWheelOnly => CoreToolsKey.MouseWheelOnly,
-        AppToolsKey.Alt => CoreToolsKey.Alt,
-        _ => CoreToolsKey.Ctrl,
-    };
-
     private void OnPreferenceChanged(string key)
     {
-        if (key != Preferences.ToolsKeyKey) return;
+        if (key != Preferences.ToolsKeyKey && key != Preferences.ArmKeyKey) return;
         _thread.Post(() =>
         {
-            var mapped = Map(_services.Preferences.ToolsKey);
-            _session.ToolsKey = mapped;
-            _dragModel.ToolsKey = mapped;
-            WheelLog.Stage("tools key = " + mapped);
+            var prefs = _services.Preferences;
+            // The session applies a new arm key from the next press on; the hints follow at once.
+            _session.ArmKey = prefs.ArmKey;
+            _session.ToolsKey = prefs.ToolsKey;
+            _dragModel.ArmKey = prefs.ArmKey;
+            _dragModel.ToolsKey = prefs.ToolsKey;
+            WheelLog.Stage($"arm key = {prefs.ArmKey}, tools key = {prefs.ToolsKey}");
         });
     }
 
@@ -619,7 +615,7 @@ internal sealed class WheelController : IDisposable
     private void BeginCatalog(IReadOnlyList<string> pathsFromDrag, PointPx entry)
     {
         var jobs = _services.Jobs;
-        var paths = DragSession.FilterSelection(pathsFromDrag, _session.ShiftAtMouseDown, jobs.LastOutputs, jobs.LastFinishedAt, DateTimeOffset.UtcNow);
+        var paths = DragSession.FilterSelection(pathsFromDrag, _session.ArmKeyAtMouseDown, jobs.LastOutputs, jobs.LastFinishedAt, DateTimeOffset.UtcNow);
         if (paths.Count != pathsFromDrag.Count)
             WheelLog.Stage($"Shift-click rule applied: {pathsFromDrag.Count} -> {paths.Count} item(s)");
         _paths = paths;
@@ -712,7 +708,7 @@ internal sealed class WheelController : IDisposable
     private string? SettingNoteFor(IReadOnlyList<string> paths)
     {
         _services.TryGetCapabilities(out var caps);
-        return WheelText.WordNote(paths, caps);
+        return WheelText.WordNote(paths, caps) ?? CodecHelp.NoteFor(paths, caps, Kind.Of);
     }
 
     private PointPx? _lastPointer;
@@ -780,6 +776,15 @@ internal sealed class WheelController : IDisposable
     {
         var snapshot = paths.ToArray();
         var services = _services;
+        if (action.OpensUri is { } uri)
+        {
+            // "Get HEIF": no job, the Microsoft Store page of the missing extension (UI thread; the launch is asynchronous).
+            if (!services.Dispatcher.TryEnqueue(() => MikeShift.App.Settings.StoreLauncher.Open(uri)))
+                WheelLog.Error("could not open the Store page: the UI thread is gone");
+            else
+                WheelLog.Stage("opened the Store page for " + action.Title);
+            return;
+        }
         if (!services.Dispatcher.TryEnqueue(() =>
             {
                 try
@@ -889,8 +894,11 @@ internal sealed class WheelController : IDisposable
 
     // ------------------------------------------------------------------ click mode (Convert Files…)
 
-    /// <summary>Opens the wheel for "Convert Files…" at the centre of the monitor under the cursor.</summary>
-    public void ShowClickMode(IReadOnlyList<string> paths)
+    /// <summary>
+    /// Opens the wheel for "Convert Files…" at the centre of the monitor under the cursor, or, for the Explorer-selection hotkey, near
+    /// <paramref name="anchor"/> (physical screen px; the wheel is kept on the monitor's work area and clear of the taskbar).
+    /// </summary>
+    public void ShowClickMode(IReadOnlyList<string> paths, PointPx? anchor = null)
     {
         _ = Task.Run(() =>
         {
@@ -900,11 +908,11 @@ internal sealed class WheelController : IDisposable
             string summary;
             try { summary = SelectionSummary.For(paths, paths.Count > 1 ? Kind.CommonOf(paths) : null); }
             catch (Exception ex) { WheelLog.Error("selection summary failed", ex); summary = ""; }
-            _thread.Post(() => ShowClick(paths, actions, summary));
+            _thread.Post(() => ShowClick(paths, actions, summary, anchor));
         });
     }
 
-    private void ShowClick(IReadOnlyList<string> paths, IReadOnlyList<ActionDef> actions, string summary)
+    private void ShowClick(IReadOnlyList<string> paths, IReadOnlyList<ActionDef> actions, string summary, PointPx? anchor)
     {
         if (actions.Count == 0)
         {
@@ -924,9 +932,12 @@ internal sealed class WheelController : IDisposable
         _outgoing = [];
 
         PInvoke.GetCursorPos(out var cursor);
-        var monitor = WheelWindow.MonitorAt(new PointPx(cursor.X, cursor.Y));
+        var monitor = WheelWindow.MonitorAt(anchor ?? new PointPx(cursor.X, cursor.Y));
         _dpi = monitor.DpiScale;
-        _rect = WheelPlacement.CentredIn(monitor.WorkArea, WheelGeometry.WindowSizePx(_dpi));
+        var size = WheelGeometry.WindowSizePx(_dpi);
+        _rect = anchor is { } at
+            ? WheelPlacement.ForCursor(at, size, monitor.WorkArea, monitor.Bounds, (int)Math.Ceiling(WheelPlacement.TaskbarAnchorGap * _dpi))
+            : WheelPlacement.CentredIn(monitor.WorkArea, size);
 
         PrepareGlass();
         var generation = _anim.Show(NowSeconds);

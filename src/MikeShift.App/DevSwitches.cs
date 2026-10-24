@@ -75,6 +75,9 @@ internal static class DevSwitches
     /// <summary><c>MIKESHIFT_TEXT_SCALE=1.4</c>: pretend the OS text size is this.</summary>
     public static double? TextScale => TryParseDouble(Env("MIKESHIFT_TEXT_SCALE"));
 
+    /// <summary><c>MIKESHIFT_CAPS=no-heif,no-hevc,no-av1,no-webp</c>: pretend those Windows extensions are missing (HEIC tile, welcome codec card).</summary>
+    public static string? Caps => Env("MIKESHIFT_CAPS");
+
     /// <summary><c>MIKESHIFT_TRIM_MS</c>: how long the wheel idles before releasing its graphics device (default 15 s).</summary>
     public static long? TrimMs => long.TryParse(Env("MIKESHIFT_TRIM_MS"), out var v) && v >= 0 ? v : null;
 

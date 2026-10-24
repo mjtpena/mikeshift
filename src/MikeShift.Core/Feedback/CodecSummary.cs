@@ -29,13 +29,16 @@ public static class CodecSummary
     /// <summary>The rows, in display order.</summary>
     public static IReadOnlyList<CodecStatus> From(Capabilities c) =>
     [
-        new("HEIC / HEIF output", c.HeifEncode, "Install \"HEIF Image Extensions\" and \"HEVC Video Extensions\" from the Microsoft Store.", "9PMMSR1CGPWG"),
-        new("WebP output", c.WebpEncode, "Install \"WebP Image Extensions\" from the Microsoft Store.", "9PG2DK419DRG"),
-        new("AVIF input", c.AvifDecode, "Install \"AV1 Video Extension\" from the Microsoft Store.", "9MVZQVXJBQ9V"),
+        new("HEIC photos (iPhone) input", c.HeifDecode && c.HevcDecode,
+            "Install \"HEIF Image Extensions\" (free) and \"HEVC Video Extensions\" from the Microsoft Store.",
+            c.HeifDecode ? CodecHelp.HevcProductId : CodecHelp.HeifProductId),
+        new("HEIC / HEIF output", c.HeifEncode, "Install \"HEIF Image Extensions\" and \"HEVC Video Extensions\" from the Microsoft Store.", CodecHelp.HeifProductId),
+        new("WebP output", c.WebpEncode, "Install \"WebP Image Extensions\" from the Microsoft Store.", CodecHelp.WebpProductId),
+        new("AVIF input", c.AvifDecode, "Install \"AV1 Video Extension\" from the Microsoft Store.", CodecHelp.Av1ProductId),
         new("H.264 video output", c.H264Encode, "Not available on this edition of Windows."),
-        new("HEVC (H.265) video input", c.HevcDecode, "Install \"HEVC Video Extensions\" from the Microsoft Store.", "9N4WGH0Z6VHQ"),
+        new("HEVC (H.265) video input", c.HevcDecode, "Install \"HEVC Video Extensions\" from the Microsoft Store.", CodecHelp.HevcProductId),
         new("VP9 video input", c.Vp9Decode, "Install \"VP9 Video Extensions\" from the Microsoft Store.", "9N4D0MSMP0PT"),
-        new("AV1 video input", c.Av1Decode, "Install \"AV1 Video Extension\" from the Microsoft Store.", "9MVZQVXJBQ9V"),
+        new("AV1 video input", c.Av1Decode, "Install \"AV1 Video Extension\" from the Microsoft Store.", CodecHelp.Av1ProductId),
         new("WebM files", c.WebmOpen, "Install \"Web Media Extensions\" from the Microsoft Store.", "9N5TDP8VCMHS"),
         new("AAC audio output", c.AacEncode, "Not available on this edition of Windows."),
         new("MP3 audio output", c.Mp3Encode, "Not available on this edition of Windows."),

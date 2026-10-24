@@ -84,7 +84,7 @@ public sealed class TrayController : IDisposable
 
         _icon = new TaskbarIcon
         {
-            ToolTipText = FeedbackCopy.TrayTooltip,
+            ToolTipText = FeedbackCopy.TrayTooltipFor(_services.Preferences.ArmKey),
             NoLeftClickDelay = true,
             LeftClickCommand = new RelayCommand(OnLeftClick),
             RightClickCommand = new RelayCommand(ShowMenuAtCursor),
@@ -228,11 +228,23 @@ public sealed class TrayController : IDisposable
 
         // T-02: the header teaches the gesture (instead of a greyed-out row) and names the product. A separator, because the
         // second-window host forces every real item to 32 px, and a separator is exempt (and not focusable or clickable).
-        flyout.Items.Add(new MenuFlyoutSeparator
+        var header = new MenuFlyoutSeparator
         {
             Style = (Style)Application.Current.Resources["TrayHeaderStyle"],
-            Tag = new TrayHeader(FeedbackCopy.AppName, "Shift-drag files to convert", new Uri(WindowChrome.AssetPath("Square44x44Logo.targetsize-48_altform-unplated.png")).AbsoluteUri),
-        });
+            Tag = new TrayHeader(FeedbackCopy.AppName, FeedbackCopy.TrayHintFor(_services.Preferences.ArmKey), new Uri(WindowChrome.AssetPath("Square44x44Logo.targetsize-48_altform-unplated.png")).AbsoluteUri),
+        };
+        flyout.Items.Add(header);
+        // The hint names the key the user chose to open the wheel with; follow a change in Settings.
+        _services.Preferences.Changed += key =>
+        {
+            if (key != Settings.Preferences.ArmKeyKey) return;
+            _services.Dispatcher.TryEnqueue(() =>
+            {
+                var arm = _services.Preferences.ArmKey;
+                header.Tag = new TrayHeader(FeedbackCopy.AppName, FeedbackCopy.TrayHintFor(arm), new Uri(WindowChrome.AssetPath("Square44x44Logo.targetsize-48_altform-unplated.png")).AbsoluteUri);
+                if (_icon is not null) _icon.ToolTipText = FeedbackCopy.TrayTooltipFor(arm);
+            });
+        };
         flyout.Items.Add(new MenuFlyoutSeparator());
 
         flyout.Items.Add(Item("Convert files…", "\uE8E5", "C", () => Post(ConvertFiles)));

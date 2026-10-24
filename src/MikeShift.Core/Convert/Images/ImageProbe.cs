@@ -29,6 +29,7 @@ public static class ImageProbe
     public static Capabilities ProbeCapabilities(Capabilities caps) => caps with
     {
         HeifEncode = ImageCodec.CanEncodeHeif(),
+        HeifDecode = ImageCodec.CanDecodeHeif(),
         WebpEncode = ImageCodec.CanEncodeWebp(),
         AvifDecode = ImageCodec.CanDecodeAvif(),
     };

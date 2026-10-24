@@ -10,3 +10,6 @@ GetSystemMetrics
 MSLLHOOKSTRUCT
 KBDLLHOOKSTRUCT
 MSG
+RegisterHotKey
+UnregisterHotKey
+HOT_KEY_MODIFIERS

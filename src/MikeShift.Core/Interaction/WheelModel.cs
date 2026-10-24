@@ -80,11 +80,13 @@ public sealed class WheelModel
     private double _lastDpi = 1;
     private bool _havePointerGeometry;
     private ToolsKey _toolsKey;
+    private ArmKey _armKey;
 
-    public WheelModel(WheelMode mode = WheelMode.Drag, ToolsKey toolsKey = ToolsKey.Ctrl)
+    public WheelModel(WheelMode mode = WheelMode.Drag, ToolsKey toolsKey = ToolsKey.Ctrl, ArmKey armKey = ArmKey.Shift)
     {
         Mode = mode;
         _toolsKey = toolsKey;
+        _armKey = armKey;
     }
 
     /// <summary>Raised after a mutation; the argument says what changed.</summary>
@@ -134,6 +136,18 @@ public sealed class WheelModel
         }
     }
 
+    /// <summary>The key that opened the wheel in drag mode; the hint to go back to the Formats page names it, and the Tools hint names the other key.</summary>
+    public ArmKey ArmKey
+    {
+        get => _armKey;
+        set
+        {
+            if (_armKey == value) return;
+            _armKey = value;
+            Raise(WheelChange.HubHint);
+        }
+    }
+
     /// <summary>
     /// Hub text: the hovered action as the shell says it ("Convert to PNG", "Compress"), else "Convert to" / "Tools". Sentence case,
     /// the same words as <see cref="DropDescription"/> and the UI Automation names.
@@ -148,7 +162,7 @@ public sealed class WheelModel
 
     /// <summary>
     /// The key that switches to the other page, as keycap + label: ("Ctrl", "Tools") on the Format page, ("Shift", "Formats") on the Tool
-    /// page in drag mode; ("Tab", ...) in click mode. Empty if the other page has no tiles.
+    /// page in drag mode (the other way round when Ctrl arms the wheel, see <see cref="ArmKey"/>); ("Tab", ...) in click mode. Empty if the other page has no tiles.
     /// </summary>
     public IReadOnlyList<KeyHint> KeyHints
     {
@@ -157,8 +171,8 @@ public sealed class WheelModel
             if (Mode == WheelMode.Click)
                 return !HasBothPages ? [] : [new KeyHint("Tab", Page == WheelPage.Format ? "Tools" : "Formats", 4)];
             if (Page == WheelPage.Format)
-                return _tools.Count == 0 ? [] : [new KeyHint(ToolsKeyLabel(_toolsKey), "Tools", 4)];
-            return _formats.Count == 0 ? [] : [new KeyHint("Shift", "Formats", 4)];
+                return _tools.Count == 0 ? [] : [new KeyHint(ToolsKeys.Label(_armKey, _toolsKey), "Tools", 4)];
+            return _formats.Count == 0 ? [] : [new KeyHint(ToolsKeys.Label(_armKey), "Formats", 4)];
         }
     }
 
@@ -168,13 +182,8 @@ public sealed class WheelModel
     /// <summary>The drop description for Explorer's drag image for the highlighted tile ("Convert to PNG", "Compress"), or null.</summary>
     public string? DropDescription => HighlightedAction?.DropDescription;
 
-    /// <summary>The keycap label of the tools key as shown in the hints ("Ctrl", "Alt", "Scroll").</summary>
-    public static string ToolsKeyLabel(ToolsKey key) => key switch
-    {
-        ToolsKey.Alt => "Alt",
-        ToolsKey.MouseWheelOnly => "Scroll",
-        _ => "Ctrl",
-    };
+    /// <summary>The keycap label of the tools key as shown in the hints ("Ctrl", "Shift", "Alt", "Scroll") when Shift arms the wheel.</summary>
+    public static string ToolsKeyLabel(ToolsKey key) => ToolsKeys.Label(ArmKey.Shift, key);
 
     /// <summary>
     /// Replaces the tiles (from <see cref="ActionCatalog.For(IReadOnlyList{string}, Capabilities)"/>), splitting by <see cref="ActionDef.Page"/>

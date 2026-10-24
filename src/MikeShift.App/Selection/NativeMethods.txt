@@ -1,0 +1,13 @@
+IFolderView2
+IShellBrowser
+IServiceProvider
+IShellView
+IShellItemArray
+IShellItem
+SIGDN
+SID_STopLevelBrowser
+GetForegroundWindow
+GetClassName
+GetWindowRect
+IsWindowVisible
+GetAncestor

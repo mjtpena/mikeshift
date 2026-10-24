@@ -76,11 +76,17 @@ internal sealed class DragCoordinator : IDisposable
     }
 
     /// <summary>Opens the wheel in click mode for files picked with "Convert Files…". Safe to call from any thread.</summary>
-    public void ShowClickMode(IReadOnlyList<string> paths)
+    public void ShowClickMode(IReadOnlyList<string> paths) => ShowClickMode(paths, null);
+
+    /// <summary>
+    /// Opens the wheel in click mode near <paramref name="anchor"/> (physical screen px; the Explorer-selection hotkey), or centred on the
+    /// monitor when it is null. Safe to call from any thread.
+    /// </summary>
+    public void ShowClickMode(IReadOnlyList<string> paths, PointPx? anchor)
     {
         try
         {
-            _thread.Controller.ShowClickMode(paths);
+            _thread.Controller.ShowClickMode(paths, anchor);
         }
         catch (Exception ex)
         {

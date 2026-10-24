@@ -16,6 +16,7 @@ public sealed class AppServices
     {
         Dispatcher = dispatcher;
         Preferences = new Preferences();
+        Capabilities.Override = CapabilityOverrides.Parse(DevSwitches.Caps); // dev switch only; null in a shipped build
         // Word is opt-in (the app is "fully local" unless the user turns it on): the capability snapshots report Word from this switch.
         Capabilities.WordAllowed = Preferences.UseWord;
         Preferences.Changed += key =>

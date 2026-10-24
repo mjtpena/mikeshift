@@ -2,15 +2,72 @@ using MikeShift.Core.Actions;
 
 namespace MikeShift.Core.Interaction;
 
-/// <summary>Which control toggles the wheel to its Tools page (Shift always returns to Formats; the mouse wheel always toggles).</summary>
+/// <summary>
+/// Which key opens the wheel while a file is being dragged (first-run choice, Settings). Both are equal options: Shift is the default (Shift-drag is
+/// rare in daily use, so it interferes least), Ctrl is the alternative (Ctrl is Explorer's "copy" key, so a stray release can never move a file).
+/// The other of the two keys then switches to the Tools page, and a fresh press of the arming key returns to Formats.
+/// </summary>
+public enum ArmKey
+{
+    /// <summary>Hold Shift while dragging (default). Ctrl then switches to Tools.</summary>
+    Shift,
+    /// <summary>Hold Ctrl while dragging. Shift then switches to Tools.</summary>
+    Ctrl,
+}
+
+/// <summary>Which control toggles the wheel to its Tools page (the <see cref="ArmKey"/> always returns to Formats; the mouse wheel always toggles).</summary>
 public enum ToolsKey
 {
-    /// <summary>A fresh Ctrl press (default).</summary>
+    /// <summary>
+    /// A fresh Ctrl press (default). When Ctrl is also the <see cref="ArmKey"/> this means "the other key", i.e. Shift
+    /// (see <see cref="ToolsKeys.Normalize"/>).
+    /// </summary>
     Ctrl,
     /// <summary>No key: only a mouse-wheel tick toggles.</summary>
     MouseWheelOnly,
     /// <summary>A fresh Alt press (warning: Left Alt+Shift is the default input-language hotkey).</summary>
     Alt,
+    /// <summary>A fresh Shift press (only meaningful when <see cref="ArmKey.Ctrl"/> arms the wheel; otherwise it means Ctrl).</summary>
+    Shift,
+}
+
+/// <summary>How <see cref="ArmKey"/> and <see cref="ToolsKey"/> combine: which physical modifier does what.</summary>
+public static class ToolsKeys
+{
+    /// <summary>The modifier of <paramref name="arm"/>.</summary>
+    public static Modifiers ArmModifier(ArmKey arm) => arm == ArmKey.Ctrl ? Modifiers.Ctrl : Modifiers.Shift;
+
+    /// <summary>
+    /// The tools key that makes sense next to <paramref name="arm"/>: the arming key cannot also be the tools key, so it becomes the other
+    /// one of Shift/Ctrl (<c>Ctrl</c> with Ctrl arming is <c>Shift</c>; <c>Shift</c> with Shift arming is <c>Ctrl</c>). Alt and mouse wheel are unchanged.
+    /// </summary>
+    public static ToolsKey Normalize(ArmKey arm, ToolsKey key) => (arm, key) switch
+    {
+        (ArmKey.Ctrl, ToolsKey.Ctrl) => ToolsKey.Shift,
+        (ArmKey.Shift, ToolsKey.Shift) => ToolsKey.Ctrl,
+        _ => key,
+    };
+
+    /// <summary>The modifier whose fresh press switches to the Tools page, or <see cref="Modifiers.None"/> (mouse wheel only).</summary>
+    public static Modifiers ToolsModifier(ArmKey arm, ToolsKey key) => Normalize(arm, key) switch
+    {
+        ToolsKey.Ctrl => Modifiers.Ctrl,
+        ToolsKey.Shift => Modifiers.Shift,
+        ToolsKey.Alt => Modifiers.Alt,
+        _ => Modifiers.None,
+    };
+
+    /// <summary>The keycap text of the tools key as shown in hints: "Shift", "Ctrl", "Alt", "Scroll".</summary>
+    public static string Label(ArmKey arm, ToolsKey key) => Normalize(arm, key) switch
+    {
+        ToolsKey.Shift => "Shift",
+        ToolsKey.Alt => "Alt",
+        ToolsKey.MouseWheelOnly => "Scroll",
+        _ => "Ctrl",
+    };
+
+    /// <summary>The keycap text of the arming key: "Shift" or "Ctrl".</summary>
+    public static string Label(ArmKey arm) => arm == ArmKey.Ctrl ? "Ctrl" : "Shift";
 }
 
 /// <summary>Where <see cref="DragSession"/> is in a press-drag-release cycle.</summary>
@@ -60,6 +117,9 @@ public sealed record DragSessionOptions
     /// <summary><c>SM_CYDRAG</c>.</summary>
     public int DragThresholdY { get; init; } = 4;
 
+    /// <summary>The key that opens the wheel while dragging (Shift by default).</summary>
+    public ArmKey ArmKey { get; init; } = ArmKey.Shift;
+
     /// <summary>The page-toggle key for the Tools page.</summary>
     public ToolsKey ToolsKey { get; init; } = ToolsKey.Ctrl;
 
@@ -88,10 +148,11 @@ public sealed record DragSessionOptions
 /// wheel's <c>IDropTarget.DragEnter</c> fires, <see cref="ReconcileModifiers"/> on each <c>DragOver</c>, and <see cref="PollButtonState"/>
 /// from a ~50 ms timer while the session is not idle. It answers with <see cref="DragCommand"/>s on <see cref="Command"/>.
 /// <code>
-/// Idle -Down-> Pressed -moved ≥ threshold-> Dragging -Shift-> Armed -Up-> Released -(pick | 400 ms)-> Idle
-///                        (Shift held at crossing → Armed directly)
+/// Idle -Down-> Pressed -moved ≥ threshold-> Dragging -arm key-> Armed -Up-> Released -(pick | 400 ms)-> Idle
+///                        (arm key held at crossing → Armed directly)
 /// </code>
-/// Injected input is ignored entirely. After a silent hide (no DragEnter) the same press cannot re-arm until Shift is freshly pressed again.
+/// The arm key is Shift by default, or Ctrl (<see cref="DragSessionOptions.ArmKey"/>); the other of the two switches to the Tools page.
+/// Injected input is ignored entirely. After a silent hide (no DragEnter) the same press cannot re-arm until the arm key is freshly pressed again.
 /// </summary>
 public sealed class DragSession
 {
@@ -102,6 +163,7 @@ public sealed class DragSession
     private PointPx _pressPoint;
     private PointPx _lastPoint;
     private bool _shiftAtDown;
+    private bool _armKeyAtDown;
     private bool _dragEntered;
     private long _pendingSince;
     private long _releasedAt;
@@ -114,6 +176,7 @@ public sealed class DragSession
         _options = options ?? new DragSessionOptions();
         _clock = clock ?? (() => Environment.TickCount64);
         ToolsKey = _options.ToolsKey;
+        ArmKey = _options.ArmKey;
     }
 
     /// <summary>Raised synchronously, in order, for every command. Handlers must not call back into the session's input methods.</summary>
@@ -125,11 +188,17 @@ public sealed class DragSession
     /// <summary>The page the wheel is on from the session's point of view (reset to Format by ShowPending).</summary>
     public WheelPage Page { get; private set; } = WheelPage.Format;
 
-    /// <summary>The key that toggles to the Tools page; may be changed at any time (Settings).</summary>
+    /// <summary>The key that toggles to the Tools page; may be changed at any time (Settings). It is always read through <see cref="ToolsKeys.Normalize"/> next to <see cref="ArmKey"/>.</summary>
     public ToolsKey ToolsKey { get; set; }
 
-    /// <summary>Shift was down when the current press started (feeds <see cref="FilterSelection"/>).</summary>
+    /// <summary>The key that opens the wheel while dragging; may be changed at any time (Settings).</summary>
+    public ArmKey ArmKey { get; set; }
+
+    /// <summary>Shift was down when the current press started.</summary>
     public bool ShiftAtMouseDown => _shiftAtDown;
+
+    /// <summary>The <see cref="ArmKey"/> was down when the current press started (feeds <see cref="FilterSelection"/>: a Shift-click or Ctrl-click that extended the selection).</summary>
+    public bool ArmKeyAtMouseDown => _armKeyAtDown;
 
     /// <summary>Where the current press started.</summary>
     public PointPx PressPoint => _pressPoint;
@@ -330,6 +399,7 @@ public sealed class DragSession
         _pressPoint = _lastPoint = pt;
         _lastMouseAt = now;
         _shiftAtDown = _modifiers.Shift;
+        _armKeyAtDown = IsDown(ArmKey);
         _dragEntered = false;
         _buttonUpSince = null;
         _wheelAccum = 0;
@@ -343,7 +413,7 @@ public sealed class DragSession
         if (Math.Abs(pt.X - _pressPoint.X) < _options.DragThresholdX && Math.Abs(pt.Y - _pressPoint.Y) < _options.DragThresholdY) return;
 
         State = DragState.Dragging;
-        if (_modifiers.Shift) Arm(now); // Shift held since before the click (or pressed mid-press): arm as soon as it is a drag
+        if (IsDown(ArmKey)) Arm(now); // the arm key held since before the click (or pressed mid-press): arm as soon as it is a drag
     }
 
     private void OnButtonUp(long now)
@@ -374,17 +444,20 @@ public sealed class DragSession
     private void HandleFresh(Modifiers fresh, long now)
     {
         if (fresh == Modifiers.None) return;
-        if (State == DragState.Dragging && (fresh & Modifiers.Shift) != 0)
+        var arm = ToolsKeys.ArmModifier(ArmKey);
+        if (State == DragState.Dragging && (fresh & arm) != 0)
         {
             Arm(now);
             return;
         }
         if (State != DragState.Armed) return;
 
-        if ((fresh & Modifiers.Shift) != 0) SwitchPage(WheelPage.Format);
-        if ((fresh & Modifiers.Ctrl) != 0 && ToolsKey == ToolsKey.Ctrl) SwitchPage(WheelPage.Tool);
-        if ((fresh & Modifiers.Alt) != 0 && ToolsKey == ToolsKey.Alt) SwitchPage(WheelPage.Tool);
+        if ((fresh & arm) != 0) SwitchPage(WheelPage.Format);
+        var tools = ToolsKeys.ToolsModifier(ArmKey, ToolsKey);
+        if (tools != Modifiers.None && (fresh & tools) != 0) SwitchPage(WheelPage.Tool);
     }
+
+    private bool IsDown(ArmKey key) => key == ArmKey.Ctrl ? _modifiers.Ctrl : _modifiers.Shift;
 
     private void Arm(long now)
     {

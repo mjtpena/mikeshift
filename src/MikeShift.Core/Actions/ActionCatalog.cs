@@ -1,4 +1,5 @@
 using MikeShift.Core.Actions.Catalog;
+using MikeShift.Core.Feedback;
 
 namespace MikeShift.Core.Actions;
 
@@ -22,7 +23,7 @@ public static class ActionCatalog
         ArgumentNullException.ThrowIfNull(caps);
         if (paths.Count == 0) return [];
         // Kind.CommonOf keeps big selections fast (sampled sniffing); small ones are classified exactly, file by file.
-        return Build(Kind.CommonOf(paths), paths, caps);
+        return Build(Kind.CommonOf(paths), paths, caps, Kind.Of);
     }
 
     /// <summary>As <see cref="For(IReadOnlyList{string}, Capabilities)"/> with an injectable classifier (unit tests).</summary>
@@ -31,10 +32,10 @@ public static class ActionCatalog
         ArgumentNullException.ThrowIfNull(paths);
         ArgumentNullException.ThrowIfNull(caps);
         if (paths.Count == 0) return [];
-        return Build(CommonCategory(paths, kindOf), paths, caps);
+        return Build(CommonCategory(paths, kindOf), paths, caps, kindOf);
     }
 
-    private static IReadOnlyList<ActionDef> Build(Category? category, IReadOnlyList<string> paths, Capabilities caps)
+    private static IReadOnlyList<ActionDef> Build(Category? category, IReadOnlyList<string> paths, Capabilities caps, Func<string, Category> kindOf)
     {
         var result = new List<ActionDef>();
         if (category is { } c)
@@ -42,6 +43,11 @@ public static class ActionCatalog
             foreach (var action in ListFor(c))
                 if (action.IsVisibleFor(paths, caps))
                     result.Add(action);
+        }
+        else if (CodecHelp.ForSelection(paths, caps, kindOf) is { } missing)
+        {
+            // HEIC/AVIF photos Windows cannot open yet: not "Zip only" but the one thing that fixes it (positioning P0-3).
+            result.Add(CodecHelp.TileFor(missing));
         }
         result.Add(ZipAction.Def);
         return result;

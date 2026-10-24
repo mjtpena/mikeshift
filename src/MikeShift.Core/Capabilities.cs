@@ -14,6 +14,12 @@ public sealed record Capabilities
     /// <summary>WIC can create a HEIF encoder (Store "HEIF Image Extensions" + HEVC extension). Probed by W2a.</summary>
     public bool HeifEncode { get; init; }
 
+    /// <summary>
+    /// WIC has a decoder for HEIC/HEIF (the free Store "HEIF Image Extensions" are installed). Reading HEIC photos also needs an HEVC
+    /// decoder (<see cref="HevcDecode"/>). Probed by W2a.
+    /// </summary>
+    public bool HeifDecode { get; init; }
+
     /// <summary>WebP can be encoded (SkiaSharp is present and loads). Probed by W2a.</summary>
     public bool WebpEncode { get; init; }
 
@@ -67,7 +73,7 @@ public sealed record Capabilities
     /// <summary>Everything available. The default for tests and for <c>ActionCatalog</c> unit tests.</summary>
     public static Capabilities All { get; } = new()
     {
-        HeifEncode = true, WebpEncode = true, AvifDecode = true,
+        HeifEncode = true, HeifDecode = true, WebpEncode = true, AvifDecode = true,
         Mp3Encode = true, FlacEncode = true, H264Encode = true, AacEncode = true,
         HevcDecode = true, Vp9Decode = true, Av1Decode = true, WebmOpen = true,
         WordInstalled = true, WordCom = true,
@@ -151,8 +157,18 @@ public sealed record Capabilities
     private static async Task<Capabilities> WithPolicyAsync(Task<Capabilities> probe) =>
         ApplyWordPolicy(await probe.ConfigureAwait(false));
 
+    /// <summary>
+    /// Dev/test only (see <see cref="CapabilityOverrides"/>): removes capabilities from every snapshot, so a PC that has the HEIF extension can show
+    /// what one without it sees. Null (the default) changes nothing.
+    /// </summary>
+    public static Func<Capabilities, Capabilities>? Override { get; set; }
+
     // The cached probe was made when the permission may have been different.
-    private static Capabilities ApplyWordPolicy(Capabilities cached) => cached.WithWord(WordAllowed);
+    private static Capabilities ApplyWordPolicy(Capabilities cached)
+    {
+        var caps = cached.WithWord(WordAllowed);
+        return Override is { } hook ? hook(caps) : caps;
+    }
 
     private static bool DetectWord()
     {

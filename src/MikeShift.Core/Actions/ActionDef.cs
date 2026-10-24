@@ -52,7 +52,16 @@ public sealed record ActionDef
     /// The text for Explorer's drop description while this tile is highlighted:
     /// "Convert to PNG" for formats, the title for tools.
     /// </summary>
-    public string DropDescription => Page == WheelPage.Format ? $"Convert to {Title}" : Title;
+    public string DropDescription => Description ?? (Page == WheelPage.Format ? $"Convert to {Title}" : Title);
+
+    /// <summary>A full name for tiles whose short <see cref="Title"/> says too little ("Get the free HEIF extension"); replaces <see cref="DropDescription"/>.</summary>
+    public string? Description { get; init; }
+
+    /// <summary>
+    /// Set on a tile that does not convert anything but opens a page (the Microsoft Store page of a missing codec extension, see
+    /// <c>CodecHelp.TileFor</c>): the app launches this URI when the tile is picked instead of starting a job.
+    /// </summary>
+    public string? OpensUri { get; init; }
 
     /// <summary>
     /// True if this action should be offered for <paramref name="paths"/> given <paramref name="caps"/>:

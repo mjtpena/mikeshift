@@ -2,12 +2,17 @@ using System.Diagnostics;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using MikeShift.App.Chrome;
+using MikeShift.App.Input;
+using MikeShift.App.Selection;
 using MikeShift.App.Tray;
 using MikeShift.Core;
 using MikeShift.Core.Feedback;
+using MikeShift.Core.Hotkeys;
+using MikeShift.Core.Interaction;
 using Windows.System;
 using WinUIEx;
 
@@ -46,10 +51,13 @@ public sealed partial class SettingsWindow : Window
             WordSwitch.IsEnabled = false;
             WordCard.Description = "Microsoft Word is not installed on this PC.";
         }
-        foreach (RadioButton rb in ToolsKeyChoice.Items)
-            if (string.Equals((string)rb.Tag, prefs.ToolsKey.ToString(), StringComparison.Ordinal))
-                ToolsKeyChoice.SelectedItem = rb;
-        ShowToolsKey(prefs.ToolsKey);
+        foreach (RadioButton rb in ArmKeyChoice.Items)
+            if (string.Equals((string)rb.Tag, prefs.ArmKey.ToString(), StringComparison.Ordinal))
+                ArmKeyChoice.SelectedItem = rb;
+        ShowArmKey(prefs.ArmKey);
+        ShowHotkey(prefs.Hotkey);
+        if (ExplorerHotkey.Current is { } hotkey) hotkey.StateChanged += OnHotkeyStateChanged;
+        Closed += (_, _) => { if (ExplorerHotkey.Current is { } hk) hk.StateChanged -= OnHotkeyStateChanged; };
 
         VersionText.Text = $"Version {PackageInfo.VersionText}";
         AboutIcon.Source = new BitmapImage(new Uri(WindowChrome.AssetPath("Square150x150Logo.scale-200.png")));
@@ -206,25 +214,148 @@ public sealed partial class SettingsWindow : Window
         if (!_loading) _services.Preferences.UseWord = WordSwitch.IsOn;
     }
 
+    // ---- the key that opens the wheel while dragging (positioning P1-2) ----
+
+    private void OnArmKeyChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loading || ArmKeyChoice.SelectedItem is not RadioButton rb) return;
+        if (!Enum.TryParse<ArmKey>((string)rb.Tag, out var key)) return;
+        _services.Preferences.ArmKey = key; // also moves the tools key off the new arming key
+        ShowArmKey(key);
+    }
+
+    /// <summary>Everything that names the arming key follows it: the summary, the tools-key choices, the hint under them and the About line.</summary>
+    private void ShowArmKey(ArmKey arm)
+    {
+        var prefs = _services.Preferences;
+        var label = ToolsKeys.Label(arm);
+        ArmKeySummary.Text = $"Hold {label}";
+        ArmKeyNote.Text = OnboardingCopy.ArmKeyTradeoff + " " + FeedbackCopy.OriginalsSafe;
+        AboutHint.Text = $"{label}-drag files in File Explorer to convert them. Your original files are never changed, and MikeShift itself never goes online.";
+        AutomationProperties.SetName(ArmKeyExpander, $"Open the wheel while dragging with, {label}");
+
+        // The first tools-key choice is "the other of Shift and Ctrl".
+        var other = arm == ArmKey.Ctrl ? ToolsKey.Shift : ToolsKey.Ctrl;
+        var wasLoading = _loading;
+        _loading = true;
+        ToolsOtherKeyChoice.Tag = other.ToString();
+        ToolsOtherKeyChoice.Content = $"{ToolsKeys.Label(arm, other)} (recommended)";
+        foreach (RadioButton rb in ToolsKeyChoice.Items)
+            if (string.Equals((string)rb.Tag, prefs.ToolsKey.ToString(), StringComparison.Ordinal))
+                ToolsKeyChoice.SelectedItem = rb;
+        _loading = wasLoading;
+        ShowToolsKey(prefs.ToolsKey);
+    }
+
     private void OnToolsKeyChanged(object sender, SelectionChangedEventArgs e)
     {
         if (_loading || ToolsKeyChoice.SelectedItem is not RadioButton rb) return;
         if (Enum.TryParse<ToolsKey>((string)rb.Tag, out var key))
         {
             _services.Preferences.ToolsKey = key;
-            ShowToolsKey(key);
+            ShowToolsKey(_services.Preferences.ToolsKey);
         }
     }
 
     private void ShowToolsKey(ToolsKey key)
     {
+        var arm = _services.Preferences.ArmKey;
         ToolsKeySummary.Text = key switch
         {
             ToolsKey.MouseWheelOnly => "Mouse wheel only",
             ToolsKey.Alt => "Alt",
-            _ => "Ctrl (recommended)",
+            _ => $"{ToolsKeys.Label(arm, key)} (recommended)",
         };
+        AltNote.Message = $"Alt+Shift also changes the keyboard layout on many PCs. {ToolsKeys.Label(arm, arm == ArmKey.Ctrl ? ToolsKey.Shift : ToolsKey.Ctrl)} is recommended.";
         AltNote.IsOpen = key == ToolsKey.Alt;
+        ToolsKeyNote.Text = $"A mouse-wheel tick switches the wheel in every mode. {ToolsKeys.Label(arm)} always goes back to formats.";
+    }
+
+    // ---- the hotkey for the current Explorer selection (positioning P1-1) ----
+
+    private bool _capturingHotkey;
+
+    private void ShowHotkey(HotkeySpec? hotkey)
+    {
+        _capturingHotkey = false;
+        var text = hotkey?.ToString().Replace("+", " + ") ?? "Not set";
+        HotkeyButton.Content = text;
+        AutomationProperties.SetName(HotkeyButton, $"Keyboard shortcut for the files selected in File Explorer: {text}. Select to change.");
+        HotkeyCard.Description = OnboardingCopy.HotkeyDescription;
+        HotkeyOffButton.Content = hotkey is null ? $"Use {HotkeySpec.Default.ToString().Replace("+", " + ")}" : "Turn off";
+        UpdateHotkeyNote(hotkey, ExplorerHotkey.Current?.State ?? HotkeyState.Off);
+    }
+
+    private void UpdateHotkeyNote(HotkeySpec? hotkey, HotkeyState state)
+    {
+        string? message = null;
+        var severity = InfoBarSeverity.Warning;
+        if (hotkey is { } spec)
+        {
+            var check = HotkeyConflicts.Check(spec);
+            if (check.Verdict != HotkeyVerdict.Ok) message = check.Message;
+            if (state == HotkeyState.Taken)
+                message = $"{spec.ToString().Replace("+", " + ")} is already used by another program, so MikeShift could not take it. Choose a different shortcut.";
+        }
+        HotkeyNote.Severity = severity;
+        HotkeyNote.Message = message ?? string.Empty;
+        HotkeyNote.IsOpen = message is not null;
+    }
+
+    private void OnHotkeyStateChanged(HotkeyState state) =>
+        DispatcherQueue.TryEnqueue(() => UpdateHotkeyNote(_services.Preferences.Hotkey, state));
+
+    private void OnHotkeyButtonClicked(object sender, RoutedEventArgs e)
+    {
+        _capturingHotkey = true;
+        HotkeyButton.Content = "Press the new shortcut…  (Esc to cancel)";
+        AutomationProperties.SetName(HotkeyButton, "Press the new keyboard shortcut now. Escape cancels.");
+    }
+
+    private void OnHotkeyLostFocus(object sender, RoutedEventArgs e)
+    {
+        if (_capturingHotkey) ShowHotkey(_services.Preferences.Hotkey);
+    }
+
+    private void OnHotkeyPreviewKeyDown(object sender, KeyRoutedEventArgs e)
+    {
+        if (!_capturingHotkey) return;
+        var vk = (int)e.Key;
+        if (HotkeySpec.IsModifierKey(vk)) { e.Handled = true; return; } // wait for the key that completes the shortcut
+        e.Handled = true;
+        if (e.Key == VirtualKey.Escape)
+        {
+            ShowHotkey(_services.Preferences.Hotkey);
+            return;
+        }
+
+        static bool Down(VirtualKey key) =>
+            (Microsoft.UI.Input.InputKeyboardSource.GetKeyStateForCurrentThread(key) & Windows.UI.Core.CoreVirtualKeyStates.Down) != 0;
+        var mods = HotkeyModifiers.None;
+        if (Down(VirtualKey.Control)) mods |= HotkeyModifiers.Ctrl;
+        if (Down(VirtualKey.Menu)) mods |= HotkeyModifiers.Alt;
+        if (Down(VirtualKey.Shift)) mods |= HotkeyModifiers.Shift;
+        if (Down(VirtualKey.LeftWindows) || Down(VirtualKey.RightWindows)) mods |= HotkeyModifiers.Win;
+
+        var spec = new HotkeySpec(mods, vk);
+        var check = HotkeyConflicts.Check(spec);
+        if (check.Verdict == HotkeyVerdict.Rejected || spec.KeyName is null)
+        {
+            ShowHotkey(_services.Preferences.Hotkey);
+            HotkeyNote.Severity = InfoBarSeverity.Warning;
+            HotkeyNote.Message = check.Message ?? "That key can't be used.";
+            HotkeyNote.IsOpen = true;
+            return;
+        }
+        _services.Preferences.Hotkey = spec;
+        ShowHotkey(spec);
+    }
+
+    private void OnHotkeyOffClicked(object sender, RoutedEventArgs e)
+    {
+        var next = _services.Preferences.Hotkey is null ? HotkeySpec.Default : (HotkeySpec?)null;
+        _services.Preferences.Hotkey = next;
+        ShowHotkey(next);
     }
 
     // ---- about ----

@@ -77,6 +77,9 @@ public sealed class FluentDialogService : IDialogService
             case DialogCommand.QuitApp:
                 App.Current.Quit();
                 break;
+            case DialogCommand.OpenStore when button.Path is { } store:
+                MikeShift.App.Settings.StoreLauncher.Open(store);
+                break;
         }
     }
 }

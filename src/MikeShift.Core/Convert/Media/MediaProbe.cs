@@ -32,6 +32,20 @@ public static class MediaProbe
         }
     }
 
+    /// <summary>True if a Media Foundation HEVC decoder exists (the Store "HEVC Video Extensions", or a hardware decoder). Never throws.</summary>
+    public static bool HasHevcDecoder()
+    {
+        try
+        {
+            MfInterop.EnsureStarted();
+            return HasMft(PInvoke.MFT_CATEGORY_VIDEO_DECODER, PInvoke.MFMediaType_Video, PInvoke.MFVideoFormat_HEVC, output: false);
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+    }
+
     /// <summary>
     /// Fills in Mp3Encode, FlacEncode, H264Encode, AacEncode, HevcDecode, Vp9Decode, Av1Decode and WebmOpen on
     /// <paramref name="caps"/> (via <c>MFTEnumEx</c> and the registered byte-stream handlers) and returns the updated record.

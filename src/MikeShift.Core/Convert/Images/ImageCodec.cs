@@ -185,7 +185,9 @@ internal static class ImageCodec
             catch (ConversionException) { throw; }
             catch (Exception ex)
             {
-                throw new ConversionException("Couldn't read this image. The file may be damaged or in a format Windows can't open.", ex);
+                // A HEIC/AVIF photo on a PC without the Store extension is not damaged: say which extension to install.
+                var missing = container is ImageContainer.Heic or ImageContainer.Avif ? MissingCodecMessage(path) : null;
+                throw new ConversionException(missing ?? "Couldn't read this image. The file may be damaged or in a format Windows can't open.", ex);
             }
         }
 
@@ -220,6 +222,24 @@ internal static class ImageCodec
             JpegExif = exif,
             Properties = props,
         };
+    }
+
+    /// <summary>
+    /// "Windows can't open HEIC photos yet. Install the free ..." when <paramref name="path"/> is a HEIC/HEIF/AVIF whose Windows add-on is
+    /// missing (live checks of the WIC decoder list and the HEVC decoder, no full capability probe); null when the add-ons are there.
+    /// </summary>
+    private static string? MissingCodecMessage(string path)
+    {
+        try
+        {
+            var container = SniffFile(path);
+            var ext = container == ImageContainer.Avif ? "avif" : "heic";
+            return Feedback.CodecHelp.DecodeFailureMessage(ext, CanDecodeHeif(), Media.MediaProbe.HasHevcDecoder, CanDecodeAvif());
+        }
+        catch (Exception)
+        {
+            return null;
+        }
     }
 
     /// <summary>
@@ -377,14 +397,19 @@ internal static class ImageCodec
         }
     }
 
-    public static bool CanDecodeAvif()
+    public static bool CanDecodeAvif() => HasDecoderFor(".avif", "image/avif");
+
+    /// <summary>A WIC decoder claims <c>.heic</c> (the Store "HEIF Image Extensions"). Says nothing about the HEVC decoder HEIC pixels also need.</summary>
+    public static bool CanDecodeHeif() => HasDecoderFor(".heic", "image/heic");
+
+    private static bool HasDecoderFor(string extension, string mimeType)
     {
         try
         {
             foreach (var info in BitmapDecoder.GetDecoderInformationEnumerator())
             {
-                if (info.FileExtensions.Any(e => e.Equals(".avif", StringComparison.OrdinalIgnoreCase))
-                    || info.MimeTypes.Any(m => m.Equals("image/avif", StringComparison.OrdinalIgnoreCase)))
+                if (info.FileExtensions.Any(e => e.Equals(extension, StringComparison.OrdinalIgnoreCase))
+                    || info.MimeTypes.Any(m => m.Equals(mimeType, StringComparison.OrdinalIgnoreCase)))
                     return true;
             }
         }

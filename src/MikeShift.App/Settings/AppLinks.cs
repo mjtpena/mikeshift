@@ -15,3 +15,21 @@ public static class AppLinks
     /// <summary>The upstream macOS app MikeShift is a port of.</summary>
     public const string Shiftvert = "https://github.com/roiegold/shiftvert";
 }
+
+/// <summary>Opens a Microsoft Store page (<c>ms-windows-store://pdp/?ProductId=...</c>) for a codec extension. UI thread; the launch is asynchronous and never throws.</summary>
+public static class StoreLauncher
+{
+    /// <summary>Launches <paramref name="uri"/> (a Store link). Returns false if it is not a valid URI.</summary>
+    public static bool Open(string uri)
+    {
+        if (!Uri.TryCreate(uri, UriKind.Absolute, out var parsed)) return false;
+        _ = LaunchAsync(parsed);
+        return true;
+    }
+
+    private static async Task LaunchAsync(Uri uri)
+    {
+        try { await Windows.System.Launcher.LaunchUriAsync(uri); }
+        catch (Exception ex) { Wheel.WheelLog.Error("opening the Store failed", ex); }
+    }
+}

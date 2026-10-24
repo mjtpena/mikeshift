@@ -42,6 +42,42 @@
                               AutomationProperties.Name="Use Microsoft Word for Word documents" MinWidth="0" />
             </local:SettingsCard>
 
+            <!-- ============================== Ways to open the wheel ============================== -->
+            <TextBlock Text="Open the wheel" Style="{StaticResource SettingsGroupHeaderStyle}" />
+
+            <Expander x:Name="ArmKeyExpander" Style="{StaticResource SettingsExpanderStyle}" AutomationProperties.Name="Open the wheel while dragging with">
+                <Expander.Header>
+                    <Grid ColumnSpacing="16" Padding="0,8,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <FontIcon Glyph="&#xE8AB;" FontFamily="Segoe Fluent Icons" FontSize="20" VerticalAlignment="Center"
+                                  AutomationProperties.AccessibilityView="Raw" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="1">
+                            <TextBlock Text="Open the wheel while dragging with" />
+                            <TextBlock x:Name="ArmKeySummary" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        </StackPanel>
+                    </Grid>
+                </Expander.Header>
+                <StackPanel Spacing="10" Padding="0,4,0,4">
+                    <RadioButtons x:Name="ArmKeyChoice" SelectionChanged="OnArmKeyChanged" AutomationProperties.Name="Open the wheel while dragging with">
+                        <RadioButton Content="Hold Shift" Tag="Shift" />
+                        <RadioButton Content="Hold Ctrl" Tag="Ctrl" />
+                    </RadioButtons>
+                    <TextBlock x:Name="ArmKeyNote" TextWrapping="Wrap" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                </StackPanel>
+            </Expander>
+
+            <local:SettingsCard x:Name="HotkeyCard" Header="Convert the files selected in File Explorer" HeaderIcon="&#xE765;">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Button x:Name="HotkeyButton" MinWidth="170" Click="OnHotkeyButtonClicked" PreviewKeyDown="OnHotkeyPreviewKeyDown"
+                            LostFocus="OnHotkeyLostFocus" AutomationProperties.Name="Keyboard shortcut for the files selected in File Explorer. Select to change." />
+                    <Button x:Name="HotkeyOffButton" Click="OnHotkeyOffClicked" />
+                </StackPanel>
+            </local:SettingsCard>
+            <InfoBar x:Name="HotkeyNote" Severity="Warning" IsOpen="False" IsClosable="False" />
+
             <!-- ============================== Wheel ============================== -->
             <TextBlock Text="Wheel" Style="{StaticResource SettingsGroupHeaderStyle}" />
 
@@ -62,14 +98,12 @@
                 </Expander.Header>
                 <StackPanel Spacing="10" Padding="0,4,0,4">
                     <RadioButtons x:Name="ToolsKeyChoice" SelectionChanged="OnToolsKeyChanged" AutomationProperties.Name="Switch to tools with">
-                        <RadioButton Content="Ctrl (recommended)" Tag="Ctrl" />
+                        <RadioButton x:Name="ToolsOtherKeyChoice" Content="Ctrl (recommended)" Tag="Ctrl" />
                         <RadioButton Content="Mouse wheel only" Tag="MouseWheelOnly" />
                         <RadioButton Content="Alt" Tag="Alt" />
                     </RadioButtons>
-                    <InfoBar x:Name="AltNote" Severity="Warning" IsOpen="False" IsClosable="False"
-                             Message="Alt+Shift also changes the keyboard layout on many PCs. Ctrl is recommended." />
-                    <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                               Text="A mouse-wheel tick switches the wheel in every mode. Shift always goes back to formats." />
+                    <InfoBar x:Name="AltNote" Severity="Warning" IsOpen="False" IsClosable="False" />
+                    <TextBlock x:Name="ToolsKeyNote" TextWrapping="Wrap" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                 </StackPanel>
             </Expander>
 
@@ -119,8 +153,7 @@
                     <StackPanel Grid.Column="1" Spacing="2">
                         <TextBlock Text="MikeShift" FontSize="16" FontWeight="SemiBold" />
                         <TextBlock x:Name="VersionText" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                        <TextBlock TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Margin="0,6,0,0"
-                                   Text="Shift-drag files in File Explorer to convert them. Your original files are never changed, and MikeShift itself never goes online." />
+                        <TextBlock x:Name="AboutHint" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Margin="0,6,0,0" />
                         <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,10,0,0">
                             <Button x:Name="UpdatesButton" Content="Check for updates" Click="OnCheckUpdatesClicked" />
                             <Button x:Name="GitHubButton" Content="View on GitHub" Click="OnGitHubClicked" />
