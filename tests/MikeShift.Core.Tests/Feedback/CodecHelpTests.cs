@@ -133,6 +133,28 @@ public class CodecHelpTests
         Assert.Equal(CodecHelp.Heif.StoreUri, CodecHelp.StoreUriInMessage(result.AllFailedMessage));
     }
 
+    [Fact]
+    public async Task TheCommandLineSaysWhichExtensionToInstallForAHeicWindowsCannotOpen()
+    {
+        using var dir = new TempDir();
+        var path = dir.Combine("IMG_0042.heic");
+        await File.WriteAllBytesAsync(path, new byte[64]); // no decoder opens this, on any PC
+        var caps = Capabilities.All with { HeifDecode = false };
+
+        var list = new StringWriter();
+        Assert.Equal(0, await Cli.CliRunner.RunAsync(["--list", path], list, new StringWriter(), caps));
+        Assert.Equal("Get HEIF, Zip", list.ToString().Trim());
+
+        var stdout = new StringWriter();
+        var stderr = new StringWriter();
+        var exit = await Cli.CliRunner.RunAsync(["--run", "JPG", path], stdout, stderr, caps);
+        Assert.Equal(1, exit);
+        Assert.Equal("", stdout.ToString());
+        Assert.Contains("error: Windows can't open HEIC photos yet. Install the free \"HEIF Image Extensions\" from the Microsoft Store", stderr.ToString());
+        Assert.Contains("note: ms-windows-store://pdp/?ProductId=9PMMSR1CGPWG", stderr.ToString());
+        Assert.Equal([Path.GetFileName(path)], Directory.GetFileSystemEntries(dir.Path).Where(p => !p.EndsWith("__downloads", StringComparison.Ordinal)).Select(Path.GetFileName));
+    }
+
     [Theory]
     [InlineData(CodecNeed.Heif, "HEIF Image Extensions", "9PMMSR1CGPWG")]
     [InlineData(CodecNeed.Hevc, "HEVC Video Extensions", "9N4WGH0Z6VHQ")]
@@ -198,7 +220,7 @@ public class CodecHelpTests
         var caps = Capabilities.All with { HeifDecode = false };
         var paths = new[] { @"C:\x\a.heic" };
         var note = CodecHelp.NoteFor(paths, caps, Undecodable);
-        Assert.Equal("Windows needs the free HEIF extension to open HEIC photos", note);
+        Assert.Equal("HEIC photos need the free HEIF extension", note);
         Assert.Null(CodecHelp.NoteFor(paths, Capabilities.All, Undecodable));
         Assert.Null(CodecHelp.NoteFor([@"C:\x\a.jpg"], caps, Undecodable));
 

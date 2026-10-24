@@ -52,7 +52,10 @@ public static class CodecHelp
     /// <summary>Store product id of the free "HEIF Image Extensions".</summary>
     public const string HeifProductId = "9PMMSR1CGPWG";
 
-    /// <summary>Store product id of "HEVC Video Extensions".</summary>
+    /// <summary>
+    /// Store product id of "HEVC Video Extensions from Device Manufacturer" (checked on apps.microsoft.com, 2026-10-24). Its sibling "HEVC Video
+    /// Extensions" (9NMZLZ57R3T7) is the one Microsoft sells; the Settings list has always linked this one.
+    /// </summary>
     public const string HevcProductId = "9N4WGH0Z6VHQ";
 
     /// <summary>Store product id of the free "AV1 Video Extension".</summary>
@@ -70,16 +73,16 @@ public static class CodecHelp
     public static string StoreUri(string productId) => $"ms-windows-store://pdp/?ProductId={productId}";
 
     public static CodecPrompt Heif { get; } = new(CodecNeed.Heif, "Get HEIF", "Get the free HEIF extension",
-        "Windows needs the free HEIF extension to open HEIC photos", "HEIF Image Extensions", HeifProductId);
+        "HEIC photos need the free HEIF extension", "HEIF Image Extensions", HeifProductId);
 
     public static CodecPrompt Hevc { get; } = new(CodecNeed.Hevc, "Get HEVC", "Get the HEVC video extension",
-        "HEIC photos also need Microsoft's HEVC video extension", "HEVC Video Extensions", HevcProductId, Free: false);
+        "HEIC photos also need the HEVC extension", "HEVC Video Extensions from Device Manufacturer", HevcProductId, Free: false);
 
     public static CodecPrompt Av1 { get; } = new(CodecNeed.Av1, "Get AV1", "Get the free AV1 extension",
-        "Windows needs the free AV1 extension to open AVIF photos", "AV1 Video Extension", Av1ProductId);
+        "AVIF photos need the free AV1 extension", "AV1 Video Extension", Av1ProductId);
 
     public static CodecPrompt Webp { get; } = new(CodecNeed.Webp, "Get WebP", "Get the free WebP extension",
-        "Windows needs the free WebP extension to open WebP images", "WebP Image Extensions", WebpProductId);
+        "WebP images need the free WebP extension", "WebP Image Extensions", WebpProductId);
 
     /// <summary>
     /// The extension that would let Windows open a file with extension <paramref name="ext"/> (lower case, no dot) on this machine, or null

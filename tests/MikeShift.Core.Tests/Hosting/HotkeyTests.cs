@@ -8,10 +8,10 @@ public class HotkeyTests
     // ------------------------------------------------------------------ parse and format
 
     [Fact]
-    public void TheDefaultIsCtrlAltSpace()
+    public void TheDefaultIsCtrlAltShiftSpace()
     {
-        Assert.Equal("Ctrl+Alt+Space", HotkeySpec.Default.ToString());
-        Assert.Equal(HotkeyModifiers.Ctrl | HotkeyModifiers.Alt, HotkeySpec.Default.Modifiers);
+        Assert.Equal("Ctrl+Alt+Shift+Space", HotkeySpec.Default.ToString());
+        Assert.Equal(HotkeyModifiers.Ctrl | HotkeyModifiers.Alt | HotkeyModifiers.Shift, HotkeySpec.Default.Modifiers);
         Assert.Equal(0x20, HotkeySpec.Default.VirtualKey);
         Assert.Equal(HotkeyVerdict.Ok, HotkeyConflicts.Check(HotkeySpec.Default).Verdict);
     }
@@ -59,7 +59,7 @@ public class HotkeyTests
     public void NullIsNotAShortcut() => Assert.False(HotkeySpec.TryParse(null, out _));
 
     [Theory]
-    [InlineData("Ctrl+Alt+Space")]
+    [InlineData("Ctrl+Alt+Shift+Space")]
     [InlineData("Ctrl+Alt+Shift+Win+Z")]
     [InlineData("Alt+F9")]
     [InlineData("Ctrl+PageDown")]
@@ -123,7 +123,7 @@ public class HotkeyTests
         Assert.Equal(HotkeySpec.Default, HotkeySpec.FromSetting("garbage"));      // damaged value: back to the default
         Assert.Equal(new HotkeySpec(HotkeyModifiers.Ctrl, 'M'), HotkeySpec.FromSetting("Ctrl+M"));
         Assert.Equal("None", HotkeySpec.ToSetting(null));
-        Assert.Equal("Ctrl+Alt+Space", HotkeySpec.ToSetting(HotkeySpec.Default));
+        Assert.Equal("Ctrl+Alt+Shift+Space", HotkeySpec.ToSetting(HotkeySpec.Default));
     }
 
     [Fact]
@@ -144,7 +144,6 @@ public class HotkeyTests
     }
 
     [Theory]
-    [InlineData("Ctrl+Alt+Space")]
     [InlineData("Ctrl+Alt+F9")]
     [InlineData("Ctrl+Shift+Alt+M")]
     [InlineData("Ctrl+Shift+F9")]
@@ -153,7 +152,8 @@ public class HotkeyTests
     public void SafeShortcutsPass(string text) => Assert.Equal(HotkeyVerdict.Ok, Check(text).Verdict);
 
     [Theory]
-    [InlineData("Ctrl+Shift+Space", "Word")]            // the shortcut the default avoids
+    [InlineData("Ctrl+Shift+Space", "Word")]            // a shortcut the default avoids
+    [InlineData("Ctrl+Alt+Space", "Claude desktop")]    // the other one: held by the Claude desktop app on the development PC
     [InlineData("Ctrl+C", "Copy")]
     [InlineData("Ctrl+V", "Paste")]
     [InlineData("Ctrl+Z", "Undo")]
@@ -297,7 +297,7 @@ public class HotkeyTests
     {
         Assert.Equal("Select files in File Explorer first", MikeShift.Core.Feedback.FeedbackCopy.SelectFilesFirst);
         Assert.Null(MikeShift.Core.Feedback.OnboardingCopy.HotkeyHint(null));
-        Assert.Equal("Select files in File Explorer and press Ctrl+Alt+Space to open the wheel from the keyboard.",
+        Assert.Equal("Select files in File Explorer and press Ctrl+Alt+Shift+Space to open the wheel from the keyboard.",
             MikeShift.Core.Feedback.OnboardingCopy.HotkeyHint(HotkeySpec.Default));
     }
 }
