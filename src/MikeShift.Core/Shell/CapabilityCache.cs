@@ -12,7 +12,7 @@ public static class CapabilityCache
 
     /// <summary>Serializes the flags.</summary>
     public static string Serialize(Capabilities c) => string.Join('\n',
-        $"HeifEncode={c.HeifEncode}", $"WebpEncode={c.WebpEncode}", $"AvifDecode={c.AvifDecode}",
+        $"HeifEncode={c.HeifEncode}", $"HeifDecode={c.HeifDecode}", $"WebpEncode={c.WebpEncode}", $"AvifDecode={c.AvifDecode}",
         $"Mp3Encode={c.Mp3Encode}", $"FlacEncode={c.FlacEncode}", $"H264Encode={c.H264Encode}", $"AacEncode={c.AacEncode}",
         $"HevcDecode={c.HevcDecode}", $"Vp9Decode={c.Vp9Decode}", $"Av1Decode={c.Av1Decode}", $"WebmOpen={c.WebmOpen}",
         $"WordInstalled={c.WordInstalled}", $"WordCom={c.WordCom}") + "\n";
@@ -30,6 +30,7 @@ public static class CapabilityCache
             caps = line[..eq] switch
             {
                 nameof(Capabilities.HeifEncode) => caps with { HeifEncode = on },
+                nameof(Capabilities.HeifDecode) => caps with { HeifDecode = on },
                 nameof(Capabilities.WebpEncode) => caps with { WebpEncode = on },
                 nameof(Capabilities.AvifDecode) => caps with { AvifDecode = on },
                 nameof(Capabilities.Mp3Encode) => caps with { Mp3Encode = on },
