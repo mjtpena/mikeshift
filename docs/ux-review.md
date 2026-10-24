@@ -211,7 +211,7 @@ Screenshots of the result: `docs/screenshots/surfaces-v2/` (captured with `scrip
 | S-01 | done, other approach | Hand-built `SettingsCard` and expanders instead of the CommunityToolkit package (built for Windows App SDK 1.x; avoiding the risk of mixed WinUI assemblies). |
 | S-02 | done | Text state, accessible names "WebM files, not installed", missing rows first, Store link per row, restart InfoBar when a fresh probe differs. |
 | S-03 | done | Warning `InfoBar` under the Alt choice. |
-| S-04 | done | About card (icon, version, Check for updates, View on GitHub, log folder, licences, Shiftvert credit), show-in-folder option, window clamped, min 480 x 480. No separate privacy page link (the app has none). |
+| S-04 | done | About card (icon, version, Check for updates, View on GitHub, log folder, licences, Shiftvert credit), show-in-folder option, window clamped, min 480 x 480. No separate privacy page link (the app has none). "Where outputs go" arrived with the Conversions group (positioning P1-4; `docs/screenshots/settings-v3/`). |
 | F-01 | done | XAML wheel illustration (theme-aware), three numbered steps with keycaps, "Press Ctrl for tools", Try it with Convert files…. |
 | F-02 | done | New copy and a link to `ms-settings:taskbar`. |
 | C-01 | done | Title, "Choose" button, type filter, Pictures then last folder (client GUID), centred on the monitor under the cursor. |

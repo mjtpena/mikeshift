@@ -413,6 +413,18 @@ public class ConversionSettingsTests
     }
 
     [Fact]
+    public void Wheel_screen_reader_and_menu_wording_agree_on_the_percentage()
+    {
+        var quarter = Tool("Resize 25%", new ConversionOptions { ResizePercent = 25 });
+        Assert.Equal("Resize 25%", MikeShift.Core.Interaction.WheelText.AutomationName(quarter));
+        Assert.Equal("Resize 25%", quarter.DropDescription);
+        Assert.Equal("Resize 25%", MikeShift.Core.Shell.ContextMenuPlanner.LabelFor(quarter));
+        Assert.Equal("Save a copy at 25% of the width and height", MikeShift.Core.Interaction.WheelText.Describe(quarter));
+        Assert.Equal("Save a copy at half the width and height", MikeShift.Core.Interaction.WheelText.Describe(Tool("Resize 50%")));
+        Assert.Equal("Save a copy at 75% of the width and height", MikeShift.Core.Interaction.WheelText.Describe(Tool("Resize 75%", new ConversionOptions { ResizePercent = 75 })));
+    }
+
+    [Fact]
     public void The_resize_toast_and_description_name_the_percentage()
     {
         Assert.Equal("Resizing to 25%…", FeedbackPlan.StartToast(Tool("Resize 25%", new ConversionOptions { ResizePercent = 25 }), 0).Title);
