@@ -41,7 +41,7 @@ Total: 20 s. The first caption must be readable without sound and without the po
 | Version | Length | Spec | Use |
 |---|---|---|---|
 | Store trailer | 20 s | MP4, H.264, 1920 x 1080, 30 fps, no audio (or silent track) | Partner Center trailer (check the current size, format and poster-image rules in the form; a 1920 x 1080 poster image is asked for, use `docs/media/store/01-right-click.png`) |
-| README loop | 15 s | MP4 or GIF | Cut shots 2 to 4 only. MikeShift can make the GIF itself (Video > GIF), but it keeps only the first 15 s, at most 480 px wide, 10 fps and without dithering, so it will look rough; use a general video tool if quality matters. |
+| README loop | 15 s | MP4 or GIF | Cut shots 2 to 4 only. MikeShift can make the GIF itself (Video > GIF), but by default it keeps only the first 15 s (up to 30 s in Settings), at most 480 px wide, 10 fps and without dithering, so it will look rough; use a general video tool if quality matters. |
 | Social clip | 10 s | MP4, 1080 x 1080 crop | Shots 2 and 4 only |
 
 ## What not to show or claim

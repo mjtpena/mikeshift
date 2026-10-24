@@ -97,9 +97,13 @@ iPhone photos (HEIC) can only be read on Windows with Microsoft's free **HEIF Im
 | **Documents**: DOCX, RTF, ODT, HTML, TXT, Markdown, DOC (needs Word) | PDF, DOCX, RTF, TXT, HTML, ODT | none |
 | **Anything, including folders** | Zip | none |
 
-What depends on your PC: HEIC, WebP reading, AVIF reading, MP3, FLAC and H.264 encoding, and some video codecs rely on Windows features or optional Microsoft extensions, and MikeShift hides tiles that cannot work. Not offered: MOV and AVIF output, dithered GIFs (GIF is capped at 15 s, 480 px), lossless video trim, OCR. Documents become PDF with MikeShift's own plain layout, so they will not match Word's pagination; with Word installed and turned on they can use Word. Details and every refusal message: **[docs/LIMITS.md](docs/LIMITS.md)**.
+What depends on your PC: HEIC, WebP reading, AVIF reading, MP3, FLAC and H.264 encoding, and some video codecs rely on Windows features or optional Microsoft extensions, and MikeShift hides tiles that cannot work. Not offered: MOV and AVIF output, dithered GIFs (GIFs are up to 30 s, 480 px), lossless video trim, OCR. Documents become PDF with MikeShift's own plain layout, so they will not match Word's pagination; with Word installed and turned on they can use Word. Details and every refusal message: **[docs/LIMITS.md](docs/LIMITS.md)**.
 
 **Limits worth knowing first:** the Windows 10 right-click entry follows Microsoft's documentation but has not been seen on a Windows 10 PC; elevated (administrator) Explorer windows are invisible to MikeShift; files that are not real files on disk (browser images, Outlook attachments) need saving first; encrypted PDFs are refused.
+
+## Settings you might want
+
+Open **Settings → Conversions** to change: **Picture quality** (50–100, default 90; JPG, WebP, HEIC), **Compress strength** (Light, Medium, Strong), **Resize** (25 %, 50 % or 75 %; the tool is then called "Resize 25%" in the wheel and the right-click menu), **GIF length** (5, 10, 15 or 30 s for GIFs made from videos), and **Where converted files go** (next to the original, or a folder you choose; if that folder isn't available the files go to Downloads and the message says so). Without touching any of this, MikeShift behaves as before.
 
 ## Command line
 
@@ -114,9 +118,10 @@ mikeshift --run Trim --range 0:05-0:12.5 clip.mp4
 mikeshift --run Crop --crop 100,50,800,600@400x300 photo.jpg
 mikeshift --run Zip "My Folder"
 mikeshift --use-word --run PDF old.doc         # legacy .doc needs Word, opt-in per run
+mikeshift --run JPG --quality 75 --out D:\Converted photo.heic
 ```
 
-Errors go to stderr as `error: …` with exit code 1; unknown actions list the available ones; bad flags print usage and exit 2. Without installing: `dotnet run --project src/MikeShift.Cli -- --list file.png`.
+Options: `--quality N`, `--compress light|medium|strong`, `--resize 25|50|75`, `--gif-seconds 5|10|15|30`, `--out DIR`. The command line does not read Settings, so a script gives the same result on every PC. Errors go to stderr as `error: …` with exit code 1; unknown actions list the available ones; bad flags print usage and exit 2. Without installing: `dotnet run --project src/MikeShift.Cli -- --list file.png`.
 
 ## Privacy
 

@@ -41,7 +41,7 @@
     <Application Id="App" Executable="$targetnametoken$.exe" EntryPoint="$targetentrypoint$">
       <uap:VisualElements
         DisplayName="MikeShift"
-        Description="Shift-drag a file to convert it."
+        Description="Convert files from File Explorer: right-click, or Shift-drag. Nothing leaves your PC."
         BackgroundColor="transparent"
         Square150x150Logo="Assets\Square150x150Logo.png"
         Square44x44Logo="Assets\Square44x44Logo.png">

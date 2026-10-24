@@ -90,7 +90,7 @@ MikeShift shows only the actions that work for your selection on your PC.
 
 GOOD TO KNOW
 • HEIC (iPhone) photos need Microsoft's free HEIF Image Extensions and HEVC Video Extensions from the Microsoft Store. If they are missing, MikeShift tells you and offers a "Get HEIF" button that opens the Store page. Install them, then restart MikeShift.
-• MikeShift focuses on the common conversions. It does not do OCR, PDF editing or MOV and AVIF output, GIFs are limited to 15 seconds, and documents become PDFs with MikeShift's own plain layout (not Word's exact pagination). Password-protected PDFs are refused. The full list is in the project's documentation.
+• MikeShift focuses on the common conversions. It does not do OCR, PDF editing or MOV and AVIF output, GIFs are limited to 30 seconds (15 by default), and documents become PDFs with MikeShift's own plain layout (not Word's exact pagination). Password-protected PDFs are refused. The full list is in the project's documentation.
 • Windows 11 is where it was built and tested. The package also installs on Windows 10 (1809 or later), but MikeShift has not yet been tested there, including the right-click entry.
 • Windows hides programs it cannot see: Explorer windows running as administrator are not supported, and files that are not real files on disk (an Outlook attachment, an image dragged from a browser) need saving first.
 • Windows 11 may put the tray icon in the overflow area; the welcome window links to the taskbar setting.
