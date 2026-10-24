@@ -29,7 +29,7 @@ MikeShift is a Windows port of [Shiftvert](https://github.com/roiegold/shiftvert
 | Input monitor (low-level hooks), drag state machine, modifier tracking, wheel geometry | built (unit-tested) |
 | The wheel: layered Win32 window drawn with Win2D, OLE drop target, Explorer drag-image text ("Convert to PNG"), click mode, UI Automation, light/dark/high-contrast themes | built; driven end to end by `tools/DragHarness` |
 | Crop editor and Trim dialog | built |
-| Packaging: self-contained MSIX x64 + ARM64, bundled CLI, dev certificate, release script, CI | built (not installed on ARM64 hardware) |
+| Packaging: IL-trimmed MSIX x64 + ARM64 (self-contained 45 MB, or 23 MB on the shared Windows App Runtime), per-PC downloads plus a bundle, bundled CLI, dev certificate, release script, CI | built (not installed on ARM64 hardware) |
 
 `*` depends on optional Windows codec packages; see [docs/LIMITS.md](docs/LIMITS.md).
 
@@ -71,16 +71,25 @@ The MSIX is signed with a certificate you create yourself; Windows only installs
 # 2. Trust it once, in an ELEVATED PowerShell (the script prints this line for you; it never does it itself).
 Import-Certificate -FilePath .\artifacts\dev-cert\MikeShiftDev.cer -CertStoreLocation Cert:\LocalMachine\TrustedPeople
 
-# 3. Build x64 + ARM64, bundle, sign, write the checksum.
+# 3. Build x64 + ARM64, sign, write the per-PC packages, the bundle and the checksums.
 ./scripts/release.ps1 -PfxPath .\artifacts\dev-cert\MikeShiftDev.pfx -PfxPassword (Read-Host -AsSecureString 'PFX password')
 
-# 4. Install (Windows picks the right architecture from the bundle).
-Add-AppxPackage -Path .\artifacts\MikeShift_0.1.0.0.msixbundle
+# 4. Install the file for your PC: _x64 for most PCs, _arm64 for Snapdragon / ARM PCs.
+#    (The .msixbundle holds both and Windows picks the right one, but it is twice the download.)
+Add-AppxPackage -Path .\artifacts\MikeShift_0.1.0.0_x64.msix
 ```
 
-Uninstall: `Get-AppxPackage MikeShift | Remove-AppxPackage`. Verify a download: compare `Get-FileHash <bundle> -Algorithm SHA256` with `artifacts\SHA256SUMS.txt`.
+Uninstall: `Get-AppxPackage MikeShift | Remove-AppxPackage`. Verify a download: compare `Get-FileHash <file> -Algorithm SHA256` with that file's line in `artifacts\SHA256SUMS.txt`.
 
-The bundle is about 158 MB for both architectures (about 80 MB per architecture): each architecture carries the .NET 10 runtime and the Windows App SDK components the app uses, and the command-line tool runs on that same runtime, so nothing else needs installing. Release signing for public distribution (Store, Azure Trusted Signing or a purchased certificate) is a separate decision that is not made yet.
+**Download the file for your PC**: `MikeShift_<version>_x64.msix` (about 45 MB) for most PCs, `MikeShift_<version>_arm64.msix` (about 44 MB) for Snapdragon / ARM PCs. Each is a complete app for one architecture, about 112 MB once installed. The combined `.msixbundle` is about 88 MB for both architectures. The packages are IL-trimmed and carry the .NET 10 runtime and the Windows App SDK, and the command-line tool runs on that same runtime, so **nothing else needs installing**. Release signing for public distribution (Store, Azure Trusted Signing or a purchased certificate) is a separate decision that is not made yet.
+
+### The smaller "store" package (shared Windows App Runtime)
+
+`./scripts/release.ps1 -Flavor store` (or `-Flavor all`) also builds `MikeShift_<version>_store_x64.msix`, `_store_arm64.msix` and `MikeShift_<version>_store.msixbundle`: about **23 MB** per architecture (about 57 MB installed). They depend on the shared **Windows App Runtime 2.5** framework package (`Microsoft.WindowsAppRuntime.2`) instead of carrying WinUI themselves.
+
+* **Microsoft Store**: the Store installs that framework automatically. This is the flavour to submit.
+* **Sideloaded**: the framework must be on the PC first, otherwise Windows refuses the install and names the missing package. Install it once with Microsoft's installer for your PC type ([x64](https://aka.ms/windowsappsdk/2.5/2.5.1/windowsappruntimeinstall-x64.exe), [arm64](https://aka.ms/windowsappsdk/2.5/2.5.1/windowsappruntimeinstall-arm64.exe); all downloads: [Windows App SDK downloads](https://learn.microsoft.com/windows/apps/windows-app-sdk/downloads)), or pass the framework package with the install: `Add-AppxPackage -Path MikeShift_0.1.0.0_store_x64.msix -DependencyPath <path to Microsoft.WindowsAppRuntime.2.msix>` (the build leaves Microsoft's copies in `src\MikeShift.App\AppPackages\store\...\Dependencies\<arch>\`). Many PCs already have it because other apps need it.
+* For anyone who just wants it to install, hand out the default (non-store) files above.
 
 ## Build from source
 
@@ -89,11 +98,12 @@ Needs the .NET 10 SDK and the Windows 10/11 SDK 10.0.26100 (Visual Studio is not
 ```powershell
 ./scripts/build.ps1 -Test                      # dotnet build MikeShift.sln + dotnet test MikeShift.sln
 ./scripts/build.ps1 -Configuration Release -Msix -Platforms x64,ARM64   # unsigned per-architecture .msix
-./scripts/release.ps1                          # unsigned artifacts\MikeShift_<version>.msixbundle + SHA256SUMS.txt
+./scripts/release.ps1                          # unsigned artifacts\MikeShift_<version>_x64.msix, _arm64.msix, .msixbundle + SHA256SUMS.txt
+./scripts/release.ps1 -Flavor all              # the same plus the smaller _store_ packages (shared Windows App Runtime)
 ./scripts/make-fixtures.ps1                    # sample files for manual testing -> .\fixtures
 ```
 
-or directly: `dotnet build MikeShift.sln`, `dotnet test MikeShift.sln`. CI (GitHub Actions, `windows-latest`) runs build + test and uploads the unsigned bundle. `tools/DragHarness` drives scripted Shift-drags against a running build (see [docs/TESTPLAN.md](docs/TESTPLAN.md)). The Windows App SDK is referenced by component (`Directory.Packages.props`), not through the `Microsoft.WindowsAppSDK` metapackage; see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) §7.
+or directly: `dotnet build MikeShift.sln`, `dotnet test MikeShift.sln`. CI (GitHub Actions, `windows-latest`) runs build + test and uploads the unsigned packages of both flavours. Package builds are IL-trimmed (`Trimming.props`; `-p:MikeShiftTrim=false` gives an untrimmed one for comparison). To run the CLI test suites against the trimmed command-line tool of a package, unpack the `.msix` (`makeappx unpack /p <msix> /d <dir> /nv`) and set `MIKESHIFT_CLI_EXE=<dir>\MikeShift.Cli.exe` before `dotnet test tests/MikeShift.Cli.Tests`. `tools/DragHarness` drives scripted Shift-drags against a running build (see [docs/TESTPLAN.md](docs/TESTPLAN.md)). The Windows App SDK is referenced by component (`Directory.Packages.props`), not through the `Microsoft.WindowsAppSDK` metapackage; see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) §7.
 
 ## Privacy
 

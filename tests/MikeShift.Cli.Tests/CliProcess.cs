@@ -17,7 +17,20 @@ public sealed record CliResult(int ExitCode, string Stdout, string Stderr)
 /// </summary>
 public static class CliProcess
 {
-    public static string ExePath { get; } = Path.Combine(AppContext.BaseDirectory, "MikeShift.Cli.exe");
+    /// <summary>
+    /// The CLI under test. Normally the build output next to this assembly; <c>MIKESHIFT_CLI_EXE</c> points the whole suite at another
+    /// <c>MikeShift.Cli.exe</c> instead, for example the one in an unpacked release package (the trimmed, self-contained one that users run).
+    /// </summary>
+    public static string ExePath { get; } = ResolveExePath();
+
+    private static string ResolveExePath()
+    {
+        var overridePath = Environment.GetEnvironmentVariable("MIKESHIFT_CLI_EXE");
+        if (string.IsNullOrWhiteSpace(overridePath)) return Path.Combine(AppContext.BaseDirectory, "MikeShift.Cli.exe");
+        var full = Path.GetFullPath(overridePath);
+        if (!File.Exists(full)) throw new FileNotFoundException("MIKESHIFT_CLI_EXE does not point to an existing file.", full);
+        return full;
+    }
 
     public static CliResult Run(params string[] args) => Run(TimeSpan.FromMinutes(2), args);
 

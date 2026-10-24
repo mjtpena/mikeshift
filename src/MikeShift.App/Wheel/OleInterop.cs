@@ -76,7 +76,25 @@ internal static class OleNative
     public const short CF_DIBV5 = 17;
 
     public static readonly Guid ClsidDragDropHelper = new("4657278A-411B-11D2-839A-00C04FD918D0");
+    public static readonly Guid IidDropTargetHelper = new("4657278B-411B-11D2-839A-00C04FD918D0");
     public static readonly Guid IidShellItemArray = new("B63EA76D-1F85-456F-A19C-48159EFA858B");
+
+    private const uint ClsctxInprocServer = 0x1;
+
+    [DllImport("ole32.dll")]
+    private static extern int CoCreateInstance(in Guid rclsid, IntPtr pUnkOuter, uint dwClsContext, in Guid riid, out IntPtr ppv);
+
+    /// <summary>
+    /// <c>CoCreateInstance</c> for a class the shell provides, returned as <typeparamref name="T"/> (a [ComImport] interface), or null if the class
+    /// is not registered or lacks that interface. Not <c>Activator.CreateInstance(Type.GetTypeFromCLSID(...))</c>: that needs a <see cref="Type"/> the
+    /// IL trimmer cannot see, and this does not.
+    /// </summary>
+    public static T? CreateInstance<T>(Guid clsid, Guid iid) where T : class
+    {
+        if (CoCreateInstance(clsid, IntPtr.Zero, ClsctxInprocServer, iid, out var unknown) < 0 || unknown == IntPtr.Zero) return null;
+        try { return Marshal.GetObjectForIUnknown(unknown) as T; }
+        finally { Marshal.Release(unknown); }
+    }
 
     [DllImport("ole32.dll")]
     public static extern int RegisterDragDrop(IntPtr hwnd, IDropTarget pDropTarget);

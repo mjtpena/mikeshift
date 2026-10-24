@@ -22,4 +22,7 @@
     <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
   </PropertyGroup>
 
+  <!-- PublishTrimmed etc. when MikeShift.App publishes this project self-contained for a package (see Trimming.props). -->
+  <Import Project="..\..\Trimming.props" />
+
 </Project>

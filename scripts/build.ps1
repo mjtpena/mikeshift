@@ -23,7 +23,8 @@
         -> src/MikeShift.App/AppPackages/MikeShift.App_<ver>_x64_Test/*.msix
         The package also contains the console CLI (MikeShift.Cli.exe in the package root, running on the app's runtime; opt out with -p:BundleCli=false).
     Release bundle (x64 + ARM64 .msixbundle + SHA256SUMS.txt in artifacts/; signed if a pfx is given):
-        ./scripts/release.ps1 [-PfxPath <pfx> -PfxPassword <securestring>]
+        ./scripts/release.ps1 [-Flavor sideload|store|all] [-PfxPath <pfx> -PfxPassword <securestring>]
+        Packages are IL-trimmed (Trimming.props); -p:MikeShiftTrim=false gives an untrimmed one. -Flavor store links the Windows App SDK as the shared framework package (about half the size).
 
   Core, Cli and the test projects are platform-neutral and build with plain `dotnet build` / `dotnet test`.
 

@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using MikeShift.Core.Interaction;
 using Windows.Win32.Foundation;
@@ -12,6 +13,7 @@ namespace MikeShift.App.Wheel;
 /// notification so Narrator announces it; a page change announces "Tools page, 5 items". Providers read the immutable <see cref="WheelSnapshot"/>,
 /// so UIA threads never touch wheel-thread state.
 /// </summary>
+[UnconditionalSuppressMessage("Trimming", "IL2050", Justification = TrimJustification.ComInterop)]
 internal sealed class WheelAutomation
 {
     private readonly WheelController _controller;
