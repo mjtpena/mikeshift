@@ -117,7 +117,7 @@ public static class Naming
     /// <c>{BaseName}</c>, <c>{BaseName} 2</c>...</para>
     /// <para>If the target directory is not writable the output goes to <see cref="DownloadsDirectory"/> instead
     /// (<see cref="CommitResult.UsedDownloadsFallback"/> = true). Transient sharing violations (antivirus, cloud sync) are
-    /// retried when reserving the temp and on the final move. The final move never overwrites: on a name race
+    /// retried when reserving the temp and on the final move, which also retries "access denied" (a scanner holding a just-written file). The final move never overwrites: on a name race
     /// the next free name is used. On any failure or cancellation the temp item is removed.</para>
     /// </summary>
     public static async Task<CommitResult> CommitAsync(
@@ -172,12 +172,23 @@ public static class Naming
     private static string TempName(OutputSpec spec) =>
         $".{(spec.BaseName.Length > 40 ? spec.BaseName[..40] : spec.BaseName)}.{Guid.NewGuid():N}.mikeshift-tmp";
 
-    private static readonly int[] s_retryDelaysMs = [100, 250, 500];
+    private static readonly int[] s_retryDelaysMs = [100, 250, 500, 1000];
+
+    private static bool IsAccessDenied(Exception ex) =>
+        ex is UnauthorizedAccessException || (ex is IOException io && (io.HResult & 0xFFFF) == 5 /*ACCESS_DENIED*/);
 
     private static bool IsSharingViolation(IOException ex) => (ex.HResult & 0xFFFF) is 32 /*SHARING*/ or 33 /*LOCK*/;
 
-    /// <summary>Runs <paramref name="op"/>, retrying transient sharing violations (antivirus, indexers, cloud sync) after 100/250/500 ms.</summary>
-    private static async Task<T> RetryOnSharingViolationAsync<T>(Func<T> op, CancellationToken ct)
+    /// <summary>
+    /// Runs <paramref name="op"/>, retrying transient sharing violations (antivirus, indexers, cloud sync) after 100/250/500/1000 ms.
+    /// <para>With <paramref name="retryAccessDenied"/> an "access denied" is retried too. Renaming a folder (or a file) that something has
+    /// open without delete sharing, which is what a scanner does to a file that was written a moment ago, does not fail with a sharing
+    /// violation but with ERROR_ACCESS_DENIED, which <see cref="Directory.Move(string, string)"/> reports as a plain <see cref="IOException"/>
+    /// ("Access to the path ... is denied.") and the file APIs as <see cref="UnauthorizedAccessException"/>. Only the final move asks
+    /// for this: the folder was created and written a moment earlier, so it is writable and a denial there can only be a passing one. When
+    /// the retries run out the original exception propagates, as before.</para>
+    /// </summary>
+    private static async Task<T> RetryOnSharingViolationAsync<T>(Func<T> op, CancellationToken ct, bool retryAccessDenied = false)
     {
         for (var attempt = 0; ; attempt++)
         {
@@ -189,6 +200,10 @@ public static class Naming
             catch (IOException ex) when (IsSharingViolation(ex))
             {
                 throw new ConversionException("The output couldn't be saved because another program is using the file or folder.", ex);
+            }
+            catch (Exception ex) when (retryAccessDenied && IsAccessDenied(ex) && attempt < s_retryDelaysMs.Length)
+            {
+                await Task.Delay(s_retryDelaysMs[attempt], ct).ConfigureAwait(false);
             }
         }
     }
@@ -235,7 +250,7 @@ public static class Naming
                     if (spec.IsFolder) Directory.Move(temp, target);
                     else File.Move(temp, target, overwrite: false);
                     return true;
-                }, ct).ConfigureAwait(false);
+                }, ct, retryAccessDenied: true).ConfigureAwait(false);
                 if (spec.IsFolder)
                 {
                     try { File.SetAttributes(target, FileAttributes.Directory); } catch (Exception) { /* stays hidden: harmless */ }

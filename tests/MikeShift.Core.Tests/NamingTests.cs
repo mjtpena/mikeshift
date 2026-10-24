@@ -114,6 +114,47 @@ public class NamingTests
         Assert.Empty(Directory.GetFileSystemEntries(tmp.Path, "*.mikeshift-tmp"));
     }
 
+    /// <summary>
+    /// A scanner (antivirus, search indexer) that opens a file written a moment ago without delete sharing makes the rename of the
+    /// folder that contains it fail with "access denied" (not with a sharing violation). That was the intermittent
+    /// "Access to the path '.doc pages.guid.mikeshift-tmp' is denied" of the page-to-image conversions of multi-page PDFs.
+    /// </summary>
+    [Fact]
+    public async Task Commit_retries_the_final_folder_move_while_a_scanner_holds_a_file_inside_open()
+    {
+        using var tmp = new TempDir();
+        var input = tmp.WriteFile("a.txt", "x");
+        FileStream? scanner = null;
+
+        var result = await Naming.CommitAsync(Naming.Plan(input, "", " pages"), async (dir, ct) =>
+        {
+            var page = Path.Combine(dir, "a 01.png");
+            await File.WriteAllBytesAsync(page, [1, 2, 3], ct);
+            scanner = new FileStream(page, FileMode.Open, FileAccess.Read, FileShare.Read); // no FileShare.Delete
+            _ = Task.Delay(300, CancellationToken.None).ContinueWith(_ => scanner.Dispose(), TaskScheduler.Default);
+        }, CancellationToken.None);
+
+        Assert.Equal(tmp.Combine("a pages"), result.Path);
+        Assert.Equal([1, 2, 3], File.ReadAllBytes(Path.Combine(result.Path, "a 01.png")));
+        Assert.Empty(Directory.GetFileSystemEntries(tmp.Path, "*.mikeshift-tmp"));
+    }
+
+    [Fact]
+    public async Task Commit_retries_the_final_file_move_while_a_scanner_holds_the_temp_file_open_for_reading()
+    {
+        using var tmp = new TempDir();
+        var input = tmp.WriteFile("a.txt", "x");
+
+        var result = await Naming.CommitAsync(Naming.Plan(input, "out"), async (temp, ct) =>
+        {
+            await File.WriteAllTextAsync(temp, "data", ct);
+            var scanner = new FileStream(temp, FileMode.Open, FileAccess.Read, FileShare.Read);
+            _ = Task.Delay(300, CancellationToken.None).ContinueWith(_ => scanner.Dispose(), TaskScheduler.Default);
+        }, CancellationToken.None);
+
+        Assert.Equal("data", File.ReadAllText(result.Path));
+    }
+
     [Fact]
     public async Task Commit_gives_up_with_a_clear_message_when_the_temp_stays_locked()
     {
