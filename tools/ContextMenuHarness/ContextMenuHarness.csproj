@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Dev harness for the Explorer right-click entry (X1). NOT part of the shipped package.
+    `probe` plays Explorer: it builds a real IShellItemArray from files on disk, activates the registered COM server the way Explorer does
+    (CoCreateInstance of the IExplorerCommand CLSID, local server), calls GetState / GetTitle / EnumSubCommands and prints each sub-command, with
+    timings, and can Invoke one. `classic` does the same for the IContextMenu handler (the "Show more options" menu) against a real HMENU.
+    `menu` drives the REAL File Explorer: it opens a folder window, selects files, right-clicks them with SendInput, reads the popup menu through
+    UI Automation and picks an entry; it is the scripted scenario behind docs/test-runs/2026-10-24-context-menu.md.
+    The MikeShift package (any build, `Add-AppxPackage -Register <bin>\AppxManifest.xml`) must be registered first.
+    Run: dotnet run, project tools/ContextMenuHarness, arguments: probe [invoke "Convert to PNG"] [repeat 3] file...
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <UseWindowsForms>true</UseWindowsForms>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>ContextMenuHarness</AssemblyName>
+    <RootNamespace>ContextMenuHarness</RootNamespace>
+    <ApplicationHighDPIMode>PerMonitorV2</ApplicationHighDPIMode>
+    <Platforms>AnyCPU;x64</Platforms>
+    <IsPackable>false</IsPackable>
+    <NoWarn>$(NoWarn);SYSLIB1054;CA1416;CS0649</NoWarn>
+  </PropertyGroup>
+
+</Project>
