@@ -1,4 +1,4 @@
-"""Composes the Microsoft Store screenshots in docs/media/store/ from the captures in docs/screenshots/.
+"""Composes the Microsoft Store screenshots in docs/media/store/ from the captures in docs/images/.
 
 Run from the repository root:  python docs/media/compose-store-images.py   (needs Pillow; uses Segoe UI from the Windows Fonts folder)
 
@@ -9,7 +9,7 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 ROOT = Path(__file__).resolve().parents[2]
-SHOTS = ROOT / "docs" / "screenshots"
+SHOTS = ROOT / "docs" / "images"
 OUT = ROOT / "docs" / "media" / "store"
 W, H = 1920, 1080
 FONTS = Path(r"C:\Windows\Fonts")
@@ -94,26 +94,26 @@ def save(canvas, name):
 
 def s1():
     c = background()
-    menu = load("context-menu/modern-menu-heic.png", 1.15)
+    menu = load("right-click-menu.png", 1.15)
     put(c, menu, W - menu.width - 150, (H - menu.height) // 2)
     y = caption(c, "Right-click a file. Pick a format.", "Convert with MikeShift is in the Windows 11 right-click menu. A converted copy appears next to the original.", 120, 170, 900)
-    toast = load("context-menu/toast-after-convert.png", 1.8)
+    toast = load("toast.png", 1.8)
     put(c, toast, 120, y + 40)
     save(c, "01-right-click.png")
 
 
 def s2():
     c = background()
-    wheel = load("real-drag/01-formats-top-half-real-thumbnail.png", 1.45)
+    wheel = load("wheel-formats-dark.png", 1.45)
     put(c, wheel, W - wheel.width - 110, (H - wheel.height) // 2)
     caption(c, "Or drag a file and hold Shift.", "A wheel of formats appears under the pointer. Drop the file on one. Prefer Ctrl as the key? Choose it on first run.", 120, 200, 650,
             ["Your original is never changed", "Esc or letting go elsewhere cancels"])
-    save(c, "02-wheel-in-explorer.png")
+    save(c, "02-drag-to-wheel.png")
 
 
 def s3():
     c = background()
-    a, b = load("wheel-v2/formats-dark-highlight.png", 1.5), load("wheel-v2/tools-dark-highlight.png", 1.5)
+    a, b = load("wheel-formats-dark.png", 1.5), load("wheel-tools-dark.png", 1.5)
     gap = 60
     x0 = (W - (a.width + b.width + gap)) // 2
     caption(c, "Formats on one page, tools on the other.", "Press the other key while the wheel is up to switch: Compress, Resize 50%, Crop, Strip EXIF, Zip.", x0, 70, 1500)
@@ -124,7 +124,7 @@ def s3():
 
 def s4():
     c = background()
-    m1, m2 = load("context-menu/modern-menu-multi-images.png", 1.1), load("context-menu/modern-menu-folder.png", 1.1)
+    m1, m2 = load("right-click-menu-multiple.png", 1.1), load("right-click-menu-folder.png", 1.1)
     x2 = W - m2.width - 130
     put(c, m2, x2, H - m2.height - 90)
     x1 = x2 - m1.width - 60
@@ -135,7 +135,7 @@ def s4():
 
 def s5():
     c = background()
-    wheel, sett = load("onboarding/real-hotkey-wheel.png", 1.9), load("onboarding/settings-open-the-wheel.png", 0.82)
+    wheel, sett = load("wheel-keyboard-dark.png", 1.5), load("settings-open-the-wheel.png", 0.82)
     gap = 90
     x0 = (W - (wheel.width + sett.width + gap)) // 2
     caption(c, "Keyboard first? Select files, press the hotkey.", "Ctrl+Alt+Shift+Space opens the wheel for the files selected in File Explorer. Arrow keys and Enter. Change the keys in Settings.", x0, 60, 1600)
@@ -146,7 +146,7 @@ def s5():
 
 def s6():
     c = background()
-    w = load("onboarding/welcome-shift-default.png", 0.95)
+    w = load("welcome.png", 0.95)
     put(c, w, W - w.width - 200, (H - w.height) // 2)
     caption(c, "Nothing is uploaded.", "Conversion happens on your PC. The app has no network code, no account and no telemetry.", 120, 230, 900,
             ["Originals are never moved or changed", "Download about 23 MB (Store package)", "Free and open source (MIT)"])
@@ -155,7 +155,7 @@ def s6():
 
 def s7():
     c = background()
-    a, b = load("onboarding/wheel-heic-missing-click-light.png", 1.25), load("onboarding/failure-dialog-heic.png", 1.25)
+    a, b = load("heic-extension-hint.png", 1.25), load("failure-dialog.png", 1.25)
     gap = 80
     x0 = (W - (a.width + b.width + gap)) // 2
     caption(c, "iPhone photos? It tells you what is missing.", "HEIC needs Microsoft's free HEIF and HEVC extensions. If they are not installed, MikeShift says so and opens the Store page.", x0, 70, 1600)
@@ -166,7 +166,7 @@ def s7():
 
 def s8():
     c = background()
-    a, b = load("surfaces-v2/crop-dark.png", 1.15), load("surfaces-v2/trim-dark.png", 1.15)
+    a, b = load("crop-editor.png", 1.15), load("trim-dialog.png", 1.15)
     xa = W - a.width - 110
     put(c, a, xa, (H - a.height) // 2)
     xb = 110
