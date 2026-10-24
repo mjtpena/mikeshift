@@ -27,6 +27,21 @@ internal static class AngerNative
     [DllImport("user32.dll")] public static extern int GetKeyboardLayoutList(int n, IntPtr[]? list);
     public delegate bool EnumProc(IntPtr hwnd, IntPtr lParam);
     public const uint SWP_NOZORDER = 4, SWP_SHOWWINDOW = 0x40;
+
+    /// <summary>
+    /// Brings a window to the front. A process that was not started from the foreground (a harness started by a script, or another agent) is
+    /// refused by <c>SetForegroundWindow</c> and the window stays behind whatever is on top; a tap of an unassigned key first makes this process the
+    /// one that generated the last input, which Windows accepts as the right to take the foreground.
+    /// </summary>
+    public static void Front(IntPtr hwnd)
+    {
+        Pointer.KeyDown(0xE8); Pointer.KeyUp(0xE8);
+        Native.SetForegroundWindow(hwnd);
+        Thread.Sleep(150);
+        if (GetForegroundWindow() != hwnd) { Native.SetForegroundWindow(hwnd); Thread.Sleep(150); }
+        // Never go on to click and drag over whatever else is on top of the screen.
+        if (GetForegroundWindow() != hwnd) throw new InvalidOperationException("could not bring the Explorer window to the front; no input was sent to it");
+    }
 }
 
 /// <summary>A started MikeShift.exe with its own log (unpackaged), or an attached one (packaged).</summary>
@@ -129,7 +144,7 @@ internal sealed class ExplorerWin
     {
         AngerNative.SetWindowPos(Hwnd, IntPtr.Zero, b.X, b.Y, b.Width, b.Height, AngerNative.SWP_NOZORDER | AngerNative.SWP_SHOWWINDOW);
         Thread.Sleep(400);
-        Native.SetForegroundWindow(Hwnd);
+        AngerNative.Front(Hwnd);
         Thread.Sleep(300);
     }
 
@@ -189,7 +204,7 @@ internal sealed class ExplorerWin
     /// <summary>Left-click the first item, Ctrl-click the others (a real multi-selection).</summary>
     public void Select(params string[] names)
     {
-        Native.SetForegroundWindow(Hwnd);
+        AngerNative.Front(Hwnd);
         for (var i = 0; i < names.Length; i++)
         {
             var p = IconPoint(names[i]);
@@ -207,7 +222,7 @@ internal sealed class ExplorerWin
 
     public void SelectAll()
     {
-        Native.SetForegroundWindow(Hwnd);
+        AngerNative.Front(Hwnd);
         Pointer.KeyDown(Native.VK_LCONTROL); Pointer.KeyDown(0x41); Pointer.KeyUp(0x41); Pointer.KeyUp(Native.VK_LCONTROL);
         Thread.Sleep(400);
     }
