@@ -28,7 +28,8 @@ internal static class WheelPreview
         bool Virtual = false,
         PointD Pointer = default,          // pointer relative to the wheel centre, logical px
         TaskbarEdges Taskbar = TaskbarEdges.None,
-        bool Quiet = false);               // hints after the first 20 wheels
+        bool Quiet = false,                // hints after the first 20 wheels
+        ArmKey Arm = ArmKey.Shift);        // the key that opened the wheel (changes the key hints)
 
     private static readonly Scenario[] Scenarios =
     [
@@ -48,6 +49,11 @@ internal static class WheelPreview
         new("taskbar-bottom-dark", Taskbar: TaskbarEdges.Bottom, Backdrop: "busy"),
         new("taskbar-left-light", Theme: "light", Taskbar: TaskbarEdges.Left, Backdrop: "warm", Page: WheelPage.Tool),
         new("quiet-hints-dark", Quiet: true, Backdrop: "dark", Pointer: new PointD(30, 90)),
+        new("ctrl-mode-formats-dark", Arm: ArmKey.Ctrl, Pointer: new PointD(40, 70)),
+        new("ctrl-mode-tools-dark", Arm: ArmKey.Ctrl, Page: WheelPage.Tool, Backdrop: "busy", Pointer: new PointD(90, 60)),
+        new("heic-missing-drag-dark", Files: "heic-missing", Backdrop: "busy", Pointer: new PointD(0, 60)),
+        new("heic-missing-hover-dark", Files: "heic-missing", Highlight: "Get HEIF", Backdrop: "busy", Pointer: new PointD(0, 20)),
+        new("heic-missing-click-light", Theme: "light", Files: "heic-missing", Click: true, Backdrop: "bright"),
     ];
 
     public static int Run(string[] args)
@@ -142,8 +148,10 @@ internal static class WheelPreview
         var theme = MakeTheme(sc);
         // Model and tiles, built by the real catalog for the scenario's files.
         var (paths, kindOf) = FilesFor(sc.Files);
-        var actions = sc.Virtual ? [] : ActionCatalog.For(paths, Capabilities.All, kindOf);
-        var model = new WheelModel(sc.Click ? WheelMode.Click : WheelMode.Drag);
+        var caps = sc.Files == "heic-missing" ? Capabilities.All with { HeifDecode = false } : Capabilities.All;
+        var actions = sc.Virtual ? [] : ActionCatalog.For(paths, caps, kindOf);
+        var note = Core.Feedback.CodecHelp.NoteFor(paths, caps, kindOf);
+        var model = new WheelModel(sc.Click ? WheelMode.Click : WheelMode.Drag, ToolsKey.Ctrl, sc.Arm);
         model.SetActions(actions);
         if (sc.Page == WheelPage.Tool && model.Page != WheelPage.Tool) model.SetPage(WheelPage.Tool);
         if (sc.Highlight is { } title)
@@ -167,8 +175,8 @@ internal static class WheelPreview
             VirtualFiles = sc.Virtual,
             HubEmpty = false,
             Callouts = sc.Click
-                ? WheelCallout.ForClick(model, SelectionSummary.For(paths, sc.Files == "click-images" ? Category.Image : null))
-                : new WheelCallouts(WheelCallout.ForDrag(model, sc.Virtual, sc.Quiet ? HintEmphasis.Quiet : HintEmphasis.Prominent)),
+                ? WheelCallout.ForClick(model, SelectionSummary.For(paths, sc.Files == "click-images" ? Category.Image : null), note)
+                : new WheelCallouts(WheelCallout.ForDrag(model, sc.Virtual, sc.Quiet ? HintEmphasis.Quiet : HintEmphasis.Prominent, note)),
             MainSide = sc.Click ? CalloutSide.Top : WheelCallout.SideFor((pointer.Y - centre.Y) / dpi),
         };
 
@@ -248,6 +256,7 @@ internal static class WheelPreview
     {
         "zip-only" => (["notes.xyz", "data.bin"], _ => Category.Other),
         "click-images" => (["holiday 1.png", "holiday 2.png", "holiday 3.png"], _ => Category.Image),
+        "heic-missing" => (["IMG_0042.heic"], _ => Category.Other),   // a HEIC Windows cannot open, on a PC without the HEIF extension
         "video" => (["clip.mp4"], _ => Category.Video),
         "pdf" => (["report.pdf"], _ => Category.Pdf),
         _ => (["photo.avif"], _ => Category.Image),

@@ -11,7 +11,9 @@ namespace MikeShift.App;
 /// instance and the global input hooks alone, and <c>MIKESHIFT_THEME=light|dark</c> to force the XAML theme.
 /// Scenes: <c>toast-progress</c>, <c>toast-progress-batch</c>, <c>toast-success</c>, <c>toast-success-many</c>, <c>toast-downloads</c>,
 /// <c>toast-partial</c>, <c>toast-already</c>, <c>toast-long</c>, <c>dialog-single</c>, <c>dialog-partial</c>, <c>dialog-all</c>, <c>dialog-merged</c>,
-/// <c>dialog-elevated</c>, <c>tray-menu</c>, <c>picker</c>.
+/// <c>dialog-elevated</c>, <c>tray-menu</c>, <c>picker</c>, <c>dialog-heic</c>, <c>toast-select-first</c>. The onboarding states are the
+/// ordinary windows with a scratch settings file and a capability override: <c>--show-welcome</c> / <c>--show-settings</c> with
+/// <c>MIKESHIFT_SETTINGS_PATH</c> (e.g. <c>{"armKey":"Ctrl"}</c>) and <c>MIKESHIFT_CAPS=no-heif,no-hevc</c> (see <c>scripts/capture-scene.ps1 -Env</c>).
 /// </summary>
 internal static class DevScenes
 {
@@ -114,6 +116,25 @@ internal static class DevScenes
                     Outputs = [Out(@"C:\Samples\a.heic", @"C:\Samples\a.png")],
                     Failures = [new ActionFailure(@"C:\Samples\b.heic", "This image is damaged.")],
                 })!);
+                break;
+            case "dialog-heic":
+                // A HEIC photo on a PC without the HEIF extension: the failure names the extension and offers its Store page.
+                services.Dialogs.Show(FeedbackPlan.DialogFor(ActionResult.Failed(1, @"C:\Samples\IMG_0042.heic", CodecHelp.Heif.FailureMessage))!);
+                break;
+            case "explorer-selection":
+                // Reads the foreground Explorer window's selection 4 s from now and writes it to the log (no input needed: start the scene, then open
+                // `explorer.exe /select,<file>`). The same call the hotkey makes, on an STA thread of its own.
+                var reader = new Thread(() =>
+                {
+                    Thread.Sleep(4000);
+                    var result = Selection.ExplorerSelection.ReadForeground(Windows.Win32.PInvoke.GetForegroundWindow());
+                    Wheel.WheelLog.Info($"explorer-selection scene: {result.Status}: {string.Join(" | ", result.Paths)}");
+                }) { IsBackground = true, Name = "explorer-selection scene" };
+                reader.SetApartmentState(ApartmentState.STA);
+                reader.Start();
+                break;
+            case "toast-select-first":
+                services.Hud.Show(FeedbackCopy.SelectFilesFirst);
                 break;
             case "dialog-elevated":
                 services.Dialogs.Show(new DialogContent(FeedbackCopy.ElevatedTitle, FeedbackCopy.ElevatedBody, [], null, DialogSeverity.Warning,

@@ -13,9 +13,9 @@
         </Grid.RowDefinitions>
 
         <ScrollViewer VerticalScrollBarVisibility="Auto" IsTabStop="False">
-            <StackPanel Padding="40,4,40,20" Spacing="14" HorizontalAlignment="Center" MaxWidth="520">
+            <StackPanel Padding="40,4,40,20" Spacing="12" HorizontalAlignment="Center" MaxWidth="520">
 
-                <Viewbox Width="210" Height="210" HorizontalAlignment="Center"><local:WheelIllustration /></Viewbox>
+                <Viewbox Width="160" Height="160" HorizontalAlignment="Center"><local:WheelIllustration /></Viewbox>
 
                 <StackPanel Spacing="6" HorizontalAlignment="Center">
                     <TextBlock Text="Welcome to MikeShift" Style="{StaticResource TitleTextBlockStyle}" HorizontalTextAlignment="Center" />
@@ -23,6 +23,29 @@
                                Text="MikeShift runs in the taskbar's notification area. If you can't see its icon, select &quot;Show hidden icons&quot; and drag it onto the taskbar." />
                     <HyperlinkButton Content="Show the tray icon in Taskbar settings" HorizontalAlignment="Center" Click="OnTaskbarSettingsClicked" />
                 </StackPanel>
+
+                <!-- The activation choice (positioning P1-2): two equal options. Saved as soon as it is picked. -->
+                <StackPanel Spacing="8">
+                    <TextBlock Text="How do you want to open the wheel while dragging?" Style="{StaticResource BodyStrongTextBlockStyle}" TextWrapping="Wrap" />
+                    <RadioButtons x:Name="ArmKeyChoice" MaxColumns="2" SelectionChanged="OnArmKeyChanged"
+                                  AutomationProperties.Name="How do you want to open the wheel while dragging?">
+                        <RadioButton Tag="Shift" MinWidth="0" AutomationProperties.Name="Hold Shift while dragging">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="Hold" VerticalAlignment="Center" />
+                                <Border Style="{StaticResource KeycapBorderStyle}"><TextBlock Text="Shift" FontSize="12" FontWeight="SemiBold" /></Border>
+                            </StackPanel>
+                        </RadioButton>
+                        <RadioButton Tag="Ctrl" MinWidth="0" AutomationProperties.Name="Hold Ctrl while dragging">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="Hold" VerticalAlignment="Center" />
+                                <Border Style="{StaticResource KeycapBorderStyle}"><TextBlock Text="Ctrl" FontSize="12" FontWeight="SemiBold" /></Border>
+                            </StackPanel>
+                        </RadioButton>
+                    </RadioButtons>
+                    <TextBlock x:Name="ArmKeyReassurance" TextWrapping="Wrap" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                </StackPanel>
+
+                <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
 
                 <!-- The three steps, with keycaps (UX review F-01). -->
                 <StackPanel Spacing="14">
@@ -48,7 +71,7 @@
                         <StackPanel Grid.Column="1" Spacing="2">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <TextBlock Text="Hold" Style="{StaticResource BodyStrongTextBlockStyle}" VerticalAlignment="Center" />
-                                <Border Style="{StaticResource KeycapBorderStyle}"><TextBlock Text="Shift" FontSize="12" FontWeight="SemiBold" /></Border>
+                                <Border Style="{StaticResource KeycapBorderStyle}"><TextBlock x:Name="ArmKeycap" Text="Shift" FontSize="12" FontWeight="SemiBold" /></Border>
                             </StackPanel>
                             <TextBlock TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                        Text="A wheel of formats appears under your pointer." />
@@ -69,22 +92,32 @@
                     </Grid>
                 </StackPanel>
 
+                <!-- Optional codec check (positioning P0-3): shown only when this PC lacks a decoder, after the probe has finished. -->
+                <Border x:Name="CodecCard" Visibility="Collapsed" Padding="16,14" CornerRadius="4"
+                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                    <StackPanel Spacing="8">
+                        <TextBlock x:Name="CodecTitle" Style="{StaticResource BodyStrongTextBlockStyle}" TextWrapping="Wrap" />
+                        <TextBlock x:Name="CodecBody" TextWrapping="Wrap" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        <StackPanel x:Name="CodecButtons" Orientation="Horizontal" Spacing="8" />
+                    </StackPanel>
+                </Border>
+
                 <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
 
                 <StackPanel Spacing="14">
                     <StackPanel Spacing="2">
                         <StackPanel Orientation="Horizontal" Spacing="6">
-                            <TextBlock Text="Press" Style="{StaticResource BodyStrongTextBlockStyle}" VerticalAlignment="Center" />
-                            <Border Style="{StaticResource KeycapBorderStyle}"><TextBlock Text="Ctrl" FontSize="12" FontWeight="SemiBold" /></Border>
+                            <TextBlock x:Name="ToolsVerb" Text="Press" Style="{StaticResource BodyStrongTextBlockStyle}" VerticalAlignment="Center" />
+                            <Border Style="{StaticResource KeycapBorderStyle}"><TextBlock x:Name="ToolsKeycap" Text="Ctrl" FontSize="12" FontWeight="SemiBold" /></Border>
                             <TextBlock Text="for tools" Style="{StaticResource BodyStrongTextBlockStyle}" VerticalAlignment="Center" />
                         </StackPanel>
-                        <TextBlock TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                   Text="While the wheel is open, press Ctrl or scroll the mouse wheel to switch to tools like Compress, Resize, Crop, Trim and Zip. Press Shift to go back." />
+                        <TextBlock x:Name="ToolsDescription" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                     </StackPanel>
                     <StackPanel Spacing="2">
-                        <TextBlock Text="Prefer clicking?" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                        <TextBlock Text="Prefer clicking, or the keyboard?" Style="{StaticResource BodyStrongTextBlockStyle}" />
                         <TextBlock TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                                    Text="Select the tray icon to pick files from a dialog." />
+                        <TextBlock x:Name="HotkeyText" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                     </StackPanel>
                 </StackPanel>
 

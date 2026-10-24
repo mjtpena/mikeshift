@@ -43,13 +43,14 @@ public static class AsyncInput
     /// <summary>
     /// Convenience: <see cref="DragSessionOptions"/> populated with the system drag thresholds and the live key-state probe.
     /// </summary>
-    public static DragSessionOptions CreateSessionOptions(ToolsKey toolsKey = ToolsKey.Ctrl)
+    public static DragSessionOptions CreateSessionOptions(ToolsKey toolsKey = ToolsKey.Ctrl, ArmKey armKey = ArmKey.Shift)
     {
         var (x, y) = DragThreshold();
         return new DragSessionOptions
         {
             DragThresholdX = x,
             DragThresholdY = y,
+            ArmKey = armKey,
             ToolsKey = toolsKey,
             QueryKeyState = ReadKeyState,
         };

@@ -1,19 +1,10 @@
 using MikeShift.Core;
+using MikeShift.Core.Hotkeys;
+using MikeShift.Core.Interaction;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace MikeShift.App.Settings;
-
-/// <summary>Which input switches the wheel to the tools page (PLAN §1.1). Default <see cref="Ctrl"/>.</summary>
-public enum ToolsKey
-{
-    /// <summary>A fresh Ctrl press (default; also a mouse-wheel tick).</summary>
-    Ctrl,
-    /// <summary>Only a mouse-wheel tick; no modifier key switches pages.</summary>
-    MouseWheelOnly,
-    /// <summary>Alt (the Windows input-language hotkey can interfere: Left Alt+Shift).</summary>
-    Alt,
-}
 
 /// <summary>Where preference values live. Values are plain strings so both back ends agree.</summary>
 public interface IPreferenceStore
@@ -121,6 +112,12 @@ public sealed class Preferences
     /// <summary>Key: tools toggle (<see cref="ToolsKey"/> name, default "Ctrl").</summary>
     public const string ToolsKeyKey = "toolsKey";
 
+    /// <summary>Key: the key held while dragging to open the wheel (<see cref="ArmKey"/> name, default "Shift").</summary>
+    public const string ArmKeyKey = "armKey";
+
+    /// <summary>Key: the global hotkey that opens the wheel for the selection in File Explorer (text like "Ctrl+Alt+Shift+Space", or "None"; default Ctrl+Alt+Shift+Space).</summary>
+    public const string HotkeyKey = "hotkey";
+
     /// <summary>Key: open Explorer on the result after a conversion (bool, default false).</summary>
     public const string ShowInFolderAfterKey = "showInFolderAfter";
 
@@ -172,14 +169,47 @@ public sealed class Preferences
         set => SetBool(UseWordKey, value);
     }
 
-    /// <summary>The key that switches the wheel to tools. Default <see cref="ToolsKey.Ctrl"/>.</summary>
+    /// <summary>
+    /// The key that switches the wheel to tools. Default <see cref="ToolsKey.Ctrl"/> (Shift when Ctrl arms the wheel: the arming key is never
+    /// also the tools key, see <see cref="ToolsKeys.Normalize"/>).
+    /// </summary>
     public ToolsKey ToolsKey
     {
-        get => Enum.TryParse<ToolsKey>(_store.Get(ToolsKeyKey), ignoreCase: true, out var k) && Enum.IsDefined(k) ? k : ToolsKey.Ctrl;
+        get => ToolsKeys.Normalize(ArmKey, Enum.TryParse<ToolsKey>(_store.Get(ToolsKeyKey), ignoreCase: true, out var k) && Enum.IsDefined(k) ? k : ToolsKey.Ctrl);
         set
         {
-            _store.Set(ToolsKeyKey, value.ToString());
+            _store.Set(ToolsKeyKey, ToolsKeys.Normalize(ArmKey, value).ToString());
             Changed?.Invoke(ToolsKeyKey);
+        }
+    }
+
+    /// <summary>The key that opens the wheel while dragging (first-run choice, Settings). Default <see cref="ArmKey.Shift"/>.</summary>
+    public ArmKey ArmKey
+    {
+        get => Enum.TryParse<ArmKey>(_store.Get(ArmKeyKey), ignoreCase: true, out var k) && Enum.IsDefined(k) ? k : ArmKey.Shift;
+        set
+        {
+            var before = ToolsKey;
+            _store.Set(ArmKeyKey, value.ToString());
+            // The arming key cannot also be the tools key: keep the pair valid (Ctrl arming means Shift for tools, and back).
+            var tools = ToolsKeys.Normalize(value, before);
+            if (tools != before) _store.Set(ToolsKeyKey, tools.ToString());
+            Changed?.Invoke(ArmKeyKey);
+            if (tools != before) Changed?.Invoke(ToolsKeyKey);
+        }
+    }
+
+    /// <summary>
+    /// The global hotkey for "convert the selection in File Explorer", or null for none. Default Ctrl+Alt+Shift+Space (see <see cref="HotkeyConflicts"/>).
+    /// An unreadable stored value counts as the default.
+    /// </summary>
+    public HotkeySpec? Hotkey
+    {
+        get => HotkeySpec.FromSetting(_store.Get(HotkeyKey));
+        set
+        {
+            _store.Set(HotkeyKey, HotkeySpec.ToSetting(value));
+            Changed?.Invoke(HotkeyKey);
         }
     }
 

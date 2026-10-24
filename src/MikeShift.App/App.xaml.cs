@@ -20,6 +20,7 @@ public partial class App : Application
     private readonly bool _smokeTest;
     private readonly UnhandledPolicy _unhandled = new();
     private DragCoordinator? _drag;
+    private Selection.ExplorerHotkey? _explorerHotkey; // X2
 
     public App()
     {
@@ -66,6 +67,9 @@ public partial class App : Application
         // W3 wiring: the input monitor + wheel thread, and the click-mode wheel for Convert Files….
         _drag = DragCoordinator.Start(Services, installHooks: !DevSwitches.NoHooks);
         if (_drag is not null) Tray.ConvertFilesRequested += _drag.ShowClickMode;
+        // X2 (begin): the global hotkey that opens the click-mode wheel for the current File Explorer selection.
+        if (_drag is not null) _explorerHotkey = Selection.ExplorerHotkey.Start(Services, _drag.ShowClickMode);
+        // X2 (end)
         // Crop/Trim editors for interactive actions; dev flags `--crop <img>` / `--trim <media>` open them directly.
         Editors.EditorRegistration.Register(Services.Interaction);
         Editors.EditorRegistration.TryHandleDevArgs(DevSwitches.Args);
@@ -126,6 +130,8 @@ public partial class App : Application
     /// </summary>
     private async Task ShutDownServicesAsync()
     {
+        _explorerHotkey?.Dispose(); // X2
+        _explorerHotkey = null;     // X2
         _drag?.Dispose();
         _drag = null;
         Tray.Dispose();
