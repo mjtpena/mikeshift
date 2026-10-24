@@ -18,12 +18,14 @@ public enum DialogCommand
     ShowInFolder,
     /// <summary>Quits MikeShift.</summary>
     QuitApp,
+    /// <summary>Opens <see cref="DialogButton.Path"/> (an <c>ms-windows-store://</c> link) in the Microsoft Store.</summary>
+    OpenStore,
 }
 
 /// <summary>One dialog button.</summary>
 /// <param name="Label">Button text.</param>
 /// <param name="Command">What it does.</param>
-/// <param name="Path">For <see cref="DialogCommand.ShowInFolder"/>: the file or folder to reveal.</param>
+/// <param name="Path">For <see cref="DialogCommand.ShowInFolder"/>: the file or folder to reveal; for <see cref="DialogCommand.OpenStore"/>: the Store link.</param>
 public sealed record DialogButton(string Label, DialogCommand Command, string? Path = null);
 
 /// <summary>One line of a dialog's list: a file and why it failed.</summary>

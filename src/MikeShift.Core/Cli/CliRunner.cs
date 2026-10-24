@@ -76,6 +76,14 @@ public static class CliRunner
         }
 
         var action = ActionCatalog.Find(actions, cmd.Title!);
+        if (action is null && actions.FirstOrDefault(a => a.OpensUri is not null) is { } getCodec)
+        {
+            // HEIC/AVIF photos Windows cannot open yet: the one useful answer is which extension to install, not a list of actions.
+            var why = await getCodec.Run(paths, new ActionContext(caps, null), ct).ConfigureAwait(false);
+            stderr.WriteLine("error: " + (why.AllFailedMessage ?? "Windows can't open these files yet."));
+            stderr.WriteLine("note: " + getCodec.OpensUri);
+            return ExitError;
+        }
         if (action is null)
         {
             stderr.WriteLine($"error: unknown action \"{cmd.Title}\" for these files. Available: " +

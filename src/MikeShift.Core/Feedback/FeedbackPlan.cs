@@ -146,12 +146,12 @@ public sealed record FeedbackPlan(ToastContent? Toast, DialogContent? Dialog, bo
         if (result.AllFailed)
         {
             var title = AllFailedTitle(result);
+            var buttons = ButtonsFor(result);
             if (result.Total <= 1)
                 return new DialogContent(title, FeedbackCopy.WithHint(FeedbackCopy.ShortReason(result.Failures[0].Message)),
-                    [], null, DialogSeverity.Error, [new DialogButton("Close", DialogCommand.Close)]);
+                    [], null, DialogSeverity.Error, buttons);
 
-            return new DialogContent(title, null, ItemsFor(result), null, DialogSeverity.Error,
-                [new DialogButton("Close", DialogCommand.Close)]);
+            return new DialogContent(title, null, ItemsFor(result), null, DialogSeverity.Error, buttons);
         }
 
         if (result.PartialFailure)
@@ -167,6 +167,14 @@ public sealed record FeedbackPlan(ToastContent? Toast, DialogContent? Dialog, bo
         }
 
         return null;
+    }
+
+    /// <summary>"Close", preceded by "Get the extension" (the Microsoft Store page) when a failure is a HEIC/AVIF photo Windows cannot open yet.</summary>
+    private static List<DialogButton> ButtonsFor(ActionResult result)
+    {
+        var close = new DialogButton("Close", DialogCommand.Close);
+        var store = result.Failures.Select(f => CodecHelp.StoreUriInMessage(f.Message)).FirstOrDefault(u => u is not null);
+        return store is null ? [close] : [new DialogButton("Get the extension", DialogCommand.OpenStore, store), close];
     }
 
     private static List<DialogItem> ItemsFor(ActionResult result)

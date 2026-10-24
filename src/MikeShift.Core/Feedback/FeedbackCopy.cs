@@ -15,6 +15,18 @@ public static partial class FeedbackCopy
     /// <summary>Tray tooltip (T-04).</summary>
     public const string TrayTooltip = "MikeShift - Shift-drag files to convert";
 
+    /// <summary>Tray tooltip for the chosen arming key: "MikeShift - Ctrl-drag files to convert".</summary>
+    public static string TrayTooltipFor(Interaction.ArmKey key) => $"{AppName} - {Interaction.ToolsKeys.Label(key)}-drag files to convert";
+
+    /// <summary>The one-line gesture hint in the tray menu header: "Shift-drag files to convert".</summary>
+    public static string TrayHintFor(Interaction.ArmKey key) => $"{Interaction.ToolsKeys.Label(key)}-drag files to convert";
+
+    /// <summary>The reassurance every onboarding surface repeats.</summary>
+    public const string OriginalsSafe = "Your originals are never moved or changed. Press Esc to cancel.";
+
+    /// <summary>Toast when the hotkey is pressed without anything selected in File Explorer.</summary>
+    public const string SelectFilesFirst = "Select files in File Explorer first";
+
     /// <summary>Toast: the files were all in the target format already.</summary>
     public const string AlreadyThatFormat = "These files are already in that format";
 
