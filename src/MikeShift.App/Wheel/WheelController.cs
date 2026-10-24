@@ -40,7 +40,7 @@ internal sealed record WheelSnapshot(
 }
 
 /// <summary>
-/// Everything that happens to the wheel, on the wheel thread (PLAN §3.1, §3.2): it owns the window, the renderer, the models, the animation clock,
+/// Everything that happens to the wheel, on the wheel thread: it owns the window, the renderer, the models, the animation clock,
 /// the <see cref="DragSession"/> and the OLE entry points called by <see cref="WheelDropTarget"/>. Nothing in here may throw into a native
 /// caller: every public entry point is wrapped by its caller (the loop, the window procedure or the drop target).
 /// </summary>
@@ -167,7 +167,7 @@ internal sealed class WheelController : IDisposable
 
     /// <summary>
     /// Draws a throw-away frame with glass, shadow, gradients, text and the icon font so the first real show does not pay for shader
-    /// compilation, font loading or geometry building (PLAN §6 goal: wheel visible in &lt; 100 ms).
+    /// compilation, font loading or geometry building (the goal is a wheel visible in under 100 ms).
     /// </summary>
     public void Warmup()
     {
@@ -531,7 +531,7 @@ internal sealed class WheelController : IDisposable
         if (_timerResolutionUsers > 0 && --_timerResolutionUsers == 0) PInvoke.timeEndPeriod(1);
     }
 
-    // ------------------------------------------------------------------ the zero-move nudge (PLAN §3.1 item 2)
+    // ------------------------------------------------------------------ the zero-move nudge
 
     private static unsafe void SendRelativeMove(int dx, int dy)
     {

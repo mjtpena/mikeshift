@@ -2,7 +2,7 @@ namespace MikeShift.Core;
 
 /// <summary>
 /// The kind of thing a selected path is. Decides which action list the wheel shows
-/// (PLAN §1.1 multi-select rules, §1.2 feature matrix).
+///.
 /// </summary>
 public enum Category
 {

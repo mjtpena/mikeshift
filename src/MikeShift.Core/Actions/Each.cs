@@ -1,7 +1,7 @@
 namespace MikeShift.Core.Actions;
 
 /// <summary>
-/// The per-file batch loop shared by every non-batch action (PLAN §1.1 Batch):
+/// The per-file batch loop shared by every non-batch action:
 /// sequential; one failure does not stop the rest; files already in the target format are skipped and counted
 /// separately; cancellation keeps earlier outputs; the Downloads fallback is detected per output.
 /// </summary>

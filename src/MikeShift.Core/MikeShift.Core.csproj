@@ -8,8 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Every converter package depends on these; they are all referenced up front so that
-         W2a-W2d never have to edit this file. -->
+    <!-- Packages used by the converters. -->
     <PackageReference Include="PDFsharp" />
     <PackageReference Include="PdfPig" />
     <PackageReference Include="DocumentFormat.OpenXml" />

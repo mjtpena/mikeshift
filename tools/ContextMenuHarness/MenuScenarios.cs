@@ -171,7 +171,7 @@ internal static class MenuScenarios
         if (entry is null) return;
         var items = OpenSubmenu(entry, "Zip");
         Console.WriteLine("submenu: " + string.Join(" | ", items));
-        // Explorer builds the menu from the first 16 items of a big selection (see ARCHITECTURE.md), so the entries are those of 16 JPEGs.
+        // Explorer builds the menu from the first 16 items of a big selection (see docs/developer/architecture.md), so the entries are those of 16 JPEGs.
         Check(items.Contains("Convert to PNG") && items.Contains("Merge PDF") && items.Contains("Zip") && items.Contains("More options…"), "600 JPEGs: the image entries, Zip and More options…");
         Shot("modern-menu-600-files.png");
 

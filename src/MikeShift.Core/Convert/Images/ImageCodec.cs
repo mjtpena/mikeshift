@@ -47,7 +47,7 @@ internal sealed class DecodedImage
 /// </summary>
 internal static class ImageCodec
 {
-    /// <summary>The 200-megapixel guard from PLAN §1.2.</summary>
+    /// <summary>The 200-megapixel guard: larger pictures are refused instead of exhausting memory.</summary>
     public const long MaxPixels = 200_000_000;
 
     // ------------------------------------------------------------------ sniffing

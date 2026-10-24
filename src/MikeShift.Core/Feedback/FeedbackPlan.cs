@@ -4,7 +4,7 @@ namespace MikeShift.Core.Feedback;
 
 /// <summary>
 /// What the App should tell the user when a job finishes: an optional HUD toast, an optional dialog, and whether to play the chime.
-/// Pure so it can be unit-tested without WinUI (PLAN §1.1 feedback, §3.3; wording per the UX review's "Proposed copy").
+/// Pure so it can be unit-tested without WinUI.
 /// </summary>
 /// <param name="Toast">Content for the HUD toast, or null to show none (and hide the "working" toast).</param>
 /// <param name="Dialog">Failure dialog, or null.</param>

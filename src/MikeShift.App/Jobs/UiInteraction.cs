@@ -7,9 +7,8 @@ namespace MikeShift.App.Jobs;
 /// <summary>
 /// The App's <see cref="IInteraction"/>: how Crop and Trim ask the user for input.
 /// <para>
-/// W2f ships a placeholder: until an editor is attached the methods return null (cancelled) after showing a
-/// "not available yet" toast. W4a plugs the real editors in by setting <see cref="CropEditor"/> and
-/// <see cref="TrimEditor"/> (from App startup code). The handlers are called on a thread-pool thread because actions run
+/// Until an editor is attached the methods return null (cancelled) after showing a "not available yet" toast.
+/// App startup attaches the real editors by setting <see cref="CropEditor"/> and <see cref="TrimEditor"/>. The handlers are called on a thread-pool thread because actions run
 /// there; use <see cref="OnUiThreadAsync{T}"/> to open XAML windows.
 /// </para>
 /// </summary>
@@ -24,10 +23,10 @@ public sealed class UiInteraction : IInteraction
         _hud = hud;
     }
 
-    /// <summary>Shows the crop editor for an image path and returns the decision (null = cancelled). Set by W4a.</summary>
+    /// <summary>Shows the crop editor for an image path and returns the decision (null = cancelled). Set at startup.</summary>
     public Func<string, CancellationToken, Task<CropChoice?>>? CropEditor { get; set; }
 
-    /// <summary>Shows the trim dialog for a media path and returns the range (null = cancelled). Set by W4a.</summary>
+    /// <summary>Shows the trim dialog for a media path and returns the range (null = cancelled). Set at startup.</summary>
     public Func<string, CancellationToken, Task<TimeRange?>>? TrimEditor { get; set; }
 
     public Task<CropChoice?> ChooseCropAsync(string path, CancellationToken ct)
@@ -65,7 +64,7 @@ public sealed class UiInteraction : IInteraction
 
 /// <summary>
 /// Wraps an <see cref="IInteraction"/> and reports when the user accepted an editor, so the runner can show the
-/// "working" toast only after the editor closed (PLAN §3.3).
+/// "working" toast only after the editor closed.
 /// </summary>
 internal sealed class NotifyingInteraction : IInteraction
 {

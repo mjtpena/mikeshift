@@ -3,7 +3,7 @@ using MikeShift.Core.Pdf;
 namespace MikeShift.Core.Actions.Catalog;
 
 /// <summary>
-/// The PDF category's actions, in wheel order (PLAN §1.2). OWNED BY W2b (PDF).
+/// The PDF category's actions, in wheel order.
 /// Titles are unique within the list and double as CLI names.
 /// </summary>
 public static class PdfActions

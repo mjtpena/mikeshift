@@ -4,8 +4,7 @@ using MikeShift.Core.Pdf;
 namespace MikeShift.Core.Actions.Catalog;
 
 /// <summary>
-/// The Image category's actions, in wheel order (PLAN §1.2). OWNED BY W2a (Images), except the "PDF" and "Merge PDF"
-/// entries, whose lambdas call <see cref="PdfConverter"/> (W2b may adjust those two calls).
+/// The Image category's actions, in wheel order. The "PDF" and "Merge PDF" entries call <see cref="PdfConverter"/>.
 /// Titles are unique within the list and double as CLI names.
 /// </summary>
 public static class ImageActions

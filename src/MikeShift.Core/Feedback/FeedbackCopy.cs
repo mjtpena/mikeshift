@@ -4,7 +4,7 @@ using MikeShift.Core.Actions;
 namespace MikeShift.Core.Feedback;
 
 /// <summary>
-/// The words MikeShift uses outside the wheel (UX review "Proposed copy", X-01): sentence case, gerunds for progress, "couldn't"
+/// The words MikeShift uses outside the wheel sentence case, gerunds for progress, "couldn't"
 /// for failures. One place so the toast, dialogs and the tests agree.
 /// </summary>
 public static partial class FeedbackCopy

@@ -27,7 +27,7 @@ public sealed class TrayHeader(string title, string hint, string iconUri)
 }
 
 /// <summary>
-/// The notification-area icon and its menu (PLAN §1.1, UX review T-01 to T-05): a Fluent flyout (a WinUI <c>MenuFlyout</c> opened by
+/// The notification-area icon and its menu: a Fluent flyout (a WinUI <c>MenuFlyout</c> opened by
 /// <see cref="TrayFlyoutHost"/>, so it follows light, dark and high contrast and has rounded corners and icons) with a header,
 /// Convert files…, Open at login, Settings, How it works, Check for updates and Exit. The check mark and the "last converted" entry
 /// are updated in place when their state changes. Left click goes straight to Convert files…, right click
@@ -57,7 +57,7 @@ public sealed class TrayController : IDisposable
     public TrayController(AppServices services) => _services = services;
 
     /// <summary>
-    /// Convert files… picked these files. W3 attaches a handler that opens the wheel at the screen centre in click mode.
+    /// Convert files… picked these files. The wheel attaches a handler that opens the wheel at the screen centre in click mode.
     /// While no handler is attached the temporary action picker is shown instead.
     /// </summary>
     public event Action<IReadOnlyList<string>>? ConvertFilesRequested;
@@ -266,7 +266,7 @@ public sealed class TrayController : IDisposable
 
     private Microsoft.UI.Dispatching.DispatcherQueueTimer? _lastTimer;
 
-    /// <summary>Shows "Show photo.png in folder" for a minute after a job wrote something (UX review X-04), then hides it again.</summary>
+    /// <summary>Shows "Show photo.png in folder" for a minute after a job wrote something, then hides it again.</summary>
     private void UpdateLastItem()
     {
         _lastPath = LastConverted();
@@ -299,7 +299,7 @@ public sealed class TrayController : IDisposable
 
     private static FontIcon Glyph(string glyph) => new() { Glyph = glyph, FontFamily = new FontFamily(IconFont) };
 
-    /// <summary>The first output of the last job, for one minute after it finished (UX review X-04).</summary>
+    /// <summary>The first output of the last job, for one minute after it finished.</summary>
     private string? LastConverted()
     {
         var finished = _services.Jobs.LastFinishedAt;

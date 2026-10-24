@@ -4,7 +4,7 @@ using MikeShift.Core.Actions;
 namespace MikeShift.Core.Cli;
 
 /// <summary>
-/// The <c>mikeshift</c> command line (PLAN §3.6): the same catalog and converters as the wheel, without the UI.
+/// The <c>mikeshift</c> command line: the same catalog and converters as the wheel, without the UI.
 /// <code>
 /// mikeshift [--use-word] --list FILES...                                 comma-separated action titles, exit 0
 /// mikeshift [--use-word] --run TITLE [--range m:ss-m:ss] [--crop X,Y,W,H[@OWxOH]] FILES...   prints each output path, exit 0

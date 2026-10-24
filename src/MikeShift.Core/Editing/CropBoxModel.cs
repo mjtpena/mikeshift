@@ -30,7 +30,7 @@ public enum CropHandle
 }
 
 /// <summary>
-/// The state and rules of the crop editor, free of any UI (PLAN §3.5): image size, preview scale, the crop rectangle in
+/// The state and rules of the crop editor, free of any UI: image size, preview scale, the crop rectangle in
 /// image pixels (top-left origin, in the upright orientation), aspect presets, drag handles with clamping, and the
 /// output size with the scale percentage.
 /// <para>

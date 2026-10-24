@@ -6,7 +6,7 @@ using MikeShift.Core.Pdf;
 namespace MikeShift.Core.Documents;
 
 /// <summary>
-/// PDF writer on PDFsharp (PLAN §3.4): own line breaker, 54 pt margins, black text, bold larger headings, bullets and numbers,
+/// PDF writer on PDFsharp: own line breaker, 54 pt margins, black text, bold larger headings, bullets and numbers,
 /// simple ruled tables, hard page breaks, A4 (metric regions) or Letter. Right-to-left lines are reordered visually.
 /// </summary>
 public static class PdfDocWriter

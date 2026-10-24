@@ -49,7 +49,7 @@ public sealed record WheelCallouts(CalloutContent? Main, CalloutContent? Seconda
     public static WheelCallouts None { get; } = new((CalloutContent?)null);
 }
 
-/// <summary>Chooses the callout side and the content (UX review W-01, W-02, W-04, W-09, W-11).</summary>
+/// <summary>Chooses the callout side and the content.</summary>
 public static class WheelCallout
 {
     /// <summary>The "Info" glyph (Segoe Fluent Icons E946) of the caution pill and the hub of a virtual-file drag.</summary>

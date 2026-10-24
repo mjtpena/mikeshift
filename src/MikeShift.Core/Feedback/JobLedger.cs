@@ -4,8 +4,7 @@ namespace MikeShift.Core.Feedback;
 
 /// <summary>
 /// Bookkeeping for the App's job runner: ids, how many jobs are running, and what the last finished job produced
-/// (<see cref="LastOutputs"/>/<see cref="LastFinishedAt"/> feed the Shift-click "exclude previously produced files" rule,
-/// PLAN §5.3 item 3). Thread-safe; knows nothing about UI.
+/// (<see cref="LastOutputs"/>/<see cref="LastFinishedAt"/> feed the Shift-click "exclude previously produced files" rule). Thread-safe; knows nothing about UI.
 /// </summary>
 public sealed class JobLedger
 {

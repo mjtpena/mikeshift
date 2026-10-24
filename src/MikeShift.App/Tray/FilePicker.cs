@@ -12,14 +12,14 @@ using Windows.Win32.UI.WindowsAndMessaging;
 namespace MikeShift.App.Tray;
 
 /// <summary>
-/// The Win32 <c>IFileOpenDialog</c> behind "Convert files…": multi-select, real file-system paths only (UX review C-01).
+/// The Win32 <c>IFileOpenDialog</c> behind "Convert files…": multi-select, real file-system paths only.
 /// <para>
 /// It says what to do ("Choose files to convert", button "Choose"), offers a type filter (supported files, images, videos, audio, PDF and
 /// documents, all files), starts in Pictures the first time and then wherever it was last used (a client GUID makes the shell remember
 /// the folder), and opens on the monitor the user is working on: its owner is an invisible window over that monitor's work area, so
 /// the dialog is centred there instead of on the primary monitor.
 /// </para>
-/// Limitation (PLAN §1.1 asks for files AND folders): the common item dialog cannot select files and folders in one go
+/// Limitation: the common item dialog cannot select files and folders in one go
 /// (<c>FOS_PICKFOLDERS</c> turns files off), so Convert files… offers files only. Folders are converted/zipped by Shift-dragging them
 /// in Explorer.
 /// </summary>

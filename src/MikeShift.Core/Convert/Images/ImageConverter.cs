@@ -17,7 +17,7 @@ public enum ImageFormat
 }
 
 /// <summary>
-/// Image conversions (PLAN §1.2 Image rows, §3.4 Images). Decoding is WIC (SkiaSharp fallback); every result is upright
+/// Image conversions. Decoding is WIC (SkiaSharp fallback); every result is upright
 /// pixels (EXIF orientation baked in, so the orientation tag is no longer needed), written through
 /// <see cref="Naming.CommitStreamAsync"/>.
 /// <para>Every method returns the path of the file it wrote, throws <see cref="ConversionException"/> with a user-facing
@@ -25,7 +25,7 @@ public enum ImageFormat
 /// </summary>
 public static class ImageConverter
 {
-    // Naming suffixes (PLAN §1.1).
+    // Naming suffixes.
     private const string CompressedSuffix = " compressed";
     private const string CroppedSuffix = " cropped";
     private const string CleanSuffix = " clean";

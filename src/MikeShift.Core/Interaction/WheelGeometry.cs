@@ -27,7 +27,7 @@ public readonly record struct SegmentPath(
 }
 
 /// <summary>
-/// The wheel's geometry (PLAN §3.2) and hit-testing (PLAN §3.1 item 6). Constants are logical px (DIPs); hit-testing takes
+/// The wheel's geometry and hit-testing. Constants are logical px (DIPs); hit-testing takes
 /// physical pixels and a DPI scale (1.0 = 96 dpi). Angles are radians measured <b>clockwise from 12 o'clock</b>; tile
 /// <c>i</c> of <c>n</c> spans <c>[i·2π/n, (i+1)·2π/n)</c>, so tile 0 starts at 12 o'clock and its centre direction is half a step later.
 /// </summary>

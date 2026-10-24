@@ -5,7 +5,7 @@ using static MikeShift.Core.Tests.Images.ImageTestUtil;
 
 namespace MikeShift.Core.Tests.Images;
 
-/// <summary>Tool page: Compress, Resize 50%, Crop, Strip EXIF (PLAN §5.1 Images).</summary>
+/// <summary>Tool page: Compress, Resize 50%, Crop, Strip EXIF.</summary>
 public class ImageToolTests
 {
     private static readonly Capabilities NoHeic = Capabilities.All with { HeifEncode = false };

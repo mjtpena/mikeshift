@@ -3,7 +3,7 @@ using MikeShift.Core.Documents;
 namespace MikeShift.Core.Actions.Catalog;
 
 /// <summary>
-/// The Document category's actions, in wheel order (PLAN §1.2). OWNED BY W2d (Documents).
+/// The Document category's actions, in wheel order.
 /// There are no tools for documents (only Zip, which the catalog appends). Whether a given format is offered for a
 /// concrete selection (pictures allow TXT only, legacy .doc needs Word) is decided by <see cref="DocumentProbe.CanConvertTo"/>.
 /// Titles are unique within the list and double as CLI names.

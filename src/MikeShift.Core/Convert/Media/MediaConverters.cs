@@ -25,14 +25,14 @@ public enum AudioFormat
 }
 
 /// <summary>
-/// Video conversions (PLAN §1.2 Video rows). Every method returns the path it wrote via <c>Naming.CommitAsync</c> and
+/// Video conversions. Every method returns the path it wrote via <c>Naming.CommitAsync</c> and
 /// throws <see cref="ConversionException"/> with a user-facing message for expected failures.
 /// </summary>
 /// <remarks>
 /// MP4/M4V re-wrap H.264/AAC sources losslessly through <see cref="StreamCopy"/> (source reader -> sink writer) and fall back to
 /// a full <c>MediaTranscoder</c> transcode for everything else (HEVC, MPEG-2, WMV...) or if the copy fails. WMV, GIF, Compress
-/// and Trim always re-encode. Deviation from PLAN: Trim is not a stream copy, because a copy can only cut on key frames and the
-/// trim dialog promises frame-accurate ranges (documented in LIMITS.md).
+/// and Trim always re-encode. Trim is not a stream copy, because a copy can only cut on key frames and the
+/// trim dialog promises frame-accurate ranges (see docs/limitations.md).
 /// </remarks>
 public static class VideoConverter
 {
@@ -133,7 +133,7 @@ public static class VideoConverter
 }
 
 /// <summary>
-/// Audio conversions (PLAN §1.2 Audio rows, §3.4 Media). Same rules as <see cref="VideoConverter"/>. WAV and AIFF are
+/// Audio conversions. Same rules as <see cref="VideoConverter"/>. WAV and AIFF are
 /// written by hand from PCM (so AIFF in/out works everywhere); M4A, FLAC and MP3 go through <c>MediaTranscoder</c>.
 /// </summary>
 public static class AudioConverter

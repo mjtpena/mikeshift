@@ -38,7 +38,7 @@ public sealed record DialogItem(string Name, string? Reason)
 }
 
 /// <summary>
-/// Everything a Fluent dialog needs (UX review D-01 to D-03): title, intro text, a list, a footer and the buttons. The last button
+/// Everything a Fluent dialog needs: title, intro text, a list, a footer and the buttons. The last button
 /// is the default one (Enter), and Esc always closes.
 /// </summary>
 /// <param name="Title">Heading, e.g. "Couldn't convert corrupt.pdf".</param>

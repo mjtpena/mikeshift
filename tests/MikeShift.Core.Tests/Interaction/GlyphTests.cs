@@ -3,7 +3,7 @@ using SkiaSharp;
 
 namespace MikeShift.Core.Tests.Interaction;
 
-/// <summary>UX review W-06 (category glyphs on format tiles) and W-07 (glyph semantics): code points exist in Segoe Fluent Icons and mean what they should.</summary>
+/// <summary>Category glyphs on format tiles and their meaning: code points exist in Segoe Fluent Icons and mean what they should.</summary>
 public class GlyphTests
 {
     private static readonly string[] AllFormatTitles =

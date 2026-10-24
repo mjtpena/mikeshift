@@ -2,7 +2,7 @@ using System.IO.Compression;
 
 namespace MikeShift.Cli.Tests;
 
-/// <summary>Zip end to end through the real executable (the only action W1 implements itself).</summary>
+/// <summary>Zip end to end through the real executable (the one action that needs no codec).</summary>
 public class CliZipTests
 {
     [Fact]

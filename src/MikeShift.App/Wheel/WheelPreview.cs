@@ -290,7 +290,7 @@ internal static class WheelPreview
             "bright" => (new SKColor(250, 244, 230), new SKColor(214, 232, 250), new SKColor(40, 40, 48)),
             "dark" => (new SKColor(18, 22, 34), new SKColor(40, 28, 60), new SKColor(215, 215, 225)),
             "busy" => (new SKColor(30, 120, 200), new SKColor(240, 190, 60), new SKColor(250, 250, 250)),
-            _ => (new SKColor(196, 124, 52), new SKColor(120, 80, 44), new SKColor(255, 244, 224)),   // warm: the brown/olive wallpaper of the review
+            _ => (new SKColor(196, 124, 52), new SKColor(120, 80, 44), new SKColor(255, 244, 224)),   // warm: a brown/olive wallpaper
         };
         using (var paint = new SKPaint { IsAntialias = true })
         {

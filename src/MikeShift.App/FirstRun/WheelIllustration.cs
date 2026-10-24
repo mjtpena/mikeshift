@@ -11,7 +11,7 @@ using Path = Microsoft.UI.Xaml.Shapes.Path;
 namespace MikeShift.App.FirstRun;
 
 /// <summary>
-/// A picture of the wheel for the welcome window (UX review F-01): six format tiles around a hub, one highlighted, and a file being
+/// A picture of the wheel for the welcome window: six format tiles around a hub, one highlighted, and a file being
 /// dragged onto it. Drawn from XAML shapes with theme brushes, so it is sharp at any scale and follows light, dark and high contrast.
 /// It illustrates the idea; the real wheel is drawn by Win2D.
 /// </summary>

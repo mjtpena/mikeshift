@@ -13,7 +13,7 @@ using Windows.Win32.Foundation;
 namespace MikeShift.App.Hud;
 
 /// <summary>
-/// A Fluent failure/warning dialog (UX review D-01 to D-03): a real window laid out like a ContentDialog (severity icon, heading,
+/// A Fluent failure/warning dialog: a real window laid out like a ContentDialog (severity icon, heading,
 /// message, list, footer, button bar). Not modal and not blocking: the job runner shows it and carries on. It is topmost and is shown
 /// without taking focus (so a keystroke meant for Explorer never lands on a button) unless the user has been idle for a moment.
 /// Esc closes; Enter presses the default (last, accent) button.

@@ -1,7 +1,7 @@
 namespace MikeShift.Cli.Tests;
 
 /// <summary>
-/// PLAN Phase 6 through the real executable: truncated, misnamed and empty inputs must end in a clean exit code
+/// Hardening through the real executable: truncated, misnamed and empty inputs must end in a clean exit code
 /// (0 or 1, never a crash code), an <c>error:</c> line on failure, no hang, no stray file next to the original, and an untouched original.
 /// The exhaustive matrix (every offered action on every corrupt input) is <c>Hardening.HardeningTests</c> in Core.Tests, in-process.
 /// </summary>

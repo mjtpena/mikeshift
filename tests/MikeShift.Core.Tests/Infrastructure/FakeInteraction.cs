@@ -6,7 +6,7 @@ namespace MikeShift.Core.Tests.Infrastructure;
 public sealed class FakeInteraction(CropChoice? crop = null, TimeRange? range = null) : IInteraction
 {
     public int CropRequests { get; private set; }
-    public int RangeRequests { get; private set; }
+    public int RangeCalls { get; private set; }
     public List<string> Asked { get; } = [];
 
     public Task<CropChoice?> ChooseCropAsync(string path, CancellationToken ct)
@@ -18,7 +18,7 @@ public sealed class FakeInteraction(CropChoice? crop = null, TimeRange? range = 
 
     public Task<TimeRange?> ChooseRangeAsync(string path, CancellationToken ct)
     {
-        RangeRequests++;
+        RangeCalls++;
         Asked.Add(path);
         return Task.FromResult(range);
     }

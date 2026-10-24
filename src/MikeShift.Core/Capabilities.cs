@@ -11,43 +11,43 @@ namespace MikeShift.Core;
 /// </summary>
 public sealed record Capabilities
 {
-    /// <summary>WIC can create a HEIF encoder (Store "HEIF Image Extensions" + HEVC extension). Probed by W2a.</summary>
+    /// <summary>WIC can create a HEIF encoder (Store "HEIF Image Extensions" + HEVC extension).</summary>
     public bool HeifEncode { get; init; }
 
     /// <summary>
     /// WIC has a decoder for HEIC/HEIF (the free Store "HEIF Image Extensions" are installed). Reading HEIC photos also needs an HEVC
-    /// decoder (<see cref="HevcDecode"/>). Probed by W2a.
+    /// decoder (<see cref="HevcDecode"/>).
     /// </summary>
     public bool HeifDecode { get; init; }
 
-    /// <summary>WebP can be encoded (SkiaSharp is present and loads). Probed by W2a.</summary>
+    /// <summary>WebP can be encoded (SkiaSharp is present and loads).</summary>
     public bool WebpEncode { get; init; }
 
-    /// <summary>AVIF input can be decoded (free AV1 extension). Informational; AVIF output is never offered. Probed by W2a.</summary>
+    /// <summary>AVIF input can be decoded (free AV1 extension). Informational; AVIF output is never offered.</summary>
     public bool AvifDecode { get; init; }
 
-    /// <summary>The Media Foundation MP3 encoder MFT exists. Probed by W2c.</summary>
+    /// <summary>The Media Foundation MP3 encoder MFT exists.</summary>
     public bool Mp3Encode { get; init; }
 
-    /// <summary>The Media Foundation FLAC encoder MFT exists (Win10 1703+). Probed by W2c.</summary>
+    /// <summary>The Media Foundation FLAC encoder MFT exists (Win10 1703+).</summary>
     public bool FlacEncode { get; init; }
 
-    /// <summary>The H.264 encoder MFT exists. Probed by W2c.</summary>
+    /// <summary>The H.264 encoder MFT exists.</summary>
     public bool H264Encode { get; init; }
 
-    /// <summary>The AAC encoder MFT exists. Probed by W2c.</summary>
+    /// <summary>The AAC encoder MFT exists.</summary>
     public bool AacEncode { get; init; }
 
-    /// <summary>An HEVC decoder MFT exists. Probed by W2c.</summary>
+    /// <summary>An HEVC decoder MFT exists.</summary>
     public bool HevcDecode { get; init; }
 
-    /// <summary>A VP9 decoder MFT exists. Probed by W2c.</summary>
+    /// <summary>A VP9 decoder MFT exists.</summary>
     public bool Vp9Decode { get; init; }
 
-    /// <summary>An AV1 decoder MFT exists. Probed by W2c.</summary>
+    /// <summary>An AV1 decoder MFT exists.</summary>
     public bool Av1Decode { get; init; }
 
-    /// <summary>Media Foundation can open <c>.webm</c> files. Probed by W2c.</summary>
+    /// <summary>Media Foundation can open <c>.webm</c> files.</summary>
     public bool WebmOpen { get; init; }
 
     /// <summary>Microsoft Word is installed (<c>HKCR\Word.Application</c>). Informational: MikeShift only drives Word when <see cref="WordCom"/> is true.</summary>
@@ -133,8 +133,8 @@ public sealed record Capabilities
     public static Capabilities Quick() => WithDetectedWord(new Capabilities());
 
     /// <summary>
-    /// Probes this machine now (uncached). Composes <see cref="ImageProbe.ProbeCapabilities"/> (W2a),
-    /// <see cref="MediaProbe.ProbeCapabilities"/> (W2c) and the Word COM check (W1). Never throws:
+    /// Probes this machine now (uncached). Composes <see cref="ImageProbe.ProbeCapabilities"/>,
+    /// <see cref="MediaProbe.ProbeCapabilities"/> and the Word COM check. Never throws:
     /// a probe that fails leaves its flags false.
     /// </summary>
     public static Capabilities Probe()

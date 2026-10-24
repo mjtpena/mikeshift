@@ -10,7 +10,7 @@ namespace IconGen;
 /// Writes (relative to the repo root):
 ///   src/MikeShift.App/Assets/  Square44x44Logo / Square150x150Logo / Wide310x150Logo / StoreLogo / SplashScreen (scale and targetsize variants),
 ///                              MikeShift.ico (colour app icon), tray-dark-taskbar.ico (white glyph), tray-light-taskbar.ico (dark glyph)
-///   docs/screenshots/brand/icon-sheet.png   the legibility preview (all sizes on light and dark backgrounds)
+///   docs/images/icon-sheet.png             the legibility preview (all sizes on light and dark backgrounds)
 /// The output is deterministic, so re-running it on an unchanged SVG leaves git clean.
 /// </summary>
 internal static class Program
@@ -20,7 +20,7 @@ internal static class Program
         var repo = FindRepoRoot(args);
         var svgPath = Path.Combine(repo, "assets", "brand", "mikeshift.svg");
         var assets = Path.Combine(repo, "src", "MikeShift.App", "Assets");
-        var sheetPath = Path.Combine(repo, "docs", "screenshots", "brand", "icon-sheet.png");
+        var sheetPath = Path.Combine(repo, "docs", "images", "icon-sheet.png");
 
         var mark = Mark.Load(svgPath);
         Directory.CreateDirectory(assets);

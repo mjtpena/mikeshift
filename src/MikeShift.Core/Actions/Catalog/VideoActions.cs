@@ -3,7 +3,7 @@ using MikeShift.Core.Media;
 namespace MikeShift.Core.Actions.Catalog;
 
 /// <summary>
-/// The Video category's actions, in wheel order (PLAN §1.2). OWNED BY W2c (Media).
+/// The Video category's actions, in wheel order.
 /// MOV output is intentionally not offered (Media Foundation has no QuickTime muxer).
 /// Titles are unique within the list and double as CLI names.
 /// </summary>

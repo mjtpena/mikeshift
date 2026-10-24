@@ -6,7 +6,7 @@ namespace MikeShift.App;
 
 /// <summary>
 /// Custom entry point (<c>DISABLE_XAML_GENERATED_MAIN</c>) so a second launch can be redirected to the first
-/// instance before any XAML starts (PLAN §3.7). The running instance pops its tray menu at the cursor.
+/// instance before any XAML starts. The running instance pops its tray menu at the cursor.
 /// </summary>
 public static class Program
 {
@@ -19,7 +19,7 @@ public static class Program
     [STAThread]
     private static int Main(string[] args)
     {
-        // X1 Explorer right-click: COM starts `MikeShift.exe -Embedding` as the out-of-process context-menu server (no WinUI, no tray, no single-instance check).
+        // Explorer right-click: COM starts `MikeShift.exe -Embedding` as the out-of-process context-menu server (no WinUI, no tray, no single-instance check).
         if (Shell.ShellExtensionServer.IsEmbedding(args)) return Shell.ShellExtensionServer.Run();
 
         WinRT.ComWrappersSupport.InitializeComWrappers();

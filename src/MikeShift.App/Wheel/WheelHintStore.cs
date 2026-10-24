@@ -4,7 +4,7 @@ using MikeShift.Core.Interaction;
 namespace MikeShift.App.Wheel;
 
 /// <summary>
-/// Remembers how many wheels have been shown, so the key hints (UX review W-04) are drawn as loud keycaps for the first
+/// Remembers how many wheels have been shown, so the key hints are drawn as loud keycaps for the first
 /// <see cref="WheelHints.ProminentWheels"/> wheels and quietly afterwards. One integer in <c>wheel-hints.txt</c>
 /// in <see cref="AppData.Folder"/> (the dev switch <c>MIKESHIFT_HINTS_FILE</c> overrides it); deliberately not part of the preferences class. Past the limit nothing is read or
 /// written again. Every failure (read-only profile, damaged file) just means "assume the hints are still needed" or "forget the count".

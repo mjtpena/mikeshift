@@ -4,7 +4,7 @@ using Microsoft.UI.Xaml.Controls;
 namespace MikeShift.App.Settings;
 
 /// <summary>
-/// A Windows 11 settings card (UX review S-01): an optional icon, a title and a description on the left and the control on the right,
+/// A Windows 11 settings card: an optional icon, a title and a description on the left and the control on the right,
 /// on a 4 px rounded card surface. Hand-built (the template is the implicit style in <c>Styles/SettingsStyles.xaml</c>) so the app does not
 /// need the CommunityToolkit settings controls, which are built for Windows App SDK 1.x. The control inside is the card's
 /// <see cref="ContentControl.Content"/>.

@@ -3,7 +3,7 @@
   Two Application entries in one package:
     "App"  - the tray app (MikeShift.exe, GUI subsystem): Open at Login startup task.
     "Cli"  - the console CLI (MikeShift.Cli.exe), hidden from the Start menu, owner of the `mikeshift.exe` execution alias.
-  The CLI sits next to MikeShift.exe and runs on the same bundled .NET runtime (see "Packaging (W4b)" in MikeShift.App.csproj). It is called
+  The CLI sits next to MikeShift.exe and runs on the same bundled .NET runtime (see "Packaging" in MikeShift.App.csproj). It is called
   MikeShift.Cli.exe, not mikeshift.exe, because Windows file names are case-insensitive; the alias name is independent of the file name.
   Publisher must match the signing certificate: packaging\make-dev-cert.ps1 creates "CN=MikeShift Dev".
 -->
@@ -56,11 +56,11 @@
           <desktop:StartupTask TaskId="MikeShiftStartup" Enabled="false" DisplayName="MikeShift" />
         </desktop:Extension>
 
-        <!-- Explorer right-click entry "Convert with MikeShift" (X1; src\MikeShift.App\Shell, docs/ARCHITECTURE.md "Explorer right-click").
+        <!-- Explorer right-click entry "Convert with MikeShift" (src\MikeShift.App\Shell, docs/developer/architecture.md "Explorer right-click").
              The COM server is OUT of process: Windows starts `MikeShift.exe -Embedding` (Program.Main hands it to ShellExtensionServer, which
              never starts WinUI) the first time the menu is built, so no MikeShift or .NET code is loaded into explorer.exe.
              One class: the IExplorerCommand for the Windows 11 modern menu (and the one menu of Windows 10). Keep the CLSID in step with
-             ShellNames. Whether "Show more options" also lists it depends on the Windows build; see docs/LIMITS.md. -->
+             ShellNames. Whether "Show more options" also lists it depends on the Windows build; see docs/limitations.md. -->
         <com:Extension Category="windows.comServer">
           <com:ComServer>
             <com:ExeServer Executable="MikeShift.exe" Arguments="-Embedding" DisplayName="MikeShift Explorer integration">

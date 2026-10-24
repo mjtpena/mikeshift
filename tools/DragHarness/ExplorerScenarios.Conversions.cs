@@ -4,7 +4,7 @@ using System.Text.RegularExpressions;
 
 namespace DragHarness;
 
-internal static partial class Anger
+internal static partial class ExplorerScenarios
 {
     // ------------------------------------------------------------------ shared steps
 
@@ -59,22 +59,22 @@ internal static partial class Anger
         });
     }
 
-    private static void RegisterTests(Dictionary<string, Action> d)
+    private static void RegisterConversions(Dictionary<string, Action> d)
     {
-        d["x1a"] = () => ShiftDragJpg("x1a-shift", "Explorer: Shift-drag a JPG, drop on PNG", "", "shift", "x1a-shift-png");
-        d["x1b"] = () => ShiftDragJpg("x1b-ctrl", "Explorer: Ctrl-drag (Ctrl before the click) then Shift", "ctrl", "shift", "x1b-ctrl-png");
-        d["x1c"] = () => Case("x1c-ctrlshift", "Explorer: item selected first, then Ctrl+Shift held and dragged",
+        d["shift-drag"] = () => ShiftDragJpg("shift-drag", "Explorer: Shift-drag a JPG, drop on PNG", "", "shift", "shift-drag-png");
+        d["ctrl-first"] = () => ShiftDragJpg("ctrl-first", "Explorer: Ctrl-drag (Ctrl before the click) then Shift", "ctrl", "shift", "ctrl-first-png");
+        d["ctrl-shift"] = () => Case("ctrl-shift", "Explorer: item selected first, then Ctrl+Shift held and dragged",
             dir => Jpgs(dir, "photo.jpg"), s =>
             {
                 s.Ex.Select("photo.jpg");
                 var seen = s.Start("photo.jpg", "ctrl+shift", "");
                 Rec.Check("wheel visible", seen);
                 if (!seen) { s.Abort(); return; }
-                DropOn(s, "PNG", false, "x1c-ctrlshift-png", "photo.png");
+                DropOn(s, "PNG", false, "ctrl-shift-png", "photo.png");
                 s.Release("");
             });
 
-        d["x1d"] = () => Case("x1d-range", "Explorer: Shift held BEFORE the click (range select of 3), then drop on PNG",
+        d["shift-range"] = () => Case("shift-range", "Explorer: Shift held BEFORE the click (range select of 3), then drop on PNG",
             dir => Jpgs(dir, "a1.jpg", "a2.jpg", "a3.jpg"), s =>
             {
                 s.Ex.Select("a1.jpg");
@@ -82,11 +82,11 @@ internal static partial class Anger
                 Rec.Check("wheel armed by the drag threshold with Shift already down", seen);
                 if (!seen) { s.Abort(); return; }
                 Latency(s);
-                DropOn(s, "PNG", false, "x1d-range", "a1.png", "a2.png", "a3.png");
+                DropOn(s, "PNG", false, "shift-range", "a1.png", "a2.png", "a3.png");
                 Rec.Check("log: 3 items in the drag", Regex.IsMatch(s.LogNew, @"DragEnter .*paths=3"), Regex.Match(s.LogNew, @"DragEnter.*").Value);
             });
 
-        d["x1e"] = () => Case("x1e-merge", "Explorer: multi-select 3 images, Tools page, Merge PDF",
+        d["merge-pdf"] = () => Case("merge-pdf", "Explorer: multi-select 3 images, Tools page, Merge PDF",
             dir => Jpgs(dir, "m1.jpg", "m2.jpg", "m3.jpg"), s =>
             {
                 s.Ex.Select("m1.jpg", "m2.jpg", "m3.jpg");
@@ -101,7 +101,7 @@ internal static partial class Anger
                 Thread.Sleep(450);
                 Rec.Check("Merge PDF is offered for 3 images", s.Tiles(true).Any(t => t.Contains("Merge")), string.Join(",", s.Tiles(true)));
                 var merge = s.Tiles(true).FirstOrDefault(t => t.Contains("Merge")) ?? "Merge PDF";
-                DropOn(s, merge, true, "x1e-merge-tools", "Merged.pdf");
+                DropOn(s, merge, true, "merge-pdf-tools", "Merged.pdf");
                 var pdf = Path.Combine(s.Work, "Merged.pdf");
                 if (File.Exists(pdf))
                 {
@@ -111,7 +111,7 @@ internal static partial class Anger
                 }
             });
 
-        d["x1f"] = () => Case("x1f-zip-mixed", "Explorer: image + PDF selected -> Zip is the only tile",
+        d["zip-mixed"] = () => Case("zip-mixed", "Explorer: image + PDF selected -> Zip is the only tile",
             dir =>
             {
                 Jpgs(dir, "pic.jpg");
@@ -125,7 +125,7 @@ internal static partial class Anger
                 s.WaitTiles();
                 var f = s.Tiles(false); var t = s.Tiles(true);
                 Rec.Check("only Zip is offered", (f.Length + t.Length) >= 1 && f.Concat(t).All(x => x == "Zip"), string.Join(",", f) + " | " + string.Join(",", t));
-                DropOn(s, "Zip", f.Length == 0, "x1f-zip-only", "Archive.zip");
+                DropOn(s, "Zip", f.Length == 0, "zip-mixed-only", "Archive.zip");
                 var z = Path.Combine(s.Work, "Archive.zip");
                 if (File.Exists(z))
                 {
@@ -134,7 +134,7 @@ internal static partial class Anger
                 }
             });
 
-        d["x1g"] = () => Case("x1g-folder", "Explorer: a folder -> Zip",
+        d["zip-folder"] = () => Case("zip-folder", "Explorer: a folder -> Zip",
             dir =>
             {
                 var f = Path.Combine(dir, "myfolder"); Directory.CreateDirectory(f);
@@ -147,11 +147,11 @@ internal static partial class Anger
                 s.WaitTiles();
                 var f = s.Tiles(false); var t = s.Tiles(true);
                 Rec.Check("Zip only", f.Concat(t).All(x => x == "Zip") && f.Concat(t).Any(), string.Join(",", f) + " | " + string.Join(",", t));
-                DropOn(s, "Zip", f.Length == 0, "x1g-folder-zip", "myfolder.zip");
+                DropOn(s, "Zip", f.Length == 0, "zip-folder-zip", "myfolder.zip");
                 Rec.Check("folder still there and listed", s.Ex.HasItem("myfolder", 3000));
             });
 
-        d["x1h"] = () => Case("x1h-500", "Explorer: Ctrl+A over 500 JPEGs, wheel stays responsive, conversion completes",
+        d["big-selection"] = () => Case("big-selection", "Explorer: Ctrl+A over 500 JPEGs, wheel stays responsive, conversion completes",
             dir =>
             {
                 var src = Path.Combine(dir, "seed.jpg"); FileKit.MakeJpg(src, 320, 200, "seed");
@@ -174,7 +174,7 @@ internal static partial class Anger
                 Thread.Sleep(450);
                 var hit = s.ToTile("PNG");
                 Rec.Check("highlight works with 500 files", hit);
-                Shot(s, "x1h-500");
+                Shot(s, "big-selection");
                 s.Release();
                 var t0 = Stopwatch.StartNew();
                 var done = Sess.Wait(() => Directory.EnumerateFiles(s.Work, "*.png").Count() == 500, 180000);
@@ -184,7 +184,7 @@ internal static partial class Anger
                 Rec.Check("toast says 500 files saved", s.ToastTexts(1500).Any(x => x.Contains("500")), string.Join(" | ", s.ToastTexts(100)));
             });
 
-        d["x1i"] = () => Case("x1i-mixed", "Explorer: PNG + JPGs selected, drop on PNG -> 'already PNG' skip text",
+        d["already-png"] = () => Case("already-png", "Explorer: PNG + JPGs selected, drop on PNG -> 'already PNG' skip text",
             dir =>
             {
                 FileKit.MakeJpg(Path.Combine(dir, "one.png"), text: "one");
@@ -198,7 +198,7 @@ internal static partial class Anger
                 Rec.Check("PNG tile is still offered for mixed image formats", s.WaitTiles() && s.Tiles(false).Contains("PNG"), string.Join(",", s.Tiles(false)));
                 Thread.Sleep(450);
                 s.ToTile("PNG");
-                Shot(s, "x1i-mixed");
+                Shot(s, "already-png");
                 s.Release();
                 var texts = s.ToastTexts(4000);
                 Rec.Check("toast mentions 'already PNG'", texts.Any(t => t.Contains("already PNG")), string.Join(" | ", texts));

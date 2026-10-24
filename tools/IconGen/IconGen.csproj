@@ -2,7 +2,7 @@
 
   <!--
     Build-time tool, NOT part of the shipped package: renders every MikeShift icon from assets/brand/mikeshift.svg
-    (MSIX logos, tray .ico files, app .ico, docs/screenshots/brand/icon-sheet.png). Run scripts/make-icons.ps1.
+    (MSIX logos, tray .ico files, app .ico, docs/images/icon-sheet.png). Run scripts/make-icons.ps1.
   -->
   <PropertyGroup>
     <OutputType>Exe</OutputType>

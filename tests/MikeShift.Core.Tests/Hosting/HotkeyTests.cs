@@ -153,7 +153,7 @@ public class HotkeyTests
 
     [Theory]
     [InlineData("Ctrl+Shift+Space", "Word")]            // a shortcut the default avoids
-    [InlineData("Ctrl+Alt+Space", "Claude desktop")]    // the other one: held by the Claude desktop app on the development PC
+    [InlineData("Ctrl+Alt+Space", "AI assistant")]      // the other one: the quick entry of AI assistant apps
     [InlineData("Ctrl+C", "Copy")]
     [InlineData("Ctrl+V", "Paste")]
     [InlineData("Ctrl+Z", "Undo")]

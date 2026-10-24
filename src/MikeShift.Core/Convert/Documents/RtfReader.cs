@@ -5,7 +5,7 @@ using System.Text.RegularExpressions;
 namespace MikeShift.Core.Documents;
 
 /// <summary>
-/// Hand-written RTF reader for the text/paragraph/basic character-format subset (PLAN §3.4): groups, control words,
+/// Hand-written RTF reader for the text/paragraph/basic character-format subset: groups, control words,
 /// <c>\par \line \tab</c>, <c>\b \i \ul</c>, <c>\uN</c> with <c>\ucN</c> skipping, <c>\'hh</c> through <c>\ansicpg</c> or the font's charset,
 /// headings (stylesheet names or outline level), lists (<c>\ls</c> with the list table), tables, hyperlink fields, page breaks.
 /// Font/colour/style tables, <c>\info</c>, headers, footnotes and unknown <c>\*</c> destinations are skipped; <c>\pict</c> only flags pictures.

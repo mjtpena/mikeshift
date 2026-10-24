@@ -4,7 +4,7 @@ using System.Text;
 namespace MikeShift.Core.Tests.Infrastructure;
 
 /// <summary>
-/// Document fixtures (W2d), generated at test time. The DOCX and ODT packages are hand-written XML (not produced by our own
+/// Document fixtures, generated at test time. The DOCX and ODT packages are hand-written XML (not produced by our own
 /// writers) so the readers are tested against independent input. Every "sample" fixture carries the same content,
 /// described by <see cref="DocumentOutline"/>:
 /// <code>
@@ -240,17 +240,17 @@ public static partial class Fixtures
             <?xml version="1.0" encoding="UTF-8"?>
             <office:document-content xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0" xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0" xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0" xmlns:fo="urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0" xmlns:draw="urn:oasis:names:tc:opendocument:xmlns:drawing:1.0" xmlns:xlink="http://www.w3.org/1999/xlink" office:version="1.3">
             <office:automatic-styles>
-            <style:style style:name="T1" style:family="text"><style:text-properties fo:font-weight="bold"/></style:style>
-            <style:style style:name="T2" style:family="text"><style:text-properties fo:font-style="italic"/></style:style>
-            <style:style style:name="T3" style:family="text"><style:text-properties style:text-underline-style="solid"/></style:style>
+            <style:style style:name="Bold" style:family="text"><style:text-properties fo:font-weight="bold"/></style:style>
+            <style:style style:name="Italic" style:family="text"><style:text-properties fo:font-style="italic"/></style:style>
+            <style:style style:name="Underline" style:family="text"><style:text-properties style:text-underline-style="solid"/></style:style>
             <text:list-style style:name="LBullet"><text:list-level-style-bullet text:level="1" text:bullet-char="&#8226;"/></text:list-style>
             <text:list-style style:name="LNumber"><text:list-level-style-number text:level="1" style:num-format="1" style:num-suffix="."/></text:list-style>
             </office:automatic-styles>
             <office:body><office:text>
             <text:h text:style-name="Heading_20_1" text:outline-level="1">Quarterly Report</text:h>
             <text:h text:style-name="Heading_20_2" text:outline-level="2">Overview</text:h>
-            <text:p text:style-name="Standard">Revenue grew by <text:span text:style-name="T1">twelve percent</text:span> and costs were <text:span text:style-name="T2">flat</text:span>.</text:p>
-            <text:p text:style-name="Standard">Plain <text:span text:style-name="T3">underlined</text:span> words.</text:p>
+            <text:p text:style-name="Standard">Revenue grew by <text:span text:style-name="Bold">twelve percent</text:span> and costs were <text:span text:style-name="Italic">flat</text:span>.</text:p>
+            <text:p text:style-name="Standard">Plain <text:span text:style-name="Underline">underlined</text:span> words.</text:p>
             <text:list text:style-name="LBullet"><text:list-item><text:p>Apples</text:p></text:list-item><text:list-item><text:p>Oranges</text:p></text:list-item></text:list>
             <text:list text:style-name="LNumber"><text:list-item><text:p>First</text:p></text:list-item><text:list-item><text:p>Second</text:p></text:list-item></text:list>
             <table:table table:name="Table1"><table:table-column table:number-columns-repeated="2"/>

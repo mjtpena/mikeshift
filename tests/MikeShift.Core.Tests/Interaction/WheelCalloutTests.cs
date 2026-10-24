@@ -3,7 +3,7 @@ using MikeShift.Core.Interaction;
 
 namespace MikeShift.Core.Tests.Interaction;
 
-/// <summary>UX review W-01, W-02, W-04, W-09, W-11: where the callout pill goes and what it says.</summary>
+/// <summary>Where the callout pill goes and what it says.</summary>
 public class WheelCalloutTests
 {
     private static ActionDef Action(string title, WheelPage page) =>

@@ -2,7 +2,7 @@ namespace MikeShift.Core.Hosting;
 
 /// <summary>
 /// When the tray app honours its developer and test switches (environment variables such as <c>MIKESHIFT_ACCEPT_INJECTED</c> and flags such
-/// as <c>--scene</c>; the list is in docs/ARCHITECTURE.md). Some of them weaken the product (a program's <c>SendInput</c> could drive the wheel),
+/// as <c>--scene</c>; the list is in docs/developer/architecture.md). Some of them weaken the product (a program's <c>SendInput</c> could drive the wheel),
 /// so a Release build ignores them unless it is an unpackaged run that was started with an explicit <see cref="DevFlag"/>.
 /// A Debug build honours them always, so ordinary development needs no extra flag. A packaged Release build never honours them.
 /// </summary>

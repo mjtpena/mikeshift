@@ -14,7 +14,7 @@ public enum ToastKind
 }
 
 /// <summary>
-/// The content of one HUD toast (UX review H-04/H-05): a first line, an optional second line, a status kind and, when a file was
+/// The content of one HUD toast: a first line, an optional second line, a status kind and, when a file was
 /// written, the path the "Show in folder" button reveals. Pure data so the wording is unit-tested without WinUI.
 /// </summary>
 /// <param name="Title">First line, e.g. "Saved photo 2.png" or "Converting to PNG…".</param>

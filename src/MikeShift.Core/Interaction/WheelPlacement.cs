@@ -26,7 +26,7 @@ public enum TaskbarEdges
     Bottom = 8,
 }
 
-/// <summary>Where the wheel window goes (PLAN §3.1 item 8): centred on the cursor, kept inside the monitor's work area; anchored beside a taskbar.</summary>
+/// <summary>Where the wheel window goes: centred on the cursor, kept inside the monitor's work area; anchored beside a taskbar.</summary>
 public static class WheelPlacement
 {
     /// <summary>How far (logical px) the window extends past the pointer toward a taskbar, so the pointer stays inside the window.</summary>

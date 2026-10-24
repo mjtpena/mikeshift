@@ -18,7 +18,7 @@ public enum DocFormat
 }
 
 /// <summary>
-/// Document conversions via the DocModel pivot (PLAN §3.4 Documents).
+/// Document conversions via the DocModel pivot.
 /// <para>Returns the path written via <c>Naming.CommitAsync</c>; throws <see cref="ConversionException"/> for expected failures.</para>
 /// <para>Word is optional and opt-in (<see cref="Capabilities.WordCom"/>: installed and allowed by the user's setting or <c>--use-word</c>).
 /// With it, legacy <c>.doc</c> is converted by Word, and DOCX to PDF uses Word's own exporter for fidelity (falling back to the pivot

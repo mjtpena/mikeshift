@@ -94,11 +94,11 @@ internal static class TrayKit
         while (sw.ElapsedMilliseconds < ms)
         {
             IntPtr found = IntPtr.Zero;
-            AngerNative.EnumWindows((h, _) =>
+            ExplorerNative.EnumWindows((h, _) =>
             {
                 var sb = new System.Text.StringBuilder(64);
                 GetClassNameW(h, sb, 64);
-                AngerNative.GetWindowThreadProcessId(h, out var p);
+                ExplorerNative.GetWindowThreadProcessId(h, out var p);
                 if (p == (uint)pid && sb.ToString() == "#32770" && Native.IsWindowVisible(h)) { found = h; return false; }
                 return true;
             }, IntPtr.Zero);
@@ -109,7 +109,7 @@ internal static class TrayKit
     }
 
     /// <summary>Tray icon left click (Convert files... is the primary action) -> file dialog -> the given file. Returns a description of what happened.</summary>
-    public static bool ConvertViaTray(AngerApp app, string file, out string detail, bool cancelDialog = false)
+    public static bool ConvertViaTray(AppProcess app, string file, out string detail, bool cancelDialog = false)
     {
         string where = "";
         AutomationElement? dlg = null;
@@ -149,7 +149,7 @@ internal static class TrayKit
     }
 }
 
-internal static partial class Anger
+internal static partial class ExplorerScenarios
 {
     private static void TrayCase(string id, string desc, Action<Sess, string> body, bool second = false)
     {
@@ -176,9 +176,9 @@ internal static partial class Anger
         return shown;
     }
 
-    private static void RegisterTests5(Dictionary<string, Action> d)
+    private static void RegisterTrayPicker(Dictionary<string, Action> d)
     {
-        d["x5a"] = () => TrayCase("x5a-tray-keys", "Real tray -> Convert Files…; keyboard: arrows, Tab, Enter; UIA focus events", (s, file) =>
+        d["tray-keys"] = () => TrayCase("tray-keys", "Real tray -> Convert Files…; keyboard: arrows, Tab, Enter; UIA focus events", (s, file) =>
         {
             if (!OpenClickMode(s, file)) return;
             Rec.Check("click-mode wheel took keyboard focus", s.App.LastLine("click-mode wheel shown").Contains("foreground=True") || s.Log.Contains("foreground retried, now foreground=True"));
@@ -190,7 +190,7 @@ internal static partial class Anger
             Automation.AddAutomationFocusChangedEventHandler(onFocus);
             try
             {
-                Shot(s, "x5a-click-mode", centre, 300);
+                Shot(s, "tray-keys-click-mode", centre, 300);
                 void Key(int vk) { Pointer.KeyDown(vk); Thread.Sleep(30); Pointer.KeyUp(vk); Thread.Sleep(350); }
                 Key(0x27); // Right
                 var first = LastHl(s.LogNew);
@@ -224,7 +224,7 @@ internal static partial class Anger
             finally { Automation.RemoveAllEventHandlers(); }
         });
 
-        d["x5b"] = () => TrayCase("x5b-tray-mouse", "Real tray -> Convert Files…; mouse hover highlights, mouse-down commits", (s, file) =>
+        d["tray-mouse"] = () => TrayCase("tray-mouse", "Real tray -> Convert Files…; mouse hover highlights, mouse-down commits", (s, file) =>
         {
             if (!OpenClickMode(s, file)) return;
             var hit = s.ToTile("PNG");
@@ -238,13 +238,13 @@ internal static partial class Anger
             Pointer.Glide(t.X, t.Y, 8, 6);
             Rec.Check("hovering the PNG tile highlights it", s.App.WaitLog(x => x[s.LogMark..].Contains("highlight: PNG"), 2000));
             Thread.Sleep(300);
-            Shot(s, "x5b-click-mouse", c, 300);
+            Shot(s, "tray-mouse-click", c, 300);
             Pointer.LeftDown(); Pointer.LeftUp();
             Rec.Check("mouse-down on the tile committed it", s.WaitFile(Path.Combine(s.Work, "photo.png")));
             Rec.Check("wheel closed", Sess.Wait(() => !WheelInfo.Visible(), 3000));
         });
 
-        d["x5c"] = () => TrayCase("x5c-tray-esc", "Real tray -> Convert Files…; Esc cancels", (s, file) =>
+        d["tray-escape"] = () => TrayCase("tray-escape", "Real tray -> Convert Files…; Esc cancels", (s, file) =>
         {
             if (!OpenClickMode(s, file)) return;
             Pointer.KeyDown(Native.VK_ESCAPE); Pointer.KeyUp(Native.VK_ESCAPE);
@@ -253,7 +253,7 @@ internal static partial class Anger
             Rec.Check("nothing converted", !Directory.EnumerateFiles(s.Work, "*.png").Any() && !s.Log.Contains("job "));
         });
 
-        d["x5d"] = () => TrayCase("x5d-tray-blur", "Real tray -> Convert Files…; clicking another window (focus loss) dismisses", (s, file) =>
+        d["tray-blur"] = () => TrayCase("tray-blur", "Real tray -> Convert Files…; clicking another window (focus loss) dismisses", (s, file) =>
         {
             if (!OpenClickMode(s, file)) return;
             // click on my own Explorer window's empty area
@@ -264,7 +264,7 @@ internal static partial class Anger
             Rec.Check("nothing converted", !s.Log.Contains("job "));
         });
 
-        d["x5e"] = () => TrayCase("x5e-tray-cancel", "Real tray -> Convert Files…; cancelling the file dialog does nothing", (s, file) =>
+        d["tray-cancel"] = () => TrayCase("tray-cancel", "Real tray -> Convert Files…; cancelling the file dialog does nothing", (s, file) =>
         {
             var ok = TrayKit.ConvertViaTray(s.App, file, out var detail, cancelDialog: true);
             Rec.Check("tray -> menu -> dialog -> Esc", ok, detail);

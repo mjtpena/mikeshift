@@ -13,7 +13,7 @@ namespace MikeShift.App.Editors;
 /// <summary>Shared window plumbing for the editors: chrome, size, placement, foreground, beep.</summary>
 internal static class EditorWindows
 {
-    /// <summary>The height of the title bar that is part of the client area (UX review E-01), in device-independent pixels.</summary>
+    /// <summary>The height of the title bar that is part of the client area, in device-independent pixels.</summary>
     public const int TitleBarDip = 32;
 
     /// <summary>

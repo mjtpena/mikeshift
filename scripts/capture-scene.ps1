@@ -9,7 +9,7 @@
   MIKESHIFT_NO_HOOKS=1 (no global input hooks), and is always killed at the end.
 
 .EXAMPLE
-  ./scripts/capture-scene.ps1 -AppArgs '--scene','toast-success' -Out docs/screenshots/surfaces-v2/toast-success-dark.png -Title 'MikeShift'
+  ./scripts/capture-scene.ps1 -AppArgs '--scene','toast-success' -Out docs/images/toast.png -Title 'MikeShift'
   ./scripts/capture-scene.ps1 -AppArgs '--show-settings' -Theme light -Out settings-light.png -Title 'Settings'
 #>
 param(

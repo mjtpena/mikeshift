@@ -14,7 +14,7 @@ public enum WheelPhase
 }
 
 /// <summary>
-/// The wheel's animation clock (PLAN §3.2), kept free of UI so it can be unit-tested: feed it events (<see cref="Show"/>,
+/// The wheel's animation clock, kept free of UI so it can be unit-tested: feed it events (<see cref="Show"/>,
 /// <see cref="TilesArrived"/>, <see cref="PageChanged"/>, <see cref="HighlightChanged"/>, <see cref="Pick"/>, <see cref="Dismiss"/>)
 /// with a monotonic time in seconds and ask it for values at any later time. All values follow <see cref="WheelTimings"/> and
 /// <see cref="Easing"/>; with animations disabled every transition is instantaneous.
@@ -25,7 +25,7 @@ public enum WheelPhase
 /// </summary>
 public sealed class WheelAnimation
 {
-    /// <summary>How long the highlight push of a tile takes to settle (not specified by the PLAN; short and snappy).</summary>
+    /// <summary>How long the highlight push of a tile takes to settle (short and snappy).</summary>
     public const double HighlightSeconds = 0.083;
 
     private readonly Func<bool> _animationsEnabled;

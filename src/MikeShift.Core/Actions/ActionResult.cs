@@ -12,11 +12,11 @@ public sealed record ActionOutput(string Input, string Path, bool UsedDownloadsF
 public sealed record ActionFailure(string Input, string Message);
 
 /// <summary>
-/// The outcome of running an action over a selection (PLAN §1.1 Batch, feedback rules).
+/// The outcome of running an action over a selection.
 /// </summary>
 public sealed record ActionResult
 {
-    /// <summary>Maximum failures listed in a partial-failure message (PLAN: "up to 6").</summary>
+    /// <summary>Maximum failures listed in a partial-failure message (up to 6).</summary>
     public const int MaxListedFailures = 6;
 
     /// <summary>Number of inputs the action was started with.</summary>

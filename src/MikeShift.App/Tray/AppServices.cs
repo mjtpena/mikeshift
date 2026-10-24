@@ -8,7 +8,7 @@ namespace MikeShift.App.Tray;
 
 /// <summary>
 /// The shared services of the running app, created once in <c>App.OnLaunched</c> and reachable as
-/// <c>App.Current.Services</c>. W3 (wheel) and W4a (editors) use these; nothing here is static state.
+/// <c>App.Current.Services</c>. The wheel and the editors use these; nothing here is static state.
 /// </summary>
 public sealed class AppServices
 {
@@ -49,7 +49,7 @@ public sealed class AppServices
     /// <summary>Failure and warning dialogs (Fluent windows, never modal).</summary>
     public FluentDialogService Dialogs { get; }
 
-    /// <summary>How Crop/Trim ask the user for input; W4a attaches the editors here.</summary>
+    /// <summary>How Crop/Trim ask the user for input; the editors are attached here.</summary>
     public UiInteraction Interaction { get; }
 
     /// <summary>Runs actions and reports the outcome; also holds <c>LastOutputs</c>/<c>LastFinishedAt</c>.</summary>

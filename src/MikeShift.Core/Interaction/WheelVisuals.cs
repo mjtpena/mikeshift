@@ -25,7 +25,7 @@ public readonly record struct Rgb(byte R, byte G, byte B)
     public Rgb Mix(Rgb target, double amount) => target.Over(this, amount);
 }
 
-/// <summary>WCAG 2.x relative luminance and contrast ratio, and the black-or-white decisions built on them (UX review W-08, W-04).</summary>
+/// <summary>WCAG 2.x relative luminance and contrast ratio, and the black-or-white decisions built on them.</summary>
 public static class Contrast
 {
     /// <summary>The WCAG AA ratio for normal-size text.</summary>
@@ -79,7 +79,7 @@ public static class Contrast
     }
 }
 
-/// <summary>Text sizes of the wheel, in logical px at text scale 1, and the rules for scaling them (UX review W-05).</summary>
+/// <summary>Text sizes of the wheel, in logical px at text scale 1, and the rules for scaling them.</summary>
 public static class WheelTypography
 {
     /// <summary>The largest <c>UISettings.TextScaleFactor</c> the wheel honours: the disc is a fixed size, so beyond this the labels would not fit.</summary>
@@ -130,7 +130,7 @@ public static class WheelTypography
     public static double PillHeight(double fontPx) => Math.Ceiling(fontPx + 12);
 }
 
-/// <summary>Counts how many wheels have been shown so the key hints can be loud at first and quiet later (UX review W-04).</summary>
+/// <summary>Counts how many wheels have been shown so the key hints can be loud at first and quiet later.</summary>
 public static class WheelHints
 {
     /// <summary>The first this-many wheels show the key hints prominently.</summary>

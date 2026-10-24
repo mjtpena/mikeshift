@@ -4,7 +4,7 @@ namespace MikeShift.Core.Interaction;
 
 /// <summary>
 /// Every string the wheel shows or says (hub, callout pill, UI Automation), in Windows sentence case. One place, so the hub, the pill, the
-/// shell's drop description and the screen-reader names cannot drift apart (UX review W-10, W-15).
+/// shell's drop description and the screen-reader names cannot drift apart.
 /// </summary>
 public static class WheelText
 {

@@ -15,7 +15,7 @@ using WinRT.Interop;
 namespace MikeShift.App.Hud;
 
 /// <summary>
-/// The HUD toast (PLAN §3.3, UX review H-01 to H-07): a small, topmost, non-activating, taskbar-less window at the bottom centre of
+/// The HUD toast: a small, topmost, non-activating, taskbar-less window at the bottom centre of
 /// the monitor under the cursor. A status glyph (progress ring, check, warning), a title and detail line, and "Show in folder" when a
 /// file was written. Updates in place; hides after <see cref="ToastContent.Lifetime"/> (paused while the pointer is over it).
 /// <para>
@@ -162,7 +162,7 @@ public sealed partial class ToastWindow : Window
         SetAlpha(255);
     }
 
-    // ---- motion (UX review H-07): 167 ms decelerating fade in with an 8 px rise, 100 ms fade out; none when animations are off ----
+    // ---- motion: 167 ms decelerating fade in with an 8 px rise, 100 ms fade out; none when animations are off ----
 
     private static readonly TimeSpan FadeIn = TimeSpan.FromMilliseconds(167);
     private static readonly TimeSpan FadeOut = TimeSpan.FromMilliseconds(100);
@@ -207,7 +207,7 @@ public sealed partial class ToastWindow : Window
     /// <summary>
     /// A tool popup that takes no focus and has no taskbar or Alt+Tab entry. WinUI keeps WS_DLGFRAME and WS_EX_WINDOWEDGE on a window
     /// whose presenter has no border (the styles cannot be removed: they are put back), and Windows draws those as a classic 3D frame,
-    /// the white + button-face grey hairline of UX review H-03. Instead the whole window is declared client area (see
+    /// the white + button-face grey hairline. Instead the whole window is declared client area (see
     /// <see cref="SubclassProc"/>), so there is no non-client frame left to draw.
     /// </summary>
     private void ApplyToolStyles()

@@ -15,7 +15,7 @@ namespace MikeShift.App.Jobs;
 public sealed record JobFinishedEventArgs(int JobId, ActionDef Action, ActionResult Result);
 
 /// <summary>
-/// Runs actions off the UI thread and tells the user how it went (PLAN §3.3): HUD toast, optional chime, a non-blocking dialog
+/// Runs actions off the UI thread and tells the user how it went: HUD toast, optional chime, a non-blocking dialog
 /// for failures. Several jobs may run at once ("N still working…"). Thread-safe; <see cref="Enqueue"/> may be called from
 /// any thread. Decisions about WHAT to say live in <see cref="FeedbackPlan"/> (unit-tested in Core).
 /// </summary>
@@ -50,8 +50,8 @@ public sealed class JobRunner
     public int RunningCount => _ledger.RunningCount;
 
     /// <summary>
-    /// Output paths of the most recent job that wrote anything. W3 uses this for the Shift-click rule
-    /// ("previously produced files are excluded from the next selection", PLAN §5.3 item 3).
+    /// Output paths of the most recent job that wrote anything. The wheel uses this for the Shift-click rule
+    /// ("previously produced files are excluded from the next selection").
     /// </summary>
     public IReadOnlyList<string> LastOutputs => _ledger.LastOutputs;
 

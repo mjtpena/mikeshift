@@ -7,7 +7,7 @@ using Windows.Win32.Graphics.Gdi;
 namespace MikeShift.App.Wheel;
 
 /// <summary>
-/// Grabs the pixels under the wheel's rectangle from the screen (PLAN §3.2 "glass"). A plain GDI <c>BitBlt</c> from the screen DC:
+/// Grabs the pixels under the wheel's rectangle from the screen. A plain GDI <c>BitBlt</c> from the screen DC:
 /// without <c>CAPTUREBLT</c> it leaves out layered windows, so neither the wheel itself nor Explorer's drag image end up in the snapshot.
 /// </summary>
 internal static unsafe class ScreenCapture

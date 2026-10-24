@@ -9,7 +9,7 @@
     - MikeShift.ico            colour app icon (exe icon, window icons), 16..256 px
     - tray-dark-taskbar.ico    monochrome white glyph, 16/20/24/32/40/48/64 px (for a dark taskbar)
     - tray-light-taskbar.ico   monochrome near-black glyph, same sizes (for a light taskbar)
-  and the legibility preview docs/screenshots/brand/icon-sheet.png.
+  and the legibility preview docs/images/icon-sheet.png.
   The tray picks the .ico that matches the taskbar theme at runtime (src/MikeShift.App/Tray/TrayController.cs).
   Edit the SVG, run this script, look at the sheet, commit the result.
 

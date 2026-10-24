@@ -5,7 +5,7 @@ using System.Windows.Automation;
 
 namespace DragHarness;
 
-internal static partial class Anger
+internal static partial class ExplorerScenarios
 {
     public static AutomationElement? FindTop(string nameContains, int timeoutMs = 15000)
     {
@@ -28,17 +28,17 @@ internal static partial class Anger
 
     private static Rectangle RectOf(IntPtr hwnd)
     {
-        AngerNative.GetWindowRect(hwnd, out var r);
+        ExplorerNative.GetWindowRect(hwnd, out var r);
         return new Rectangle(r.Left, r.Top, r.Right - r.Left, r.Bottom - r.Top);
     }
 
-    private static void RegisterTests4(Dictionary<string, Action> d)
+    private static void RegisterOtherSources(Dictionary<string, Action> d)
     {
-        d["x4a"] = () => Case("x4a-notepad-text", "Text dragged out of a real Notepad window with Shift: no tiles, wheel hides, Notepad unharmed",
-            dir => File.WriteAllText(Path.Combine(dir, "x4a.txt"), "MikeShift anger test: some selected text to drag out of Notepad, long enough to press on."), s =>
+        d["notepad-text"] = () => Case("notepad-text", "Text dragged out of a real Notepad window with Shift: no tiles, wheel hides, Notepad unharmed",
+            dir => File.WriteAllText(Path.Combine(dir, "notepad-text.txt"), "MikeShift scenario: some selected text to drag out of Notepad, long enough to press on."), s =>
             {
-                Process.Start(new ProcessStartInfo("notepad.exe", "\"" + Path.Combine(s.Work, "x4a.txt") + "\"") { UseShellExecute = true });
-                var np = FindTop("x4a.txt - Notepad");
+                Process.Start(new ProcessStartInfo("notepad.exe", "\"" + Path.Combine(s.Work, "notepad-text.txt") + "\"") { UseShellExecute = true });
+                var np = FindTop("notepad-text.txt - Notepad");
                 if (!Rec.Check("Notepad window opened on the temp file", np is not null)) return;
                 var hwnd = new IntPtr(np!.Current.NativeWindowHandle);
                 try
@@ -90,11 +90,11 @@ internal static partial class Anger
                     Rec.Check("the wheel is gone within 2.5 s while the text drag continues", gone);
                     var l = s.LogNew;
                     Rec.Check("log: DragEnter classified the data as non-file or no DragEnter at all (never tiles)", !l.Contains("tiles:"), Regex.Match(l, @"DragEnter.*").Value);
-                    Shot(s, "x4a-notepad", press, 330);
+                    Shot(s, "notepad", press, 330);
                     Pointer.Glide(overExplorer.X, overExplorer.Y, 12, 4); Thread.Sleep(200);
                     Pointer.LeftUp(); Thread.Sleep(30); Pointer.KeyUp(Native.VK_LSHIFT);
                     Thread.Sleep(800);
-                    Rec.Check("Notepad is still alive", AngerNative.IsWindow(hwnd));
+                    Rec.Check("Notepad is still alive", ExplorerNative.IsWindow(hwnd));
                     Rec.Check("no conversion job was started", !s.Log.Contains("job "));
                 }
                 finally
@@ -103,8 +103,8 @@ internal static partial class Anger
                     // Notepad is one window with tabs and may hold the user's own tabs: never move or close the window, close only OUR tab (Ctrl+W
                     // on the active tab, and only when the active tab is ours).
                     Native.SetForegroundWindow(hwnd); Thread.Sleep(400);
-                    var title = FindTop("x4a.txt - Notepad", 1500);
-                    if (title is not null && AngerNative.GetForegroundWindow() == hwnd)
+                    var title = FindTop("notepad-text.txt - Notepad", 1500);
+                    if (title is not null && ExplorerNative.GetForegroundWindow() == hwnd)
                     {
                         Pointer.KeyDown(Native.VK_LCONTROL); Pointer.KeyDown(0x57); Pointer.KeyUp(0x57); Pointer.KeyUp(Native.VK_LCONTROL);
                         Thread.Sleep(800);
@@ -112,7 +112,7 @@ internal static partial class Anger
                 }
             });
 
-        d["x4b"] = () => Case("x4b-titlebar", "Dragging a real window's title bar with Shift held mid-drag: the window keeps moving, the disc hides, nothing else happens",
+        d["title-bar"] = () => Case("title-bar", "Dragging a real window's title bar with Shift held mid-drag: the window keeps moving, the disc hides, nothing else happens",
             dir => FileKit.MakeJpg(Path.Combine(dir, "photo.jpg")), s =>
             {
                 var before = RectOf(s.Ex.Hwnd);
@@ -139,7 +139,7 @@ internal static partial class Anger
                 s.Ex.Place(BoxOn(Monitors()[0]));
             });
 
-        d["x4c"] = () => Case("x4c-rubberband", "Rubber-band selection in Explorer with Shift pressed mid-drag: selection still works, the disc hides",
+        d["rubber-band"] = () => Case("rubber-band", "Rubber-band selection in Explorer with Shift pressed mid-drag: selection still works, the disc hides",
             dir => { foreach (var n in new[] { "r1.jpg", "r2.jpg", "r3.jpg" }) FileKit.MakeJpg(Path.Combine(dir, n)); }, s =>
             {
                 var r1 = s.Ex.ItemRect("r1.jpg"); var r3 = s.Ex.ItemRect("r3.jpg");
@@ -163,17 +163,17 @@ internal static partial class Anger
                 Rec.Check("nothing was converted", !Directory.EnumerateFiles(s.Work, "*.png").Any());
             });
 
-        d["x4d"] = () =>
+        d["zip-save-first"] = () =>
         {
-            Rec.Begin("x4d-zip", "A file inside a .zip opened in Explorer -> 'Save the file first', nothing converted");
-            var work = FileKit.Fresh(Root, "x4d-zip");
+            Rec.Begin("zip-save-first", "A file inside a .zip opened in Explorer -> 'Save the file first', nothing converted");
+            var work = FileKit.Fresh(Root, "zip-save-first");
             var zip = Path.Combine(work, "zp" + Path.GetFileName(work)[^6..] + ".zip");
             var jpg = Path.Combine(work, "inner.jpg");
             FileKit.MakeJpg(jpg);
             using (var z = ZipFile.Open(zip, ZipArchiveMode.Create)) z.CreateEntryFromFile(jpg, "inner.jpg");
             File.Delete(jpg);
             var hash = FileKit.Sha(zip);
-            var app = AngerApp.Start(AppExe, Path.Combine(Root, "x4d.log"));
+            var app = AppProcess.Start(AppExe, Path.Combine(Root, "zip-save-first.log"));
             ExplorerWin? ex = null;
             try
             {
@@ -185,11 +185,11 @@ internal static partial class Anger
                 Thread.Sleep(900);
                 var l = s.LogNew;
                 Rec.Check("log: classified as virtual files", l.Contains("kind=VirtualFiles"), Regex.Match(l, @"DragEnter.*").Value);
-                // UX review W-02: the shell's own drag image must say "Save the file first, then drag it" (DROPIMAGE_NONE).
+                // The shell's own drag image must say "Save the file first, then drag it" (DROPIMAGE_NONE).
                 Rec.Check("log: shell drop description set for the virtual-file drag", l.Contains("virtual files: drop description set: True"), Regex.Match(l, @"virtual files.*").Value);
                 var c = WheelInfo.Centre(s.Log)!.Value;
                 Pointer.Glide(c.X + 170, c.Y + 150, 6, 8); Thread.Sleep(400);
-                Shot(s, "x4d-zip-save-first", c, 300);
+                Shot(s, "zip-save-first-shot", c, 300);
                 s.Release();
                 Thread.Sleep(1500);
                 Rec.Check("no job, no output next to the zip", !s.Log.Contains("job ") && Directory.GetFileSystemEntries(work).Length == 1, string.Join(",", Directory.GetFileSystemEntries(work).Select(Path.GetFileName)));

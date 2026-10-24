@@ -4,7 +4,7 @@ using MikeShift.Core.Actions;
 namespace MikeShift.Core.Editing;
 
 /// <summary>
-/// The state and rules of the trim dialog, free of any UI (PLAN §3.5): a media duration, a start and an end inside it
+/// The state and rules of the trim dialog, free of any UI: a media duration, a start and an end inside it
 /// at least <see cref="MinLength"/> apart, and parsing/formatting of <c>m:ss.f</c> times.
 /// </summary>
 public sealed class TimeRangeModel

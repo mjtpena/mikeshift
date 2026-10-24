@@ -5,7 +5,7 @@
 .DESCRIPTION
   The generators live in the test project (tests/MikeShift.Core.Tests/Infrastructure/Fixtures*.cs) so the automated
   tests and this script share one source of truth. This script just runs the `FixtureExport` test with
-  MIKESHIFT_FIXTURES_OUT pointing at the output folder. Every converter package contributes its files by implementing
+  MIKESHIFT_FIXTURES_OUT pointing at the output folder. Every converter area contributes its files by implementing
   its `Write<Area>Fixtures(string dir)` hook in its own Fixtures.<Area>.cs.
 
   Then try the files with the CLI, e.g.:

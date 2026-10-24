@@ -28,7 +28,7 @@ internal static class PcmFrames
 {
     public static int FrameSize(IPcmSource s) => s.Channels * (s.BitsPerSample / 8);
 
-    /// <summary>Output depth rule (PLAN §1.2): 16-bit, or 24-bit when the source is deeper than 16 bits.</summary>
+    /// <summary>Output depth rule: 16-bit, or 24-bit when the source is deeper than 16 bits.</summary>
     public static int OutputBitsFor(int sourceBits) => sourceBits > 16 ? 24 : 16;
 
     /// <summary>
@@ -176,7 +176,7 @@ internal sealed class WavPcmSource : IPcmSource
     public void Dispose() => _fs.Dispose();
 }
 
-/// <summary>AIFF / AIFF-C ('NONE' and 'sowt') parsing and reading. Media Foundation has no AIFF source, so this is the reader (PLAN §1.2).</summary>
+/// <summary>AIFF / AIFF-C ('NONE' and 'sowt') parsing and reading. Media Foundation has no AIFF source, so this is the reader.</summary>
 internal sealed class AiffFile
 {
     public int Channels { get; init; }

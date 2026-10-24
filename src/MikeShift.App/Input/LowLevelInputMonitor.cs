@@ -7,7 +7,7 @@ using Windows.Win32.UI.WindowsAndMessaging;
 namespace MikeShift.App.Input;
 
 /// <summary>
-/// <see cref="IInputMonitor"/> on <c>WH_MOUSE_LL</c> + <c>WH_KEYBOARD_LL</c> (PLAN §3.1 item 1).
+/// <see cref="IInputMonitor"/> on <c>WH_MOUSE_LL</c> + <c>WH_KEYBOARD_LL</c>.
 /// <list type="bullet">
 /// <item>A dedicated, high-priority thread owns both hooks and a message loop (low-level hooks are only called while their installing thread pumps messages).</item>
 /// <item>The callbacks do nothing but copy the hook struct into an <see cref="InputEvent"/>, <c>TryWrite</c> it into a bounded channel and call

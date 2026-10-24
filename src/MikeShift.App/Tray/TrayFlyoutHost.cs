@@ -14,7 +14,7 @@ using WinUIEx;
 namespace MikeShift.App.Tray;
 
 /// <summary>
-/// Hosts the tray <see cref="MenuFlyout"/> (UX review T-01). A WinUI flyout needs a XAML element in a window to open from, and a tray app
+/// Hosts the tray <see cref="MenuFlyout"/>. A WinUI flyout needs a XAML element in a window to open from, and a tray app
 /// has no window, so this owns a tiny, transparent, tool-style window parked at the cursor and shows the flyout from it. The flyout is
 /// not constrained to that window (<see cref="FlyoutBase.ShouldConstrainToRootBounds"/> = false), so WinUI gives it its own popup
 /// window with the system acrylic, shadow, rounded corners and open animation, and it follows light, dark and high contrast like any

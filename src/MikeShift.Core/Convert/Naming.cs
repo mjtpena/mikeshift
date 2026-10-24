@@ -19,7 +19,7 @@ public readonly record struct OutputSpec(string Directory, string BaseName, stri
 public readonly record struct CommitResult(string Path, bool UsedDownloadsFallback);
 
 /// <summary>
-/// Output naming and atomic output writing (PLAN §1.1 naming, §3.4 Naming).
+/// Output naming and atomic output writing.
 /// <list type="bullet">
 /// <item><see cref="Output"/> / <see cref="Unique"/> compute names (<c>photo.png</c>, <c>photo 2.png</c>, <c>photo 3.png</c>...).</item>
 /// <item><see cref="CommitAsync"/> is the ONLY way converters create outputs: write to a temp name in the target

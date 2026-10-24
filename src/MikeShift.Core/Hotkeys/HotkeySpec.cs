@@ -150,7 +150,7 @@ public readonly record struct HotkeyCheck(HotkeyVerdict Verdict, string? Message
 /// <summary>
 /// Which shortcuts a global hotkey must not take over. A hotkey registered with <c>RegisterHotKey</c> is delivered to MikeShift <em>instead of</em>
 /// the focused app, so a clash silently breaks that app's shortcut. The default is Ctrl+Alt+Shift+Space because the nearby candidates are all taken:
-/// Ctrl+Alt+Space is the Claude desktop app's quick-entry shortcut (it was already registered on the development PC, Windows error 1409) and
+/// Ctrl+Alt+Space is the quick-entry shortcut of AI assistant desktop apps (a second registration fails with Windows error 1409) and
 /// OrbitDrop's; Ctrl+Shift+Space is Word's non-breaking space, Excel's "select the whole sheet" and VS Code's parameter hints; Ctrl+Alt plus a
 /// letter is AltGr plus that letter on many European keyboards (it types a character); Alt+Space is the window menu and PowerToys Run; Ctrl+Space
 /// switches Chinese, Japanese and Korean input methods; shortcuts with the Windows key are Windows' own. Three modifiers plus Space is free on
@@ -215,7 +215,7 @@ public static class HotkeyConflicts
         Add(C | A, 0x2E, "the security screen (Ctrl+Alt+Delete)");
         Add(C, 0x20, "switching input methods (Chinese, Japanese, Korean) and Word's 'clear formatting'");
         Add(S, 0x20, "switching between full-width and half-width characters in input methods");
-        Add(C | A, 0x20, "the Claude desktop app's quick entry and OrbitDrop (Ctrl+Alt+Space)");
+        Add(C | A, 0x20, "the quick entry of AI assistant apps and OrbitDrop (Ctrl+Alt+Space)");
         Add(C | S, 0x20, "Word's non-breaking space, Excel's 'select the whole sheet' and VS Code's parameter hints");
         Add(C | S, 0x4E, "a new incognito or private window in browsers (Ctrl+Shift+N)");
         Add(C | S, 0x54, "reopening a closed tab (Ctrl+Shift+T)");

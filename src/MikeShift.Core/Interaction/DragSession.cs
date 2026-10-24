@@ -83,12 +83,12 @@ public enum DragState
     Armed,
     /// <summary>
     /// The button is up but the wheel is still shown waiting for the OLE drop (picked) or the 400 ms dismiss timeout.
-    /// (The conceptual "Idle on LBUTTONUP" of PLAN §3.1; the extra state exists so the timeout has a home.)
+    /// (Conceptually this is "idle after LBUTTONUP"; the extra state exists so the timeout has a home.)
     /// </summary>
     Released,
 }
 
-/// <summary>What <see cref="DragSession"/> asks the wheel layer (W3) to do.</summary>
+/// <summary>What <see cref="DragSession"/> asks the wheel layer to do.</summary>
 public enum DragCommandKind
 {
     /// <summary>Show the wheel disc (no tiles yet) centred on <see cref="DragCommand.Point"/>; nudge the mouse so OLE re-hit-tests.</summary>
@@ -108,7 +108,7 @@ public enum DragCommandKind
 /// <summary>A command from <see cref="DragSession"/>. <see cref="Point"/> is meaningful for ShowPending, <see cref="Page"/> for ShowPending/PageToggle.</summary>
 public readonly record struct DragCommand(DragCommandKind Kind, PointPx Point = default, WheelPage Page = WheelPage.Format);
 
-/// <summary>Tunables for <see cref="DragSession"/>. Defaults are the PLAN §3.1 values.</summary>
+/// <summary>Tunables for <see cref="DragSession"/>. Defaults are the shipped values.</summary>
 public sealed record DragSessionOptions
 {
     /// <summary><c>SM_CXDRAG</c>: horizontal movement (physical px) that turns a press into a drag. The caller passes the real metric.</summary>
@@ -123,13 +123,13 @@ public sealed record DragSessionOptions
     /// <summary>The page-toggle key for the Tools page.</summary>
     public ToolsKey ToolsKey { get; init; } = ToolsKey.Ctrl;
 
-    /// <summary>No <c>DragEnter</c> within this long of ShowPending: hide silently (PLAN: 250 ms).</summary>
+    /// <summary>No <c>DragEnter</c> within this long of ShowPending: hide silently (250 ms).</summary>
     public int PendingTimeoutMs { get; init; } = 250;
 
-    /// <summary>After button-up with nothing picked, dismiss after this long (PLAN: 400 ms).</summary>
+    /// <summary>After button-up with nothing picked, dismiss after this long (400 ms).</summary>
     public int DismissAfterReleaseMs { get; init; } = 400;
 
-    /// <summary>A button that reads up for longer than this (and the pointer is at rest) ends the session (PLAN: 100 ms).</summary>
+    /// <summary>A button that reads up for longer than this (and the pointer is at rest) ends the session (100 ms).</summary>
     public int ButtonUpConfirmMs { get; init; } = 100;
 
     /// <summary>One wheel notch, <c>WHEEL_DELTA</c>. Smaller deltas (hi-res wheels) accumulate until a notch is reached.</summary>
@@ -143,7 +143,7 @@ public sealed record DragSessionOptions
 }
 
 /// <summary>
-/// Pure press/drag/shift state machine of PLAN §3.1 item 1. Feed it <see cref="InputEvent"/>s from the input monitor (in order, on one
+/// Pure press/drag/shift state machine. Feed it <see cref="InputEvent"/>s from the input monitor (in order, on one
 /// thread), call <see cref="Tick"/> from a timer while <see cref="NextDeadlineMs"/> is non-null, call <see cref="DragEnterArrived"/> when the
 /// wheel's <c>IDropTarget.DragEnter</c> fires, <see cref="ReconcileModifiers"/> on each <c>DragOver</c>, and <see cref="PollButtonState"/>
 /// from a ~50 ms timer while the session is not idle. It answers with <see cref="DragCommand"/>s on <see cref="Command"/>.
@@ -358,7 +358,7 @@ public sealed class DragSession
     }
 
     /// <summary>
-    /// The Shift-click gotcha (PLAN §3.1 item 7). If Shift was down at mouse-down (the user Shift-clicked to extend a selection),
+    /// The Shift-click gotcha. If Shift was down at mouse-down (the user Shift-clicked to extend a selection),
     /// more than one item is selected, the previous conversion finished less than 20 s ago and at least one selected item is not one of its
     /// outputs, the previous outputs are removed from the selection. Otherwise <paramref name="paths"/> is returned unchanged.
     /// </summary>

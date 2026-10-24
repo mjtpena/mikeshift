@@ -4,7 +4,7 @@ namespace MikeShift.Core.Actions;
 /// Segoe Fluent Icons code points for the wheel's tiles (one-character strings; font family "Segoe Fluent Icons",
 /// fallback "Segoe MDL2 Assets" on Windows 10). A unit test checks each exists in the installed icon font.
 /// <para>
-/// Metaphors (UX review W-07): Resize 50 % is the inward-pointing arrows (it shrinks), Compress is an archive box (a different idea from
+/// Metaphors: Resize 50 % is the inward-pointing arrows (it shrinks), Compress is an archive box (a different idea from
 /// shrinking the pixel size), Strip EXIF is the crossed-out eye (hide the metadata), never an X (which reads as "close").
 /// Format tiles carry the glyph of their output's category (W-06).
 /// </para>

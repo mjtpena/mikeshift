@@ -13,7 +13,7 @@ public enum PdfPageFormat
 }
 
 /// <summary>
-/// PDF conversions (PLAN §1.2 PDF rows and image-to-PDF, §3.4 PDF).
+/// PDF conversions.
 /// <para>Every method returns the path it wrote (a folder for pages/split) via <c>Naming.CommitAsync</c>, throws
 /// <see cref="ConversionException"/> with a user-facing message for expected failures, and never modifies inputs.</para>
 /// </summary>

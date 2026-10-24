@@ -9,7 +9,7 @@ using Windows.System;
 namespace MikeShift.App.Editors;
 
 /// <summary>
-/// The trim dialog (PLAN §3.5): start/end <c>m:ss.f</c> fields, a two-thumb range slider over a strip of frames, the
+/// The trim dialog: start/end <c>m:ss.f</c> fields, a two-thumb range slider over a strip of frames, the
 /// selected length and Cancel/Trim. Esc cancels, Enter trims. Use <see cref="ShowAsync"/> on the UI thread.
 /// </summary>
 public sealed partial class TrimDialog : Window

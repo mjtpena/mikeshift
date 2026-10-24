@@ -2,7 +2,7 @@ using MikeShift.Core.Interaction;
 
 namespace MikeShift.Core.Tests.Interaction;
 
-/// <summary>UX review W-03: with the pointer over a taskbar the wheel is anchored beside it so the opaque disc never sits under the shell's topmost taskbar.</summary>
+/// <summary>With the pointer over a taskbar the wheel is anchored beside it so the opaque disc never sits under the shell's topmost taskbar.</summary>
 public class WheelTaskbarPlacementTests
 {
     private const int Size = 380;                       // logical 380 at 100 %

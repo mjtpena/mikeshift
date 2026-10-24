@@ -2,8 +2,8 @@ using System.Windows.Automation;
 
 namespace DragHarness;
 
-/// <summary>O-1: the tray flyout is driven by the keyboard (real tray icon, real input).</summary>
-internal static partial class Anger
+/// <summary>The tray flyout is driven by the keyboard (real tray icon, real input).</summary>
+internal static partial class ExplorerScenarios
 {
     private static string[] MenuNames(Sess s) =>
         AppElements(s.App.Proc.Id, ControlType.MenuItem).Select(i => { try { return i.Current.Name; } catch (Exception) { return ""; } }).Where(n => n.Length > 0 && n != "System").ToArray(); // "System" is the title-bar menu of another window of the app (Settings)
@@ -58,9 +58,9 @@ internal static partial class Anger
         Thread.Sleep(after);
     }
 
-    private static void RegisterTests8(Dictionary<string, Action> d)
+    private static void RegisterTrayKeyboard(Dictionary<string, Action> d)
     {
-        d["x5g"] = () => Case("x5g-tray-keyboard", "Real tray icon: the flyout takes the keyboard (Down, Esc, Enter on Settings, focus loss)", dir => { }, s =>
+        d["tray-keyboard"] = () => Case("tray-keyboard", "Real tray icon: the flyout takes the keyboard (Down, Esc, Enter on Settings, focus loss)", dir => { }, s =>
         {
             const int VK_DOWN = 0x28, VK_UP = 0x26, VK_RETURN = 0x0D;
             var pid = s.App.Proc.Id;
@@ -78,9 +78,9 @@ internal static partial class Anger
 
             // 2. Down moves focus item by item, Up goes back
             if (!OpenTrayFlyout(s)) return;
-            FlyoutShot(s, "x5g-flyout-opened-by-mouse");
+            FlyoutShot(s, "tray-keyboard-opened-by-mouse");
             Tap(VK_DOWN); var f1 = FocusedName();
-            FlyoutShot(s, "x5g-flyout-after-down");
+            FlyoutShot(s, "tray-keyboard-after-down");
             Tap(VK_DOWN); var f2 = FocusedName();
             Tap(VK_DOWN); var f3 = FocusedName();
             Rec.Note($"Down, Down, Down -> focus: {f1} | {f2} | {f3}");
@@ -123,12 +123,12 @@ internal static partial class Anger
     }
 }
 
-internal static partial class Anger
+internal static partial class ExplorerScenarios
 {
-    private static void RegisterTests8b(Dictionary<string, Action> d)
+    private static void RegisterTrayKeyboardOpen(Dictionary<string, Action> d)
     {
         // Opening the menu from the keyboard: UI Automation focus on the tray button, then the Menu key (VK_APPS) opens its context menu.
-        d["x5i"] = () => Case("x5i-tray-keyboard-open", "Real tray icon: opened with the keyboard (focus the button, Menu key); the first item is focused and Esc closes it", dir => { }, s =>
+        d["tray-keyboard-open"] = () => Case("tray-keyboard-open", "Real tray icon: opened with the keyboard (focus the button, Menu key); the first item is focused and Esc closes it", dir => { }, s =>
         {
             var (icon, where) = TrayKit.FindIcon();
             if (!Rec.Check("tray icon found through UI Automation", icon is not null, where)) return;
@@ -139,7 +139,7 @@ internal static partial class Anger
             Rec.Check("the Menu key / Shift+F10 on the focused tray button opened the flyout", ok, string.Join(" | ", MenuNames(s)));
             if (!ok) return;
             Thread.Sleep(500);
-            FlyoutShot(s, "x5i-flyout-opened-by-keyboard");
+            FlyoutShot(s, "tray-keyboard-opened");
             Rec.Note("focus right after opening: " + FocusedName());
             Tap(Native.VK_ESCAPE, 100);
             Rec.Check("Esc closed it", Sess.Wait(() => MenuNames(s).Length == 0, 3000));

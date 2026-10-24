@@ -4,7 +4,7 @@ using System.Text;
 namespace MikeShift.Core.Documents;
 
 /// <summary>
-/// Tolerant HTML mini parser (PLAN §3.4): p, div, h1-h6, ul/ol/li, b/strong, i/em, u, br, a (text and href kept, never fetched),
+/// Tolerant HTML mini parser: p, div, h1-h6, ul/ol/li, b/strong, i/em, u, br, a (text and href kept, never fetched),
 /// table/tr/td/th, pre, <c>img</c>-like tags flag <see cref="DocModel.HasPictures"/>. Entities are decoded; script/style/title are
 /// ignored. Nothing is ever downloaded or executed.
 /// </summary>

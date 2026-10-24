@@ -5,7 +5,7 @@ using MikeShift.Core.Media;
 namespace MikeShift.Core;
 
 /// <summary>
-/// Category detection (PLAN §1.2 "Category detection"). <see cref="Of"/> decides, per path, which action list applies.
+/// Category detection. <see cref="Of"/> decides, per path, which action list applies.
 /// </summary>
 /// <remarks>
 /// Order of evaluation: directory -> Other; cloud placeholder (extension verdict only, never reads content);

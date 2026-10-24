@@ -5,26 +5,26 @@ namespace MikeShift.Core.Tests.Infrastructure;
 
 /// <summary>
 /// Test fixtures, generated at test time (nothing binary is checked in).
-/// <para>This file is the SHARED part (W1): tiny dependency-free generators used by Kind/catalog/zip tests.
-/// Each converter package adds its own generators in its own partial file and must not edit this one:</para>
+/// <para>This file is the shared part: tiny dependency-free generators used by Kind/catalog/zip tests.
+/// Each converter area adds its own generators in its own partial file:</para>
 /// <list type="bullet">
-/// <item><c>Fixtures.Images.cs</c> (W2a), <c>Fixtures.Pdf.cs</c> (W2b), <c>Fixtures.Media.cs</c> (W2c), <c>Fixtures.Documents.cs</c> (W2d).</item>
+/// <item><c>Fixtures.Images.cs</c>, <c>Fixtures.Pdf.cs</c>, <c>Fixtures.Media.cs</c>, <c>Fixtures.Documents.cs</c>.</item>
 /// </list>
-/// To include your fixtures in <c>scripts/make-fixtures.ps1</c> output, implement the matching hook in your file, e.g.
+/// To include a fixture set in <c>scripts/make-fixtures.ps1</c> output, implement the matching hook in its file, e.g.
 /// <c>static partial void WriteImagesFixtures(string dir) { ... }</c>.
 /// </summary>
 public static partial class Fixtures
 {
-    /// <summary>Hook: W2a writes image fixtures into <paramref name="dir"/> for manual testing.</summary>
+    /// <summary>Hook: writes image fixtures into <paramref name="dir"/> for manual testing.</summary>
     static partial void WriteImagesFixtures(string dir);
 
-    /// <summary>Hook: W2b writes PDF fixtures into <paramref name="dir"/> for manual testing.</summary>
+    /// <summary>Hook: writes PDF fixtures into <paramref name="dir"/> for manual testing.</summary>
     static partial void WritePdfFixtures(string dir);
 
-    /// <summary>Hook: W2c writes audio/video fixtures into <paramref name="dir"/> for manual testing.</summary>
+    /// <summary>Hook: writes audio/video fixtures into <paramref name="dir"/> for manual testing.</summary>
     static partial void WriteMediaFixtures(string dir);
 
-    /// <summary>Hook: W2d writes document fixtures into <paramref name="dir"/> for manual testing.</summary>
+    /// <summary>Hook: writes document fixtures into <paramref name="dir"/> for manual testing.</summary>
     static partial void WriteDocumentsFixtures(string dir);
 
     /// <summary>Writes the complete fixture set (shared + every package's) into <paramref name="dir"/>. Used by <c>scripts/make-fixtures.ps1</c>.</summary>

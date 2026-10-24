@@ -12,14 +12,14 @@ public class KindTests
     [Theory, MemberData(nameof(ImageExt))]
     public void Image_extensions_are_images(string ext)
     {
-        // Image needs a decoder that accepts the bytes (W2a): real tiny images where we can make them. HEIC/AVIF/JPEG XR
+        // Image needs a decoder that accepts the bytes: real tiny images where we can make them. HEIC/AVIF/JPEG XR
         // cannot be fabricated here, so for those only "noise is not an image" is asserted.
         var bytes = Fixtures.ImageFor(ext);
         if (bytes is null) Assert.Equal(Category.Other, OfFile($"x.{ext}", Fixtures.Noise(64)));
         else Assert.Equal(Category.Image, OfFile($"x.{ext}", bytes));
     }
 
-    // Audio/video are only classified as such when Media Foundation can open the file (real probes since W2c), so
+    // Audio/video are only classified as such when Media Foundation can open the file (real probes), so
     // these extension-table tests use the placeholder path (extension verdict only). Real files: Media/MediaProbeTests.
     [Theory, MemberData(nameof(VideoExt))]
     public void Video_extensions_are_video(string ext) => Assert.Equal(Category.Video, ExtensionVerdict($"x.{ext}"));
@@ -77,7 +77,7 @@ public class KindTests
     [Fact]
     public void Ts_with_transport_stream_sync_bytes_is_video()
     {
-        // Sync bytes are necessary but, since W2c, no longer sufficient: Media Foundation must also be able to open the
+        // Sync bytes are necessary but not sufficient: Media Foundation must also be able to open the
         // stream, and the synthetic skeleton has no programs. The verdict therefore follows the real probe.
         using var tmp = new TempDir();
         foreach (var name in new[] { "clip.ts", "clip.mts" })

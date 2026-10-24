@@ -82,16 +82,16 @@ internal static class Program
             Console.Error.WriteLine("App not found: " + app + " (build the solution first, or pass --app)");
             return 2;
         }
-        if (args.Contains("--anger"))
+        if (args.Contains("--explorer"))
         {
-            // "Test in anger": real Explorer as the drag source (AngerKit.cs, Anger*.cs). Runs on an MTA thread (UI Automation).
+            // Real Explorer as the drag source (ExplorerKit.cs, ExplorerScenarios*.cs). Runs on an MTA thread (UI Automation).
             if (!args.Contains("--attach") && Native.FindWindowW("MikeShiftWheel", null) != IntPtr.Zero)
             {
                 Console.Error.WriteLine("A MikeShift process is already running; quit it first (or pass --attach).");
                 return 2;
             }
             var rc = 0;
-            var t = new Thread(() => rc = Anger.Run(args, app, repo)) { Name = "anger" };
+            var t = new Thread(() => rc = ExplorerScenarios.Run(args, app, repo)) { Name = "explorer-scenarios" };
             t.SetApartmentState(ApartmentState.MTA);
             t.Start();
             t.Join();
@@ -223,7 +223,7 @@ internal sealed class ScenarioRun
             using var bmp = new Bitmap(640, 400);
             using (var g = Graphics.FromImage(bmp))
             {
-                using var brush = new LinearGradientBrush(new Rectangle(0, 0, 640, 400), Color.OrangeRed, Color.RoyalBlue, 35f);
+                using var brush = new LinearGradientBrush(new Rectangle(0, 0, 640, 400), Color.FromArgb(255, 69, 0), Color.RoyalBlue, 35f);
                 g.FillRectangle(brush, 0, 0, 640, 400);
                 g.DrawString("harness " + (i + 1), new Font("Segoe UI", 40), Brushes.White, 30, 150);
             }
@@ -486,7 +486,7 @@ internal sealed class ScenarioRun
 
         var visible = WaitFor(WheelVisible, 2000);
         var shownAfter = shiftAt.ElapsedMilliseconds;
-        Check("wheel window became visible", visible, visible ? $"{(_s.ShiftBeforeClick ? "since arming" : "after Shift")}: {shownAfter} ms (PLAN target < 100 ms)" : "");
+        Check("wheel window became visible", visible, visible ? $"{(_s.ShiftBeforeClick ? "since arming" : "after Shift")}: {shownAfter} ms (target < 100 ms)" : "");
         if (!visible) { Check("log (for diagnosis)", false, Log()); return; }
 
         if (_s.Edge)

@@ -5,7 +5,7 @@ using Xunit.Sdk;
 namespace MikeShift.Core.Tests.Infrastructure;
 
 /// <summary>
-/// Proves a conversion never modified, moved or deleted its inputs (PLAN: "originals never touched").
+/// Proves a conversion never modified, moved or deleted its inputs (originals are never touched).
 /// Hashes every input (files by content; folders recursively by relative name + content) when created and asserts
 /// equality in <see cref="AssertUnchanged"/> / on dispose.
 /// <code>

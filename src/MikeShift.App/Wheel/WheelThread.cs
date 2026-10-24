@@ -7,7 +7,7 @@ using Windows.Win32.UI.WindowsAndMessaging;
 namespace MikeShift.App.Wheel;
 
 /// <summary>
-/// The dedicated STA thread that owns everything about the wheel (PLAN §3.1 item 3): the window, the OLE drop target (OLE calls it
+/// The dedicated STA thread that owns everything about the wheel: the window, the OLE drop target (OLE calls it
 /// through this thread's message loop), the Win2D renderer, <c>DragSession</c> and <c>WheelModel</c>. It idles in
 /// <c>MsgWaitForMultipleObjectsEx</c> with an infinite timeout and only wakes for messages, posted work, or a timer the controller asked for
 /// (a frame while animating, the drag session's deadlines, the 50 ms button poll while a drag is active), so a resident app costs no CPU.

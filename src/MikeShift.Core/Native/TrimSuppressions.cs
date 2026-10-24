@@ -8,7 +8,7 @@ using System.Diagnostics.CodeAnalysis;
 //     trim root in the shipped apps (TrimmerRootAssembly in MikeShift.App.csproj): none of its types or members is removed, so the
 //     vtable layouts the runtime marshals against are intact;
 //   * the runtime's built-in COM interop is switched on (BuiltInComInteropSupport in Trimming.props), which trimmed apps otherwise lose.
-// Both are verified by the trimmed-package test runs in docs/test-runs/2026-10-24-package-size.md.
+// Both are checked by running the trimmed package (see docs/developer/testing.md).
 namespace MikeShift.Core
 {
     internal static class TrimJustification

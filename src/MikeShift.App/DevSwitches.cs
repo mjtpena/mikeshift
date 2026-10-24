@@ -9,7 +9,7 @@ namespace MikeShift.App;
 /// only through this class, and only when <see cref="Enabled"/>: a Debug build, or an unpackaged Release build started with <c>--dev</c>
 /// (<see cref="DevSwitchPolicy"/>). A packaged Release build ignores all of them, so nothing outside the user's own gesture can change
 /// how the wheel treats input or where it keeps its files. <c>--smoke-test</c> is not a dev switch (CI uses it) and is read directly.
-/// The switches are listed in docs/ARCHITECTURE.md ("Dev switches").
+/// The switches are listed in docs/developer/architecture.md ("Developer switches").
 /// </summary>
 internal static class DevSwitches
 {

@@ -8,10 +8,10 @@ using System.Windows.Automation;
 namespace DragHarness;
 
 /// <summary>
-/// Building blocks for the "test in anger" runs (--anger): the real File Explorer is always the OLE drag source. Nothing in here
+/// Building blocks for the real-Explorer scenarios (--explorer): the real File Explorer is always the OLE drag source. Nothing in here
 /// uses the harness's own window as a source. Everything runs on a plain background thread.
 /// </summary>
-internal static class AngerNative
+internal static class ExplorerNative
 {
     [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr hwnd, IntPtr after, int x, int y, int cx, int cy, uint flags);
     [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
@@ -29,7 +29,7 @@ internal static class AngerNative
     public const uint SWP_NOZORDER = 4, SWP_SHOWWINDOW = 0x40;
 
     /// <summary>
-    /// Brings a window to the front. A process that was not started from the foreground (a harness started by a script, or another agent) is
+    /// Brings a window to the front. A process that was not started from the foreground (a harness started by a script, or by another program) is
     /// refused by <c>SetForegroundWindow</c> and the window stays behind whatever is on top; a tap of an unassigned key first makes this process the
     /// one that generated the last input, which Windows accepts as the right to take the foreground.
     /// </summary>
@@ -45,15 +45,15 @@ internal static class AngerNative
 }
 
 /// <summary>A started MikeShift.exe with its own log (unpackaged), or an attached one (packaged).</summary>
-internal sealed class AngerApp : IDisposable
+internal sealed class AppProcess : IDisposable
 {
     public Process Proc = null!;
     public string LogPath = "";
     public string Exe = "";
 
-    public static AngerApp Start(string exe, string logPath, IDictionary<string, string>? env = null, params string[] args)
+    public static AppProcess Start(string exe, string logPath, IDictionary<string, string>? env = null, params string[] args)
     {
-        var app = new AngerApp { Exe = exe, LogPath = logPath };
+        var app = new AppProcess { Exe = exe, LogPath = logPath };
         try { File.Delete(logPath); } catch (IOException) { }
         var psi = new ProcessStartInfo(exe) { UseShellExecute = false, WorkingDirectory = Path.GetDirectoryName(exe)! };
         psi.ArgumentList.Add("--dev"); // the MIKESHIFT_* switches below are honoured only in Debug builds or with --dev (see DevSwitches)
@@ -69,7 +69,7 @@ internal sealed class AngerApp : IDisposable
     }
 
     /// <summary>Attaches to an already running process (packaged app) whose log file is <paramref name="logPath"/>.</summary>
-    public static AngerApp Attach(Process p, string logPath) => new() { Proc = p, LogPath = logPath };
+    public static AppProcess Attach(Process p, string logPath) => new() { Proc = p, LogPath = logPath };
 
     public string Log()
     {
@@ -142,15 +142,15 @@ internal sealed class ExplorerWin
 
     public void Place(Rectangle b)
     {
-        AngerNative.SetWindowPos(Hwnd, IntPtr.Zero, b.X, b.Y, b.Width, b.Height, AngerNative.SWP_NOZORDER | AngerNative.SWP_SHOWWINDOW);
+        ExplorerNative.SetWindowPos(Hwnd, IntPtr.Zero, b.X, b.Y, b.Width, b.Height, ExplorerNative.SWP_NOZORDER | ExplorerNative.SWP_SHOWWINDOW);
         Thread.Sleep(400);
-        AngerNative.Front(Hwnd);
+        ExplorerNative.Front(Hwnd);
         Thread.Sleep(300);
     }
 
     public void Close()
     {
-        if (AngerNative.IsWindow(Hwnd)) Native.PostMessageW(Hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero);
+        if (ExplorerNative.IsWindow(Hwnd)) Native.PostMessageW(Hwnd, 0x0010, IntPtr.Zero, IntPtr.Zero);
     }
 
     public AutomationElement? FindItem(string name, int timeoutMs = 10000)
@@ -204,7 +204,7 @@ internal sealed class ExplorerWin
     /// <summary>Left-click the first item, Ctrl-click the others (a real multi-selection).</summary>
     public void Select(params string[] names)
     {
-        AngerNative.Front(Hwnd);
+        ExplorerNative.Front(Hwnd);
         for (var i = 0; i < names.Length; i++)
         {
             var p = IconPoint(names[i]);
@@ -222,7 +222,7 @@ internal sealed class ExplorerWin
 
     public void SelectAll()
     {
-        AngerNative.Front(Hwnd);
+        ExplorerNative.Front(Hwnd);
         Pointer.KeyDown(Native.VK_LCONTROL); Pointer.KeyDown(0x41); Pointer.KeyUp(0x41); Pointer.KeyUp(Native.VK_LCONTROL);
         Thread.Sleep(400);
     }
@@ -312,12 +312,12 @@ internal static class FileKit
 
     public static string HashAny(string p) => Directory.Exists(p) ? ShaDir(p) : Sha(p);
 
-    public static void MakeJpg(string path, int w = 640, int h = 400, string text = "anger")
+    public static void MakeJpg(string path, int w = 640, int h = 400, string text = "scenario")
     {
         using var bmp = new Bitmap(w, h);
         using (var g = Graphics.FromImage(bmp))
         {
-            using var b = new System.Drawing.Drawing2D.LinearGradientBrush(new Rectangle(0, 0, w, h), Color.OrangeRed, Color.RoyalBlue, 35f);
+            using var b = new System.Drawing.Drawing2D.LinearGradientBrush(new Rectangle(0, 0, w, h), Color.FromArgb(255, 69, 0), Color.RoyalBlue, 35f);
             g.FillRectangle(b, 0, 0, w, h);
             g.DrawString(text, new Font("Segoe UI", Math.Max(12, h / 10)), Brushes.White, 20, h / 3);
         }

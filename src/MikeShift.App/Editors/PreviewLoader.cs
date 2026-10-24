@@ -18,7 +18,7 @@ internal static class PreviewLoader
         using var stream = await file.OpenReadAsync();
         var decoder = await BitmapDecoder.CreateAsync(stream);
 
-        // The upright size is what CropChoice speaks in (PLAN §3.5, Interaction.cs).
+        // The upright size is what CropChoice speaks in (see CropChoice in Interaction.cs).
         var width = (int)decoder.OrientedPixelWidth;
         var height = (int)decoder.OrientedPixelHeight;
         var shrink = Math.Min(1.0, (double)MaxPreviewSide / Math.Max(width, height));

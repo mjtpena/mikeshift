@@ -3,7 +3,7 @@ namespace MikeShift.Core;
 /// <summary>
 /// Pretends optional Windows extensions are missing, for screenshots and tests on a PC that has them (nobody can uninstall the HEIF extension just
 /// to look at the "Get HEIF" tile). The app turns the dev switch <c>MIKESHIFT_CAPS=no-heif,no-hevc</c> into <see cref="Capabilities.Override"/>;
-/// a shipped build never reads it (dev switches are ignored there, see ARCHITECTURE.md §8). It can only <em>remove</em> capabilities.
+/// a shipped build never reads it (dev switches are ignored there, see docs/developer/architecture.md, "Developer switches"). It can only <em>remove</em> capabilities.
 /// <para>Names: <c>no-heif</c> (HEIF decode and encode), <c>no-hevc</c> (HEVC decoder, which also ends HEIC encode), <c>no-av1</c> (AVIF and AV1),
 /// <c>no-webp</c>.</para>
 /// </summary>

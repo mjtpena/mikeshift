@@ -46,14 +46,14 @@ internal sealed class WheelScene
 
 /// <summary>
 /// Draws the wheel with Win2D into a premultiplied-BGRA <see cref="CanvasRenderTarget"/> and hands back the pixels
-/// (PLAN §3.2). Geometry constants come from <see cref="WheelGeometry"/>, animation values from <see cref="WheelAnimation"/>, colours from
+/// Geometry constants come from <see cref="WheelGeometry"/>, animation values from <see cref="WheelAnimation"/>, colours from
 /// <see cref="WheelPalette"/> (dark/light) or the system colours (high contrast). The drawing is in logical (DIP) units: the render target's
 /// DPI is 96·scale, so 1 unit = 1 logical px.
 /// </summary>
 internal sealed class WheelRenderer : IDisposable
 {
     // The device (D3D11 + D2D + the driver's heaps and the effect shaders) is by far the biggest thing the wheel owns, so it is created
-    // on demand and handed back by Release() once the wheel has been hidden for a while (PLAN §6: resident memory).
+    // on demand and handed back by Release() once the wheel has been hidden for a while (to keep resident memory low).
     private CanvasDevice? _device;
     private bool _software;
     private CanvasRenderTarget? _target;

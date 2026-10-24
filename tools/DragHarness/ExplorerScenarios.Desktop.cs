@@ -37,24 +37,24 @@ internal static class DesktopKit
     }
 }
 
-internal static partial class Anger
+internal static partial class ExplorerScenarios
 {
-    private static void RegisterTests3(Dictionary<string, Action> d)
+    private static void RegisterDesktop(Dictionary<string, Action> d)
     {
-        d["x2-desktop"] = () =>
+        d["desktop"] = () =>
         {
-            Rec.Begin("x2-desktop", "The real Desktop as the drag source (temp file created on the Desktop and deleted afterwards)");
+            Rec.Begin("desktop", "The real Desktop as the drag source (temp file created on the Desktop and deleted afterwards)");
             var desk = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
-            var name = "mikeshift-anger-desktop.jpg";
+            var name = "mikeshift-scenario-desktop.jpg";
             var file = Path.Combine(desk, name);
-            var png = Path.Combine(desk, "mikeshift-anger-desktop.png");
-            AngerApp? app = null;
+            var png = Path.Combine(desk, "mikeshift-scenario-desktop.png");
+            AppProcess? app = null;
             try
             {
                 if (File.Exists(file)) { Rec.Check("no clash with an existing file", false, file); return; }
                 FileKit.MakeJpg(file, text: "desktop");
                 var hash = FileKit.Sha(file);
-                app = AngerApp.Start(AppExe, Path.Combine(Root, "x2-desktop.log"));
+                app = AppProcess.Start(AppExe, Path.Combine(Root, "desktop.log"));
                 System.Windows.Automation.AutomationElement? item = null;
                 var sw = Stopwatch.StartNew();
                 while (sw.ElapsedMilliseconds < 15000 && (item = DesktopKit.FindDesktopItem(name)) is null) Thread.Sleep(250);
@@ -80,7 +80,7 @@ internal static partial class Anger
                 s.WaitTiles(); Thread.Sleep(450);
                 var hit = s.ToTile("PNG");
                 Rec.Check("PNG tile highlighted", hit);
-                Shot(s, "x2-desktop", WheelInfo.Centre(s.Log), 300);
+                Shot(s, "desktop", WheelInfo.Centre(s.Log), 300);
                 if (!hit) { s.Abort(); return; }
                 s.Release();
                 Rec.Check("desktop PNG created", s.WaitFile(png));

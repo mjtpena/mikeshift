@@ -111,7 +111,7 @@ public sealed class DocTable : DocBlock
 public sealed class DocPageBreak : DocBlock;
 
 /// <summary>
-/// The pivot model every reader produces and every writer consumes (PLAN §3.4 Documents).
+/// The pivot model every reader produces and every writer consumes.
 /// <see cref="HasPictures"/> records that the source embedded pictures, which the pivot cannot carry (only TXT is offered then).
 /// </summary>
 public sealed class DocModel

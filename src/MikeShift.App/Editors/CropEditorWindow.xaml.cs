@@ -11,7 +11,7 @@ using Windows.System;
 namespace MikeShift.App.Editors;
 
 /// <summary>
-/// The crop editor (PLAN §3.5): a ~640 px floating window with the picture, a draggable crop box, aspect presets, a scale
+/// The crop editor: a ~640 px floating window with the picture, a draggable crop box, aspect presets, a scale
 /// slider and output W/H boxes. Esc cancels, Enter saves. Create and use on the UI thread via <see cref="ShowAsync"/>.
 /// </summary>
 public sealed partial class CropEditorWindow : Window

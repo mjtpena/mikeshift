@@ -182,7 +182,7 @@ public static class OdtWriter
         StartRoot(w, "document-content");
 
         w.WriteStartElement("office", "automatic-styles", NsOffice);
-        // T1..T7: bold=1, italic=2, underline=4 combinations.
+        // Seven automatic styles: bold=1, italic=2, underline=4 combinations.
         for (var mask = 1; mask < 8; mask++)
         {
             w.WriteStartElement("style", "style", NsStyle);

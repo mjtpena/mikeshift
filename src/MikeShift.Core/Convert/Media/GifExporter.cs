@@ -5,7 +5,7 @@ using Windows.Win32.Media.MediaFoundation;
 namespace MikeShift.Core.Media;
 
 /// <summary>
-/// Video -> animated GIF (PLAN §1.2): the first 15 s (the "GIF length" setting: 5, 10, 15 or 30 s) at 10 fps, longest side at most 480 px, looping forever.
+/// Video -> animated GIF: the first 15 s (the "GIF length" setting: 5, 10, 15 or 30 s) at 10 fps, longest side at most 480 px, looping forever.
 /// Frames come from an <c>IMFSourceReader</c> converted to RGB32, are box-filtered down, and go through <see cref="GifWriter"/>.
 /// </summary>
 internal static class GifExporter

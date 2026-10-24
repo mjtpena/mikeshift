@@ -5,7 +5,7 @@ using MikeShift.Core.Feedback;
 namespace MikeShift.Core.Actions;
 
 /// <summary>
-/// Decides which tiles the wheel shows for a selection (PLAN §1.1 multi-select rules, §1.2 order).
+/// Decides which tiles the wheel shows for a selection.
 /// <list type="number">
 /// <item>All items in the same category (not Other): that category's list from <c>Actions/Catalog</c>.</item>
 /// <item>Mixed categories, unknown files or folders: only Zip.</item>

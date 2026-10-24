@@ -7,9 +7,9 @@ using WinUIEx;
 namespace MikeShift.App.Tray;
 
 /// <summary>
-/// TEMPORARY action picker (W2f): shown by Convert Files… when nothing handles
-/// <see cref="TrayController.ConvertFilesRequested"/>. Lists every action for the selection as a button so the whole
-/// pipeline (catalog, job runner, toast, dialogs) is testable end to end. W3's wheel replaces it by attaching a handler.
+/// Fallback action picker: shown by Convert Files… when nothing handles
+/// <see cref="TrayController.ConvertFilesRequested"/> (for example with the input hooks switched off). Lists every action for the
+/// selection as a button, so the whole pipeline (catalog, job runner, toast, dialogs) still works without the wheel.
 /// </summary>
 internal sealed class ActionPickerWindow : Window
 {

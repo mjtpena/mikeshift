@@ -13,7 +13,7 @@ using TitleBar = Microsoft.UI.Xaml.Controls.TitleBar;
 namespace MikeShift.App.Chrome;
 
 /// <summary>
-/// The one chrome treatment every MikeShift XAML window shares (UX review E-01, X-03): Mica, the MikeShift icon, and a title bar
+/// The one chrome treatment every MikeShift XAML window shares: Mica, the MikeShift icon, and a title bar
 /// that is part of the window (extended into the content, the WinUI <see cref="TitleBar"/> control with the icon and the title) so
 /// the caption follows the app theme instead of staying light over dark content. Placement clamps to the work area.
 /// </summary>

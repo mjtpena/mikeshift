@@ -7,7 +7,7 @@ namespace DragHarness;
 /// <summary>One scripted gesture with the real Explorer as the OLE drag source.</summary>
 internal sealed class Sess
 {
-    public AngerApp App = null!;
+    public AppProcess App = null!;
     public ExplorerWin Ex = null!;
     public string Work = "";
     public Point Dest;
@@ -153,7 +153,7 @@ internal sealed class Sess
     }
 }
 
-internal static partial class Anger
+internal static partial class ExplorerScenarios
 {
     public static string Root = "";
     public static string AppExe = "";
@@ -174,25 +174,25 @@ internal static partial class Anger
     {
         AppExe = appExe;
         RepoRoot = repo;
-        Root = Path.GetFullPath(Environment.GetEnvironmentVariable("MIKESHIFT_ANGER_ROOT") is { Length: > 0 } r ? r : Path.Combine(Path.GetTempPath(), "mikeshift-anger"));
+        Root = Path.GetFullPath(Environment.GetEnvironmentVariable("MIKESHIFT_EXPLORER_ROOT") is { Length: > 0 } r ? r : Path.Combine(Path.GetTempPath(), "mikeshift-explorer"));
         Directory.CreateDirectory(Root);
         MakeFixtures();
         ShotDir = Path.Combine(Root, "shots");
         Directory.CreateDirectory(ShotDir);
         Rec.File = Path.Combine(Root, "results.txt");
 
-        var wanted = args[Array.IndexOf(args, "--anger") + 1].Split(',');
+        var wanted = args[Array.IndexOf(args, "--explorer") + 1].Split(',');
         var all = Tests();
         var run = wanted.Contains("all") ? all.Keys.ToArray() : wanted;
         foreach (var name in run)
         {
-            if (!all.TryGetValue(name, out var test)) { Console.Error.WriteLine("unknown anger test " + name + "; known: " + string.Join(", ", all.Keys)); return 2; }
+            if (!all.TryGetValue(name, out var test)) { Console.Error.WriteLine("unknown scenario " + name + "; known: " + string.Join(", ", all.Keys)); return 2; }
             var before = Rec.Failures;
             try { test(); }
             catch (Exception ex) { Rec.Check("test ran without exceptions", false, ex.ToString()); }
             Console.WriteLine($"=== {name}: {(Rec.Failures == before ? "PASS" : "FAIL")}");
         }
-        Console.WriteLine(Rec.Failures == 0 ? "ANGER ALL PASS" : $"{Rec.Failures} check(s) FAILED");
+        Console.WriteLine(Rec.Failures == 0 ? "ALL EXPLORER SCENARIOS PASS" : $"{Rec.Failures} check(s) FAILED");
         return Rec.Failures == 0 ? 0 : 1;
     }
 
@@ -207,7 +207,7 @@ internal static partial class Anger
         var s = new Sess { Work = work };
         try
         {
-            s.App = AngerApp.Start(AppExe, Path.Combine(Root, id + ".log"), env);
+            s.App = AppProcess.Start(AppExe, Path.Combine(Root, id + ".log"), env);
             Thread.Sleep(500);
             if (openExplorer) s.Ex = ExplorerWin.Open(work, box ?? PrimaryBox);
             body(s);
@@ -275,16 +275,15 @@ internal static partial class Anger
     public static Dictionary<string, Action> Tests()
     {
         var d = new Dictionary<string, Action>();
-        RegisterTests(d);
-        RegisterTests2(d);
-        RegisterTests3(d);
-        RegisterTests4(d);
-        RegisterTests5(d);
-        RegisterTests6(d);
-        RegisterTests7(d);
-        RegisterTests8(d);
-        RegisterTests8b(d);
-        RegisterTests9(d);
+        RegisterConversions(d);
+        RegisterPlacement(d);
+        RegisterDesktop(d);
+        RegisterOtherSources(d);
+        RegisterTrayPicker(d);
+        RegisterToolsAndTray(d);
+        RegisterTrayKeyboard(d);
+        RegisterTrayKeyboardOpen(d);
+        RegisterEntryPoints(d);
         return d;
     }
 }

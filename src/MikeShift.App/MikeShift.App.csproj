@@ -62,7 +62,7 @@
     <AdditionalFiles Include="NativeMethods.json" />
   </ItemGroup>
 
-  <!-- Packaging (W4b) -->
+  <!-- Packaging -->
   <PropertyGroup>
     <!-- One architecture per package, with the .NET runtime bundled: an MSIX cannot depend on a machine-wide .NET install.
          Output stays in bin\<Platform>\<Config>\<tfm>\ (no win-x64 subfolder) so existing dev scripts keep working. -->

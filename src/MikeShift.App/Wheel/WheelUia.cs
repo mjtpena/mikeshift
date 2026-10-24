@@ -6,7 +6,7 @@ using Windows.Win32.Foundation;
 namespace MikeShift.App.Wheel;
 
 /// <summary>
-/// UI Automation for the wheel (PLAN §3.2, UX review W-15): the window is a <c>List</c> (Selection pattern: single selection, none required)
+/// UI Automation for the wheel: the window is a <c>List</c> (Selection pattern: single selection, none required)
 /// whose tiles are <c>ListItem</c>s (SelectionItem pattern: <c>IsSelected</c> = highlighted; Invoke picks in click mode) named exactly like the
 /// shell's drop description ("Convert to PNG", "Compress"), with <c>PositionInSet</c>/<c>SizeOfSet</c>, <c>HelpText</c> and a
 /// <c>FullDescription</c> sentence. The highlighted tile is the focused element in click mode and every highlight change raises a focus event or a

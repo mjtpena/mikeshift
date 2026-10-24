@@ -5,8 +5,8 @@ using System.Windows.Automation;
 
 namespace DragHarness;
 
-/// <summary>G2 (real-drag verification) additions: tools tiles from Explorer, wheel callout screenshots, taskbar sweep, latency, real tray flyout and toast.</summary>
-internal static partial class Anger
+/// <summary>Scenarios for the tools tiles from Explorer, the wheel callout, a sweep along the taskbar, latency, and the real tray flyout and toast.</summary>
+internal static partial class ExplorerScenarios
 {
     [System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
     private static extern int GetClassNameW(IntPtr hwnd, System.Text.StringBuilder sb, int max);
@@ -15,7 +15,7 @@ internal static partial class Anger
     private static List<Rectangle> WindowsOfClass(string cls)
     {
         var result = new List<Rectangle>();
-        AngerNative.EnumWindows((h, _) =>
+        ExplorerNative.EnumWindows((h, _) =>
         {
             var sb = new System.Text.StringBuilder(128);
             GetClassNameW(h, sb, 128);
@@ -31,7 +31,7 @@ internal static partial class Anger
         using var bmp = new Bitmap(w, h);
         using (var g = Graphics.FromImage(bmp))
         {
-            using var b = new System.Drawing.Drawing2D.LinearGradientBrush(new Rectangle(0, 0, w, h), Color.OrangeRed, Color.RoyalBlue, 35f);
+            using var b = new System.Drawing.Drawing2D.LinearGradientBrush(new Rectangle(0, 0, w, h), Color.FromArgb(255, 69, 0), Color.RoyalBlue, 35f);
             g.FillRectangle(b, 0, 0, w, h);
             var rnd = new Random(7);
             for (var i = 0; i < 3000; i++)
@@ -51,10 +51,10 @@ internal static partial class Anger
 
     private static Rectangle Union(IEnumerable<Rectangle> rects) => rects.Aggregate(Rectangle.Union);
 
-    private static void RegisterTests7(Dictionary<string, Action> d)
+    private static void RegisterToolsAndTray(Dictionary<string, Action> d)
     {
         // ---- item 1: tools page from a real Explorer drag (Ctrl -> Compress, Resize 50%)
-        d["x1j"] = () => Case("x1j-tools", "Explorer: Shift-drag a big JPG, Ctrl -> Tools page: drop on Compress; then again on Resize 50%",
+        d["tools-page"] = () => Case("tools-page", "Explorer: Shift-drag a big JPG, Ctrl -> Tools page: drop on Compress; then again on Resize 50%",
             dir => MakeBigJpg(Path.Combine(dir, "photo.jpg")), s =>
             {
                 foreach (var tile in new[] { "Compress", "Resize 50%" })
@@ -68,7 +68,7 @@ internal static partial class Anger
                     Thread.Sleep(450);
                     var hit = s.ToTile(tile, true);
                     Rec.Check($"[{tile}] pointer on the tile highlighted it", hit, s.App.LastLine("highlight:"));
-                    if (tile == "Compress") Shot(s, "x1j-tools-compress", null, 260);
+                    if (tile == "Compress") Shot(s, "tools-page-compress", null, 260);
                     s.Release();
                     var got = Sess.Wait(() => NewEntries(s.Work, before).Length > 0, 20000);
                     var made = NewEntries(s.Work, before);
@@ -80,7 +80,7 @@ internal static partial class Anger
             });
 
         // ---- item 2: callout pill with the real drag thumbnail, both pages, both halves
-        d["xw"] = () => Case("xw-pill", "Wheel callout pill with Explorer's real drag thumbnail: highlighted tile on Formats and Tools, pointer in the top and in the bottom half",
+        d["callout"] = () => Case("callout", "Wheel callout pill with Explorer's real drag thumbnail: highlighted tile on Formats and Tools, pointer in the top and in the bottom half",
             dir => FileKit.MakeJpg(Path.Combine(dir, "photo.jpg")), s =>
             {
                 var seen = s.Start("photo.jpg");
@@ -103,25 +103,25 @@ internal static partial class Anger
                         $"pill zone {pill}; drag-image windows: {(thumbs.Count == 0 ? "none found (judge from the screenshot)" : string.Join(" ", thumbs))}");
                     Shot(s, shot, WheelInfo.Centre(s.Log), 230);
                 }
-                Probe("formats, top half", "PNG", false, "xw-formats-top", true);
-                Probe("formats, bottom half", "BMP", false, "xw-formats-bottom", false);
+                Probe("formats, top half", "PNG", false, "callout-formats-top", true);
+                Probe("formats, bottom half", "BMP", false, "callout-formats-bottom", false);
                 Pointer.KeyDown(Native.VK_LCONTROL); Thread.Sleep(40); Pointer.KeyUp(Native.VK_LCONTROL);
                 Rec.Check("Ctrl switched to the Tools page", s.App.WaitLog(t => t[s.LogMark..].Contains("page = Tool"), 1500));
                 Thread.Sleep(500);
-                Probe("tools, top half", "Compress", true, "xw-tools-top", true);
-                Probe("tools, bottom half", "Strip EXIF", true, "xw-tools-bottom", false);
+                Probe("tools, top half", "Compress", true, "callout-tools-top", true);
+                Probe("tools, bottom half", "Strip EXIF", true, "callout-tools-bottom", false);
                 s.Abort();
             });
 
         // ---- item 3: taskbar sweep on the primary monitor
-        d["x3-taskbar"] = () =>
+        d["taskbar"] = () =>
         {
             var prim = Monitors()[0];
             var W = prim.WorkingArea; var B = prim.Bounds;
-            if (B.Bottom == W.Bottom) { Rec.Begin("x3-taskbar", "no bottom taskbar on the primary monitor"); Rec.Check("a bottom taskbar exists", false); return; }
+            if (B.Bottom == W.Bottom) { Rec.Begin("taskbar", "no bottom taskbar on the primary monitor"); Rec.Check("a bottom taskbar exists", false); return; }
             var y = B.Bottom - 12;
             var xs = new[] { 150, 700, 1250, 1720, 2300, 2900, 3300 }.Select(x => B.Left + Math.Min(x, B.Width - 40)).ToArray();
-            Case("x3-taskbar", $"Shift started with the pointer over the taskbar (y={y}) at several x on the primary monitor: tile ring clear of the taskbar, drop on PNG works",
+            Case("taskbar", $"Shift started with the pointer over the taskbar (y={y}) at several x on the primary monitor: tile ring clear of the taskbar, drop on PNG works",
                 dir => FileKit.MakeJpg(Path.Combine(dir, "photo.jpg")), s =>
                 {
                     foreach (var x in xs)
@@ -141,7 +141,7 @@ internal static partial class Anger
                         Rec.Check($"[x={x}] PNG highlighted", hit);
                         var bottomHit = s.ToTile("BMP");
                         Rec.Check($"[x={x}] the bottom tile (BMP) can be hit too", bottomHit);
-                        if (x == xs[0] || x == xs[3] || x == xs[^1]) Shot(s, $"x3-taskbar-{x}", WheelInfo.Centre(s.Log), 260);
+                        if (x == xs[0] || x == xs[3] || x == xs[^1]) Shot(s, $"taskbar-{x}", WheelInfo.Centre(s.Log), 260);
                         s.ToTile("PNG");
                         s.Release();
                         Rec.Check($"[x={x}] PNG created", s.WaitFile(png, 10000));
@@ -151,10 +151,10 @@ internal static partial class Anger
                 }, BoxOn(prim));
         };
 
-        // ---- item 8: latency (log timestamps) on each monitor and idle cost
+        // ---- latency (log timestamps) on each monitor and idle cost
         foreach (var which in new[] { "primary", "left" })
         {
-            var name = "x8-" + which;
+            var name = "latency-" + which;
             d[name] = () =>
             {
                 var mon = which == "primary" ? Monitors()[0] : Monitors().First(m => !m.Primary);
@@ -211,7 +211,7 @@ internal static partial class Anger
         }
 
         // ---- item 7: real tray, Fluent flyout, left click -> picker -> click-mode wheel -> toast -> Show in folder
-        d["x5f"] = () =>
+        d["tray-flyout"] = () =>
         {
             var pickDir = Path.Combine(Root, "pickdir");
             if (Directory.Exists(pickDir)) Directory.Delete(pickDir, true);
@@ -219,7 +219,7 @@ internal static partial class Anger
             FileKit.MakeJpg(Path.Combine(pickDir, "pick1.jpg"), text: "pick1");
             FileKit.MakeJpg(Path.Combine(pickDir, "pick2.jpg"), text: "pick2");
             var hashes = Directory.GetFiles(pickDir).ToDictionary(f => f, FileKit.Sha);
-            Case("x5f-tray", "Real tray icon: right click -> Fluent flyout; left click -> Convert files picker (own folder) -> click-mode wheel -> Enter -> toast -> Show in folder",
+            Case("tray-flyout", "Real tray icon: right click -> Fluent flyout; left click -> Convert files picker (own folder) -> click-mode wheel -> Enter -> toast -> Show in folder",
                 dir => { }, s =>
                 {
                     var (icon, where) = TrayKit.FindIcon();
@@ -244,14 +244,14 @@ internal static partial class Anger
                         // the header row ("MikeShift - Shift-drag files to convert") sits above the first item
                         u = Rectangle.Union(u, new Rectangle(u.Left, u.Top - 70, u.Width, 70));
                         u.Intersect(Screen.FromPoint(c).WorkingArea);
-                        DragHarness.Shot.Region(u, Path.Combine(ShotDir, "x5f-tray-flyout.png"));
-                        Rec.Note($"screenshot: {Path.Combine(ShotDir, "x5f-tray-flyout.png")} (region {u})");
+                        DragHarness.Shot.Region(u, Path.Combine(ShotDir, "tray-flyout-right-click.png"));
+                        Rec.Note($"screenshot: {Path.Combine(ShotDir, "tray-flyout-right-click.png")} (region {u})");
                         foreach (var want in new[] { "Convert files", "Settings", "Exit" })
                             Rec.Check($"flyout has '{want}'", names.Any(n => n.Contains(want, StringComparison.OrdinalIgnoreCase)));
                         Pointer.KeyDown(Native.VK_ESCAPE); Thread.Sleep(30); Pointer.KeyUp(Native.VK_ESCAPE);
                         var closed = Sess.Wait(() => AppElements(s.App.Proc.Id, ControlType.MenuItem).Count == 0, 3000);
                         Rec.Check("Esc closed the flyout", closed, closed ? "" : $"{AppElements(s.App.Proc.Id, ControlType.MenuItem).Count} items still reported; foreground window class: {FgClass()}");
-                        if (!closed) { Thread.Sleep(800); DragHarness.Shot.Region(u, Path.Combine(ShotDir, "x5f-after-esc.png")); }
+                        if (!closed) { Thread.Sleep(800); DragHarness.Shot.Region(u, Path.Combine(ShotDir, "tray-flyout-after-esc.png")); }
                     }
                     TrayKit.CloseOverflow();
                     Thread.Sleep(500);
@@ -266,7 +266,7 @@ internal static partial class Anger
                     Rec.Check("click-mode wheel opened", shown, s.App.LastLine("click-mode wheel shown"));
                     if (!shown) return;
                     Thread.Sleep(900);
-                    Shot(s, "x5f-click-wheel", WheelInfo.LastRect(s.Log, click: true) is { } cr ? new Point(cr.Rect.Left + cr.Rect.Width / 2, cr.Rect.Top + cr.Rect.Height / 2) : null, 260);
+                    Shot(s, "tray-flyout-click-wheel", WheelInfo.LastRect(s.Log, click: true) is { } cr ? new Point(cr.Rect.Left + cr.Rect.Width / 2, cr.Rect.Top + cr.Rect.Height / 2) : null, 260);
                     Pointer.KeyDown(0x27); Thread.Sleep(30); Pointer.KeyUp(0x27); Thread.Sleep(500);
                     Rec.Check("Right arrow highlighted PNG", LastHl(s.LogNew) == "PNG", LastHl(s.LogNew) ?? "none");
                     var pickT = Stopwatch.StartNew();
@@ -286,8 +286,8 @@ internal static partial class Anger
                     var tw = TopLevelOf(show!);
                     var tr = tw.Current.BoundingRectangle;
                     var shotRect = new Rectangle((int)tr.Left - 12, (int)tr.Top - 12, (int)tr.Width + 24, (int)tr.Height + 24);
-                    DragHarness.Shot.Region(shotRect, Path.Combine(ShotDir, "x5f-toast.png"));
-                    Rec.Note($"screenshot: {Path.Combine(ShotDir, "x5f-toast.png")} (region {shotRect})");
+                    DragHarness.Shot.Region(shotRect, Path.Combine(ShotDir, "tray-flyout-toast.png"));
+                    Rec.Note($"screenshot: {Path.Combine(ShotDir, "tray-flyout-toast.png")} (region {shotRect})");
                     var br = show!.Current.BoundingRectangle;
                     Pointer.Glide((int)(br.Left + br.Width / 2), (int)(br.Top + br.Height / 2), 20, 3); Thread.Sleep(150);
                     Pointer.LeftDown(); Thread.Sleep(40); Pointer.LeftUp();
@@ -315,12 +315,12 @@ internal static partial class Anger
         };
     }
 
-    private static uint FgPid() { AngerNative.GetWindowThreadProcessId(AngerNative.GetForegroundWindow(), out var p); return p; }
+    private static uint FgPid() { ExplorerNative.GetWindowThreadProcessId(ExplorerNative.GetForegroundWindow(), out var p); return p; }
 
     private static string FgClass()
     {
         var sb = new System.Text.StringBuilder(128);
-        GetClassNameW(AngerNative.GetForegroundWindow(), sb, 128);
+        GetClassNameW(ExplorerNative.GetForegroundWindow(), sb, 128);
         return sb.ToString();
     }
 

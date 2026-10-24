@@ -6,7 +6,7 @@ using Windows.Win32.Media.MediaFoundation;
 namespace MikeShift.Core.Media;
 
 /// <summary>
-/// Audio/video openability and codec capability probing (PLAN §1.2 "Category detection", §3.4 Capabilities probe).
+/// Audio/video openability and codec capability probing.
 /// </summary>
 public static class MediaProbe
 {

@@ -6,7 +6,7 @@ using Windows.Win32.Foundation;
 namespace MikeShift.App.Wheel;
 
 /// <summary>
-/// The wheel's OLE drop target (PLAN §3.1 item 4), registered with <c>RegisterDragDrop</c> on the wheel window. Every call is forwarded to the shell's
+/// The wheel's OLE drop target, registered with <c>RegisterDragDrop</c> on the wheel window. Every call is forwarded to the shell's
 /// <c>IDropTargetHelper</c> so Explorer's drag image keeps rendering over the wheel. The effect answered is <b>always COPY or NONE, never MOVE</b>
 /// (a Shift-drag means MOVE to Explorer, and a MOVE result would make it delete the originals). Exceptions never cross the COM boundary.
 /// </summary>

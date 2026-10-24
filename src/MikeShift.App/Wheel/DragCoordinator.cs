@@ -5,7 +5,7 @@ using MikeShift.Core.Interaction;
 namespace MikeShift.App.Wheel;
 
 /// <summary>
-/// The wiring of the drag feature (PLAN §3.1): owns the low-level input monitor, the wheel thread (window, renderer, model, session, OLE
+/// The wiring of the drag feature: owns the low-level input monitor, the wheel thread (window, renderer, model, session, OLE
 /// drop target) and the little reader that carries hook events from the monitor's channel to the session. Created once at start-up; the
 /// "Convert Files…" click mode goes through <see cref="ShowClickMode"/>. Everything is best effort: a failure is logged to
 /// <c>%LOCALAPPDATA%\MikeShift\log.txt</c> and the app keeps running (the hook thread and the wheel thread must never die).

@@ -6,7 +6,7 @@ using SkiaSharp;
 namespace MikeShift.Core.Tests.Infrastructure;
 
 /// <summary>
-/// Image fixtures (W2a), generated at test time with no imaging code from MikeShift.Core: PNG (RGB, RGBA, animated,
+/// Image fixtures, generated at test time with no imaging code from MikeShift.Core: PNG (RGB, RGBA, animated,
 /// header-only huge), JPEG with hand-built Exif/GPS/XMP/Photoshop segments, GIF (static, animated), multi-page TIFF, BMP, WebP.
 /// The recognisable test picture is four coloured quadrants: top-left red, top-right green, bottom-left blue, bottom-right yellow.
 /// </summary>

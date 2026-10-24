@@ -3,7 +3,7 @@ using System.IO.Compression;
 namespace MikeShift.Core.Actions;
 
 /// <summary>
-/// The Zip tool (PLAN §1.1 naming, §3.4 Zip). Available for every selection and always the last tile.
+/// The Zip tool. Available for every selection and always the last tile.
 /// <list type="bullet">
 /// <item>One item: <c>name.zip</c> (file: name without extension; folder: the folder name) beside the item.</item>
 /// <item>Several items: <c>Archive.zip</c> beside the first item. Folders are stored under their own name.</item>

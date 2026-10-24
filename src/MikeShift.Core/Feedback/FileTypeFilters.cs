@@ -5,7 +5,7 @@ namespace MikeShift.Core.Feedback;
 /// <param name="Spec">Semicolon-separated wildcard patterns, e.g. "*.png;*.jpg".</param>
 public sealed record FileTypeFilter(string Name, string Spec);
 
-/// <summary>The wording and file type list of the Convert files… dialog (UX review C-01).</summary>
+/// <summary>The wording and file type list of the Convert files… dialog.</summary>
 public static class FileTypeFilters
 {
     /// <summary>Dialog title: an instruction, not a label.</summary>

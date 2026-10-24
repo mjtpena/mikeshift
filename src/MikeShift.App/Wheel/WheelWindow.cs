@@ -14,7 +14,7 @@ namespace MikeShift.App.Wheel;
 internal readonly record struct MonitorGeometry(ScreenRect Bounds, ScreenRect WorkArea, double DpiScale);
 
 /// <summary>
-/// The wheel's Win32 window (PLAN §3.1 item 3, §3.2): a layered popup that is created once, hidden, on the wheel thread and reused
+/// The wheel's Win32 window: a layered popup that is created once, hidden, on the wheel thread and reused
 /// for every interaction. <c>WS_EX_NOACTIVATE | WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_LAYERED</c>; <b>never</b> <c>WS_EX_TRANSPARENT</b>
 /// (it would make the window invisible to OLE hit-testing). Its pixels come from <see cref="Present"/> (premultiplied BGRA) through
 /// <c>UpdateLayeredWindow</c>; the caller keeps every pixel at alpha ≥ 1 while shown so the whole square is a hit target.

@@ -10,7 +10,7 @@ public interface IDialogService
 }
 
 /// <summary>
-/// Shows <see cref="NoticeWindow"/>s (UX review D-01): themed, non-modal, topmost, so a failure never holds up the toasts and chimes
+/// Shows <see cref="NoticeWindow"/>s: themed, non-modal, topmost, so a failure never holds up the toasts and chimes
 /// of the jobs that are still running. Button commands (Show in folder, Quit MikeShift) are handled here.
 /// <para>
 /// At most one failure dialog is open at a time: while it is, the failures of later jobs are merged into it ("3 jobs had problems", see

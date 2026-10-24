@@ -15,7 +15,7 @@
     <ProjectReference Include="..\MikeShift.Core\MikeShift.Core.csproj" />
   </ItemGroup>
 
-  <!-- Packaging (W4b) -->
+  <!-- Packaging -->
   <PropertyGroup>
     <!-- MikeShift.App publishes this project self-contained for the MSIX and takes only its four own files (MikeShift.Cli.exe, .dll,
          .runtimeconfig.json, .deps.json) into the package root, where they use the tray app's runtime; plain builds stay framework-dependent. -->

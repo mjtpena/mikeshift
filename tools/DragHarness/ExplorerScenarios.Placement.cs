@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 
 namespace DragHarness;
 
-internal static partial class Anger
+internal static partial class ExplorerScenarios
 {
     private static Screen[] Monitors() => Screen.AllScreens.OrderByDescending(s => s.Primary).ToArray();
 
@@ -27,7 +27,7 @@ internal static partial class Anger
         else if (B.Right > W.Right) spots.Add(("taskbar (right)", new(B.Right - 12, cy)));
         else Rec.Note($"({tag}: no taskbar on this monitor, work area == bounds)");
 
-        Case("x2-edges-" + tag, $"Explorer on {tag} ({B}, work {W}): Shift near every edge/corner of that monitor, tiles hit",
+        Case("edges-" + tag, $"Explorer on {tag} ({B}, work {W}): Shift near every edge/corner of that monitor, tiles hit",
             dir => FileKit.MakeJpg(Path.Combine(dir, "photo.jpg")), s =>
             {
                 foreach (var (name, p) in spots)
@@ -44,7 +44,7 @@ internal static partial class Anger
                     Rec.Check($"[{name}] wheel window inside the work area", inside, $"rect {rect}, dpi scale {scale:0.##}, latency {s.LatencyMs} ms");
                     if (!W.Contains(p))
                     {
-                        // UX review W-03: over a taskbar the window is anchored beside it. Only the 40 px transparent margin and the 11 px rim of the
+                        // Over a taskbar the window is anchored beside it. Only the 40 px transparent margin and the 11 px rim of the
                         // disc may overlap the taskbar, so the tile ring (the part that must stay readable) is entirely inside the work area.
                         var ring = (40 + 11) * scale;
                         var clear = rect.Left + ring >= W.Left - 1 && rect.Top + ring >= W.Top - 1 && rect.Right - ring <= W.Right + 1 && rect.Bottom - ring <= W.Bottom + 1;
@@ -53,7 +53,7 @@ internal static partial class Anger
                     Thread.Sleep(420);
                     var hit = s.ToTile("PNG");
                     Rec.Check($"[{name}] tile PNG highlighted by moving onto it", hit);
-                    if (name is "top-left" or "bottom-right" or "taskbar (bottom)" or "extreme-top-left") Shot(s, $"x2-{tag}-{name.Replace(' ', '-').Replace("(", "").Replace(")", "")}", WheelInfo.Centre(s.Log), 260);
+                    if (name is "top-left" or "bottom-right" or "taskbar (bottom)" or "extreme-top-left") Shot(s, $"edges-{tag}-{name.Replace(' ', '-').Replace("(", "").Replace(")", "")}", WheelInfo.Centre(s.Log), 260);
                     s.Release();
                     var ok = s.WaitFile(png, 10000);
                     Rec.Check($"[{name}] PNG created", ok);
@@ -63,15 +63,15 @@ internal static partial class Anger
             }, BoxOn(mon));
     }
 
-    private static void RegisterTests2(Dictionary<string, Action> d)
+    private static void RegisterPlacement(Dictionary<string, Action> d)
     {
-        d["x2-primary"] = () => EdgeRun(Monitors()[0], "primary");
-        d["x2-left"] = () => EdgeRun(Monitors().First(m => !m.Primary), "left");
+        d["edges-primary"] = () => EdgeRun(Monitors()[0], "primary");
+        d["edges-left"] = () => EdgeRun(Monitors().First(m => !m.Primary), "left");
 
-        d["x2-cross"] = () =>
+        d["edges-cross"] = () =>
         {
             var left = Monitors().First(m => !m.Primary); var prim = Monitors()[0];
-            Case("x2-cross", "Explorer on the left monitor: drag across the boundary to the primary, Shift there; and Shift 10 px before the boundary, wheel clamped, pointer crosses out and back",
+            Case("edges-cross", "Explorer on the left monitor: drag across the boundary to the primary, Shift there; and Shift 10 px before the boundary, wheel clamped, pointer crosses out and back",
                 dir => FileKit.MakeJpg(Path.Combine(dir, "photo.jpg")), s =>
                 {
                     var y = left.WorkingArea.Top + 500;
@@ -83,7 +83,7 @@ internal static partial class Anger
                     var r = WheelInfo.LastRect(s.Log)!.Value.Rect;
                     Rec.Check("(a) wheel is on the primary monitor", prim.Bounds.Contains(r), r.ToString());
                     Thread.Sleep(420);
-                    DropOn(s, "PNG", false, "x2-cross-a", "photo.png");
+                    DropOn(s, "PNG", false, "edges-cross-a", "photo.png");
                     File.Delete(Path.Combine(s.Work, "photo.png"));
                     Sess.Wait(() => !WheelInfo.Visible(), 2500); Thread.Sleep(600);
 
@@ -99,13 +99,13 @@ internal static partial class Anger
                     Thread.Sleep(300);
                     Rec.Check("(b) DragLeave when the pointer left the wheel across the boundary", s.LogNew.Contains("DragLeave"));
                     Rec.Check("(b) wheel stays while the button is down", WheelInfo.Visible());
-                    Shot(s, "x2-cross-b-out", new Point(0, y), 500);
+                    Shot(s, "edges-cross-b-out", new Point(0, y), 500);
                     DropOn(s, "PNG", false, "", "photo.png");
                 });
         };
 
         // ---- item 3: page toggles and endings
-        d["x3a"] = () => Case("x3a-toggles", "Explorer drag: Ctrl -> Tools, Shift -> Formats, wheel ticks, Ctrl held (autorepeat) inside and outside the wheel",
+        d["toggles"] = () => Case("toggles", "Explorer drag: Ctrl -> Tools, Shift -> Formats, wheel ticks, Ctrl held (autorepeat) inside and outside the wheel",
             dir => FileKit.MakeJpg(Path.Combine(dir, "photo.jpg")), s =>
             {
                 var seen = s.Start("photo.jpg");
@@ -145,15 +145,15 @@ internal static partial class Anger
                 Pointer.KeyUp(Native.VK_LCONTROL); wait();
                 Rec.Check("Ctrl autorepeat outside the wheel toggles exactly once", PageChanges() - before == 1, $"{PageChanges() - before} toggle(s), {page0} -> {LastPage()}");
                 Rec.Check("the wheel is still shown after all that", WheelInfo.Visible());
-                Shot(s, "x3a-toggles", c, 300);
+                Shot(s, "toggles", c, 300);
                 Pointer.Glide(c.X, c.Y, 10, 5);
                 s.Esc(); Thread.Sleep(300); s.Release();
             });
 
-        d["x3b"] = () => Case("x3b-release-empty", "Release over empty space in ANOTHER real Explorer folder: Explorer's own drop proceeds, nothing converted by us",
+        d["release-elsewhere"] = () => Case("release-elsewhere", "Release over empty space in ANOTHER real Explorer folder: Explorer's own drop proceeds, nothing converted by us",
             dir => FileKit.MakeJpg(Path.Combine(dir, "photo.jpg")), s =>
             {
-                var dest = FileKit.Fresh(Root, "x3b-dest");
+                var dest = FileKit.Fresh(Root, "release-elsewhere-dest");
                 var other = ExplorerWin.Open(dest, new Rectangle(2650, 100, 700, 800));
                 try
                 {
@@ -163,7 +163,7 @@ internal static partial class Anger
                     if (!Rec.Check("wheel visible over the other Explorer window", seen)) { s.Abort(); return; }
                     s.WaitTiles(); Thread.Sleep(450);
                     Pointer.Glide(oc.X + 300, oc.Y + 200, 10, 5); Thread.Sleep(300);
-                    Shot(s, "x3b-over-other-explorer", oc, 420);
+                    Shot(s, "release-elsewhere-over", oc, 420);
                     s.Release();
                     var moved = Path.Combine(dest, "photo.jpg");
                     var ok = s.WaitFile(moved, 8000);
@@ -177,7 +177,7 @@ internal static partial class Anger
                 finally { other.Close(); try { Directory.Delete(dest, true); } catch (IOException) { } }
             }, skipOriginals: true);
 
-        d["x3c"] = () => Case("x3c-esc", "Esc during a wheel: dismissed, Explorer's drag cancelled, nothing converted, file stays",
+        d["escape"] = () => Case("escape", "Esc during a wheel: dismissed, Explorer's drag cancelled, nothing converted, file stays",
             dir => FileKit.MakeJpg(Path.Combine(dir, "photo.jpg")), s =>
             {
                 var seen = s.Start("photo.jpg");
@@ -192,7 +192,7 @@ internal static partial class Anger
                 Rec.Check("log: no job", !s.Log.Contains("job "));
             });
 
-        d["x3d"] = () => Case("x3d-hub", "Release on the hub: nothing converted",
+        d["hub"] = () => Case("hub", "Release on the hub: nothing converted",
             dir => FileKit.MakeJpg(Path.Combine(dir, "photo.jpg")), s =>
             {
                 var seen = s.Start("photo.jpg");
@@ -200,7 +200,7 @@ internal static partial class Anger
                 s.WaitTiles(); Thread.Sleep(450);
                 var c = WheelInfo.Centre(s.Log)!.Value;
                 Pointer.Glide(c.X + 60, c.Y, 4, 10); Pointer.Glide(c.X, c.Y, 4, 10); Thread.Sleep(300);
-                Shot(s, "x3d-hub", c, 300);
+                Shot(s, "hub", c, 300);
                 s.Release();
                 Sess.Wait(() => !WheelInfo.Visible(), 3000);
                 Thread.Sleep(1500);
@@ -208,7 +208,7 @@ internal static partial class Anger
                 Rec.Check("log: released on the hub without a tile, dismissed", s.Log.Contains("released on the wheel without a tile") || s.Log.Contains("Drop on no tile"), s.App.LastLine("dismiss"));
             });
 
-        d["x3e"] = () => Case("x3e-shiftclick", "Shift-click rule: after a conversion, a Shift-click selection including the produced file drops it",
+        d["shift-click-rule"] = () => Case("shift-click-rule", "Shift-click rule: after a conversion, a Shift-click selection including the produced file drops it",
             dir => { FileKit.MakeJpg(Path.Combine(dir, "a.jpg")); FileKit.MakeJpg(Path.Combine(dir, "b.jpg")); }, s =>
             {
                 var seen = s.Start("a.jpg");

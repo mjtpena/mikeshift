@@ -3,7 +3,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:settings="using:MikeShift.App.Settings">
 
-    <!-- Windows 11 settings card (UX review S-01): 4 px radius, card fill and stroke, 68 px tall with a description. -->
+    <!-- Windows 11 settings card: 4 px radius, card fill and stroke, 68 px tall with a description. -->
     <Style TargetType="settings:SettingsCard">
         <Setter Property="IsTabStop" Value="False" />
         <Setter Property="HorizontalContentAlignment" Value="Right" />
@@ -57,7 +57,7 @@
         <Setter Property="MinHeight" Value="64" />
     </Style>
 
-    <!-- A keycap, as on a keyboard: used in the welcome window (UX review F-01). -->
+    <!-- A keycap, as on a keyboard: used in the welcome window. -->
     <Style x:Key="KeycapBorderStyle" TargetType="Border">
         <Setter Property="Background" Value="{ThemeResource ControlFillColorDefaultBrush}" />
         <Setter Property="BorderBrush" Value="{ThemeResource ControlStrokeColorSecondaryBrush}" />

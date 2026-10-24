@@ -4,7 +4,7 @@ using System.Text.RegularExpressions;
 namespace MikeShift.Core.Documents;
 
 /// <summary>
-/// Encoding detection for plain text and HTML (PLAN §3.4): BOM, then strict UTF-8, then a heuristic
+/// Encoding detection for plain text and HTML: BOM, then strict UTF-8, then a heuristic
 /// (runs of at least three bytes in 0xC0-0xFA are Hebrew in Windows-1255, otherwise Windows-1252).
 /// </summary>
 public static partial class TextDecoding

@@ -13,15 +13,15 @@ namespace MikeShift.App;
 
 /// <summary>
 /// The resident tray app: no main window, single instance (see <see cref="Program"/>), tray icon, job runner, HUD toast.
-/// W3 hooks the wheel and the input monitor in <see cref="OnLaunched"/> (look for "W3 wiring").
+/// <see cref="OnLaunched"/> also starts the wheel and the input monitor, the Explorer hotkey and the right-click bridge.
 /// </summary>
 public partial class App : Application
 {
     private readonly bool _smokeTest;
     private readonly UnhandledPolicy _unhandled = new();
     private DragCoordinator? _drag;
-    private Selection.ExplorerHotkey? _explorerHotkey; // X2
-    private Shell.ShellBridge? _shell; // X1
+    private Selection.ExplorerHotkey? _explorerHotkey;
+    private Shell.ShellBridge? _shell;
 
     public App()
     {
@@ -53,7 +53,7 @@ public partial class App : Application
         // Smoke test hook: `MikeShift.exe --smoke-test` starts, builds the tray and exits cleanly.
         if (_smokeTest)
         {
-            // W3: also bring up the wheel (window, Win2D, drop target) without the global hooks, so the smoke test covers it.
+            // Also bring up the wheel (window, Win2D, drop target) without the global hooks, so the smoke test covers it.
             _drag = DragCoordinator.Start(Services, installHooks: false);
             Quit();
             return;
@@ -65,13 +65,12 @@ public partial class App : Application
         // Probe optional codecs now (MF/WIC probes can take a moment) instead of on the first drag.
         _ = Task.Run(() => Capabilities.Current);
 
-        // W3 wiring: the input monitor + wheel thread, and the click-mode wheel for Convert Files….
+        // The input monitor + wheel thread, and the click-mode wheel for Convert Files….
         _drag = DragCoordinator.Start(Services, installHooks: !DevSwitches.NoHooks);
         if (_drag is not null) Tray.ConvertFilesRequested += _drag.ShowClickMode;
-        // X2 (begin): the global hotkey that opens the click-mode wheel for the current File Explorer selection.
+        // The global hotkey that opens the click-mode wheel for the current File Explorer selection.
         if (_drag is not null) _explorerHotkey = Selection.ExplorerHotkey.Start(Services, _drag.ShowClickMode);
-        // X2 (end)
-        // X1: Explorer right-click entry (pipe from the -Embedding server). "More options…" opens the wheel where the pointer was when the line was
+        // Explorer right-click entry (pipe from the -Embedding server). "More options…" opens the wheel where the pointer was when the line was
         // clicked; without a position (or without the wheel) it is the usual Convert Files… behaviour.
         _shell = Shell.ShellBridge.Start(Services, (paths, anchor) =>
         {
@@ -138,11 +137,11 @@ public partial class App : Application
     /// </summary>
     private async Task ShutDownServicesAsync()
     {
-        _explorerHotkey?.Dispose(); // X2
-        _explorerHotkey = null;     // X2
+        _explorerHotkey?.Dispose();
+        _explorerHotkey = null;
         _drag?.Dispose();
         _drag = null;
-        _shell?.Dispose(); // X1
+        _shell?.Dispose();
         _shell = null;
         Tray.Dispose();
         try { await Services.Jobs.ShutdownAsync(TimeSpan.FromSeconds(3)); }

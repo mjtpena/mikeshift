@@ -96,7 +96,7 @@ internal sealed class JsonFileStore : IPreferenceStore
 }
 
 /// <summary>
-/// The user's preferences (PLAN §3.3): <c>chime</c>, <c>showsToast</c>, <c>toolsKey</c>, <c>showInFolderAfter</c>, <c>useWord</c>, <c>launched</c>, and the conversion settings (<c>convQuality</c>, <c>convCompress</c>, <c>convResize</c>, <c>convGifSeconds</c>, <c>convOutputFolder</c>; see <see cref="Conversions"/>).
+/// The user's preferences: <c>chime</c>, <c>showsToast</c>, <c>toolsKey</c>, <c>showInFolderAfter</c>, <c>useWord</c>, <c>launched</c>, and the conversion settings (<c>convQuality</c>, <c>convCompress</c>, <c>convResize</c>, <c>convGifSeconds</c>, <c>convOutputFolder</c>; see <see cref="Conversions"/>).
 /// Packaged apps use <c>ApplicationData.LocalSettings</c>; unpackaged runs use a JSON file under
 /// <c>%LOCALAPPDATA%\MikeShift</c>. Open at Login is NOT stored here: it lives in the OS (<see cref="StartupService"/>).
 /// Thread-safe for reads and writes; <see cref="Changed"/> may fire on any thread.
@@ -157,7 +157,7 @@ public sealed class Preferences
     /// <summary>Raised after any value changed; the argument is the key.</summary>
     public event Action<string>? Changed;
 
-    /// <summary>Play a short sound when a job succeeds. Default false (UX review X-02).</summary>
+    /// <summary>Play a short sound when a job succeeds. Default false.</summary>
     public bool Chime
     {
         get => GetBool(ChimeKey, false);

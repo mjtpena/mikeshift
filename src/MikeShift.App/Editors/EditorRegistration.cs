@@ -3,7 +3,7 @@ using MikeShift.App.Jobs;
 namespace MikeShift.App.Editors;
 
 /// <summary>
-/// Plugs the Crop editor and the Trim dialog into the app (PLAN §3.5). Call <see cref="Register"/> once from
+/// Plugs the Crop editor and the Trim dialog into the app. Call <see cref="Register"/> once from
 /// <c>App.OnLaunched</c>, after the services exist.
 /// </summary>
 public static class EditorRegistration

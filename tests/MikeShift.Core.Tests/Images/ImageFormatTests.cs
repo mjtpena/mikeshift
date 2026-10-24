@@ -4,7 +4,7 @@ using static MikeShift.Core.Tests.Images.ImageTestUtil;
 
 namespace MikeShift.Core.Tests.Images;
 
-/// <summary>Format page conversions (PLAN §5.1 Images): every conversion is decoded again and checked.</summary>
+/// <summary>Format page conversions: every conversion is decoded again and checked.</summary>
 public class ImageFormatTests
 {
     private static async Task<string> Convert(TempDir tmp, string name, byte[] bytes, ImageFormat to, CancellationToken ct = default)

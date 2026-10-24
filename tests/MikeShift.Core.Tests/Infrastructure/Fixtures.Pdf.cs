@@ -7,8 +7,8 @@ using Windows.Storage.Streams;
 namespace MikeShift.Core.Tests.Infrastructure;
 
 /// <summary>
-/// PDF fixtures (W2b): everything is generated at test time with PDFsharp and WIC; nothing binary is checked in.
-/// Image generators are prefixed <c>PdfSource</c> so they never collide with the image package's own fixtures.
+/// PDF fixtures: everything is generated at test time with PDFsharp and WIC; nothing binary is checked in.
+/// Image generators are prefixed <c>PdfSource</c> so they never collide with the image fixtures.
 /// </summary>
 public static partial class Fixtures
 {

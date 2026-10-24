@@ -7,7 +7,7 @@ using Windows.Storage;
 
 namespace MikeShift.Core.Tests.Infrastructure;
 
-// W2c (Media): audio/video fixtures, generated at test time (nothing binary is checked in).
+// Audio/video fixtures, generated at test time (nothing binary is checked in).
 public static partial class Fixtures
 {
     /// <summary>A canonical PCM WAV: a sine wave (a different pitch per channel) of <paramref name="seconds"/> at the given depth.</summary>

@@ -5,7 +5,7 @@ using MikeShift.Core.Cli;
 namespace MikeShift.Core.Tests.Hardening;
 
 /// <summary>
-/// PLAN Phase 6 "fuzz-ish inputs": truncated and misnamed files, zero-byte files and big selections. Whatever the input,
+/// Fuzz-style inputs: truncated and misnamed files, zero-byte files and big selections. Whatever the input,
 /// classification must not throw, and every action the catalog offers must either succeed or fail with a clean
 /// <c>error: ...</c> (exit code 1), within 30 s, never leaving a partial or stray file next to the original and never touching it.
 /// The matrix runs the real <see cref="CliRunner"/> in-process (the same code the <c>mikeshift</c> executable runs).

@@ -30,7 +30,7 @@ public class WheelPlacementTests
         Assert.Equal(380, r.Height);
     }
 
-    // Found by the GUI "test in anger" run (2026-10-23): Shift pressed with the cursor over the taskbar placed the wheel inside the work area
+    // Regression found with the real File Explorer: Shift pressed with the cursor over the taskbar placed the wheel inside the work area
     // and therefore NOT under the cursor, so OLE never delivered DragEnter and the wheel silently hid.
     private static readonly ScreenRect PrimaryBounds = new(0, 0, 1920, 1080);
 

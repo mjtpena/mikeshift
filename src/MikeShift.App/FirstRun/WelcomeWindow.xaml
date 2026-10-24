@@ -47,7 +47,7 @@
 
                 <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
 
-                <!-- The three steps, with keycaps (UX review F-01). -->
+                <!-- The three steps, with keycaps. -->
                 <StackPanel Spacing="14">
                     <Grid ColumnSpacing="14">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="28" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>

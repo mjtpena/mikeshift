@@ -19,7 +19,7 @@ using WinUIEx;
 namespace MikeShift.App.Settings;
 
 /// <summary>
-/// Settings as Windows 11 setting cards (UX review S-01 to S-04): General (open at login, sound, message, show in folder, use Word), Wheel (tools
+/// Settings as Windows 11 setting cards: General (open at login, sound, message, show in folder, use Word), Wheel (tools
 /// key), Format support (what this PC can convert, with text state, Store links and a restart hint) and About.
 /// </summary>
 public sealed partial class SettingsWindow : Window

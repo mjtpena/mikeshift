@@ -1,7 +1,7 @@
 namespace MikeShift.Core.Images;
 
 /// <summary>
-/// Image decodability and codec capability probing (PLAN §1.2 Image rows, §3.4 Capabilities probe).
+/// Image decodability and codec capability probing.
 /// </summary>
 public static class ImageProbe
 {

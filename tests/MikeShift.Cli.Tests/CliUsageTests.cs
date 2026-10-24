@@ -1,6 +1,6 @@
 namespace MikeShift.Cli.Tests;
 
-/// <summary>Exit codes and syntax handling, exactly as PLAN §3.6, through the real executable.</summary>
+/// <summary>Exit codes and syntax handling, through the real executable.</summary>
 public class CliUsageTests
 {
     [Fact]
