@@ -85,9 +85,13 @@ public static class Each
     {
         try
         {
-            var inDir = Path.GetDirectoryName(Path.GetFullPath(input).TrimEnd('\\', '/'));
+            // With "A folder I choose" the output belongs in that folder, not beside the input.
+            var inDir = Naming.OutputFolder is { } chosen
+                ? Path.GetFullPath(chosen)
+                : Path.GetDirectoryName(Path.GetFullPath(input).TrimEnd('\\', '/'));
             var outDir = Path.GetDirectoryName(Path.GetFullPath(output).TrimEnd('\\', '/'));
-            return !string.Equals(inDir, outDir, StringComparison.OrdinalIgnoreCase);
+            return !string.Equals(Path.TrimEndingDirectorySeparator(inDir ?? ""), Path.TrimEndingDirectorySeparator(outDir ?? ""),
+                StringComparison.OrdinalIgnoreCase);
         }
         catch (Exception)
         {

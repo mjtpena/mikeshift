@@ -17,18 +17,42 @@ public sealed record ActionDef
     public ActionDef(string title, WheelPage page, ActionRun run)
     {
         Title = title;
+        Id = title;
         Page = page;
-        Run = run;
+        Run = WithOutputFolder(run);
     }
 
     /// <summary>Display and CLI name: "PNG", "Compress", "Resize 50%", "Merge PDF", "Zip". Unique within a category list.</summary>
     public string Title { get; }
 
+    /// <summary>
+    /// The name that never changes while the <see cref="Title"/> may: the title for almost every action, "Resize" for "Resize 25%" / "Resize 50%" /
+    /// "Resize 75%". Rankings (the Explorer menu) and lookups use this, never the literal title.
+    /// </summary>
+    public string Id { get; init; }
+
     /// <summary>The wheel page this tile belongs to.</summary>
     public WheelPage Page { get; }
 
-    /// <summary>Executes the action.</summary>
+    /// <summary>Executes the action. When <see cref="ActionContext.Options"/> names an output folder, every file it writes goes there (<see cref="Naming.OutputFolder"/>).</summary>
     public ActionRun Run { get; }
+
+    private static ActionRun WithOutputFolder(ActionRun run) => async (paths, ctx, ct) =>
+    {
+        var folder = ctx.Options.OutputFolder;
+        if (folder is null) return await run(paths, ctx, ct).ConfigureAwait(false);
+
+        var before = Naming.OutputFolder;
+        Naming.OutputFolder = folder;
+        try
+        {
+            return (await run(paths, ctx, ct).ConfigureAwait(false)) with { ChosenFolder = folder };
+        }
+        finally
+        {
+            Naming.OutputFolder = before;
+        }
+    };
 
     /// <summary>For tools: a Segoe Fluent Icons code point as a one-character string (e.g. ""). Null for format tiles.</summary>
     public string? Glyph { get; init; }
@@ -87,12 +111,14 @@ public sealed record ActionDef
         string[]? hideFor = null,
         bool interactive = false,
         Func<Capabilities, bool>? requires = null,
-        Func<IReadOnlyList<string>, Capabilities, bool>? appliesTo = null)
+        Func<IReadOnlyList<string>, Capabilities, bool>? appliesTo = null,
+        string? id = null)
     {
         var skip = hideFor is { Length: > 0 } ? new HashSet<string>(hideFor, StringComparer.Ordinal) : NoExtensions;
         return new ActionDef(title, page,
             (paths, ctx, ct) => Each.RunAsync(paths, ctx, (input, token) => convert(input, ctx, token), ct, skip, title))
         {
+            Id = id ?? title,
             Glyph = glyph,
             HideFor = skip,
             Interactive = interactive,

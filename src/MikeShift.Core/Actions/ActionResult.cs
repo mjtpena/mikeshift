@@ -37,6 +37,12 @@ public sealed record ActionResult
     /// <summary>The user cancelled (or the token fired); earlier outputs were kept and later inputs were not attempted.</summary>
     public bool Cancelled { get; init; }
 
+    /// <summary>
+    /// The "A folder I choose" setting that was in effect for this run (<see cref="ConversionOptions.OutputFolder"/>), or null when outputs go
+    /// next to their originals. With it, <see cref="AnyDownloadsFallback"/> means "the chosen folder could not be used".
+    /// </summary>
+    public string? ChosenFolder { get; init; }
+
     /// <summary>True if at least one output went to Downloads instead of next to its input.</summary>
     public bool AnyDownloadsFallback => Outputs.Any(o => o.UsedDownloadsFallback);
 

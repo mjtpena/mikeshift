@@ -59,7 +59,7 @@ internal static class PdfRender
     }
 
     /// <summary>Renders page <paramref name="index"/> on a white background and returns the encoded image.</summary>
-    public static async Task<byte[]> RenderPageAsync(PdfDocument doc, uint index, PdfPageFormat format)
+    public static async Task<byte[]> RenderPageAsync(PdfDocument doc, uint index, PdfPageFormat format, double jpegQuality = JpegQuality)
     {
         try
         {
@@ -77,10 +77,10 @@ internal static class PdfRender
             var png = await PdfPixels.ReadAllAsync(ms);
             if (format == PdfPageFormat.Png) return png;
 
-            // JPG: decode the PNG render and re-encode at a fixed quality (already opaque on white).
+            // JPG: decode the PNG render and re-encode at the JPEG quality (already opaque on white).
             var raster = await PdfPixels.DecodeBytesAsync(png, channels: 4, maxLongSide: 0, colorManage: false);
             PdfPixels.FlattenOnWhite(raster.Data);
-            return await PdfPixels.EncodeJpegAsync(raster, JpegQuality);
+            return await PdfPixels.EncodeJpegAsync(raster, jpegQuality);
         }
         catch (Exception ex) when (ex is COMException or ArgumentException or InvalidOperationException or OutOfMemoryException)
         {

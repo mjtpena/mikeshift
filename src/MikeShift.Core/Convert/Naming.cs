@@ -42,6 +42,19 @@ public static class Naming
         set => s_downloadsOverride.Value = value;
     }
 
+    private static readonly AsyncLocal<string?> s_outputFolder = new();
+
+    /// <summary>
+    /// "Where converted files go" for the actions running in this async flow: when set, <see cref="Plan"/> puts every output in this folder instead
+    /// of beside its input. <c>ActionDef.Run</c> sets it from <c>ActionContext.Options.OutputFolder</c> and restores it afterwards, so converters
+    /// stay unaware of it. A folder that does not exist or is not writable sends the output to Downloads (<see cref="CommitResult.UsedDownloadsFallback"/>).
+    /// </summary>
+    public static string? OutputFolder
+    {
+        get => s_outputFolder.Value;
+        set => s_outputFolder.Value = value;
+    }
+
     /// <summary>The user's Downloads folder (<c>FOLDERID_Downloads</c>), or <see cref="DownloadsOverride"/> if set.</summary>
     public static string DownloadsDirectory()
     {
@@ -68,16 +81,29 @@ public static class Naming
         return (ext[0] == '.' ? ext : "." + ext).ToLowerInvariant();
     }
 
-    /// <summary>The spec for "same directory as <paramref name="input"/>, base name + <paramref name="suffix"/>, new extension".</summary>
+    /// <summary>
+    /// The spec for "same directory as <paramref name="input"/> (or <see cref="OutputFolder"/> when one is set), base name + <paramref name="suffix"/>, new extension".
+    /// </summary>
     /// <param name="input">The source file (or folder: its parent directory and own name are used).</param>
     /// <param name="newExt">New extension, with or without dot. "" means a folder output.</param>
     /// <param name="suffix">Literal text appended to the base name, including its leading space (" compressed", " 50%", " pages").</param>
     public static OutputSpec Plan(string input, string newExt, string suffix = "")
     {
         var full = Path.GetFullPath(input).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-        var dir = Path.GetDirectoryName(full) ?? Path.GetPathRoot(full) ?? ".";
+        var dir = OutputFolder ?? Path.GetDirectoryName(full) ?? Path.GetPathRoot(full) ?? ".";
         var name = Directory.Exists(full) ? Path.GetFileName(full) : Path.GetFileNameWithoutExtension(full);
         return new OutputSpec(dir, name + suffix, NormalizeExtension(newExt));
+    }
+
+    /// <summary>
+    /// The spec for an output with a name of its own ("Merged.pdf", "Archive.zip") that belongs with <paramref name="firstInput"/>: its folder, or
+    /// <see cref="OutputFolder"/> when one is set.
+    /// </summary>
+    public static OutputSpec PlanNamed(string firstInput, string baseName, string newExt)
+    {
+        var full = Path.GetFullPath(firstInput).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        var dir = OutputFolder ?? Path.GetDirectoryName(full) ?? Path.GetPathRoot(full) ?? ".";
+        return new OutputSpec(dir, baseName, NormalizeExtension(newExt));
     }
 
     /// <summary>
@@ -128,7 +154,9 @@ public static class Naming
 
         var fallback = false;
         var dir = spec.Directory;
-        var temp = await TryReserveTempAsync(dir, spec, ct).ConfigureAwait(false);
+        // A folder the user chose that has since gone (a removed drive, a deleted "Converted" folder) is not recreated behind their back: Downloads
+        // instead, as for a folder that cannot be written to. (Any other missing directory is still created, as always.)
+        var temp = IsMissingChosenFolder(dir) ? null : await TryReserveTempAsync(dir, spec, ct).ConfigureAwait(false);
         if (temp is null)
         {
             dir = DownloadsDirectory();
@@ -157,6 +185,11 @@ public static class Naming
             if (container is not null) TryDelete(container, folder: true);
         }
     }
+
+    private static bool IsMissingChosenFolder(string dir) =>
+        OutputFolder is { } chosen
+        && string.Equals(Path.TrimEndingDirectorySeparator(chosen), Path.TrimEndingDirectorySeparator(dir), StringComparison.OrdinalIgnoreCase)
+        && !Directory.Exists(dir);
 
     /// <summary>
     /// Convenience over <see cref="CommitAsync"/> for streams: <paramref name="write"/> receives a writable stream on the temp file.

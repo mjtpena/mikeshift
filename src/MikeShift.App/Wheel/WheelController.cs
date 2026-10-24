@@ -627,7 +627,7 @@ internal sealed class WheelController : IDisposable
         var probed = _services.TryGetCapabilities(out var caps);
         _ = Task.Run(async () =>
         {
-            ApplyOnWheelThread(generation, paths, BuildCatalog(paths, caps), entry, refresh: false);
+            ApplyOnWheelThread(generation, paths, BuildCatalog(paths, caps, _services.Preferences.Conversions), entry, refresh: false);
             if (probed) return;
 
             Capabilities full;
@@ -638,15 +638,15 @@ internal sealed class WheelController : IDisposable
                 return;
             }
             WheelLog.Stage("capability probe finished during the drag: refreshing the tiles");
-            ApplyOnWheelThread(generation, paths, BuildCatalog(paths, full), entry, refresh: true);
+            ApplyOnWheelThread(generation, paths, BuildCatalog(paths, full, _services.Preferences.Conversions), entry, refresh: true);
         });
     }
 
-    private static IReadOnlyList<ActionDef> BuildCatalog(IReadOnlyList<string> paths, Capabilities caps)
+    private static IReadOnlyList<ActionDef> BuildCatalog(IReadOnlyList<string> paths, Capabilities caps, ConversionOptions options)
     {
         try
         {
-            return ActionCatalog.For(paths, caps);
+            return ActionCatalog.For(paths, caps, options);
         }
         catch (Exception ex)
         {
@@ -903,7 +903,7 @@ internal sealed class WheelController : IDisposable
         _ = Task.Run(() =>
         {
             IReadOnlyList<ActionDef> actions;
-            try { actions = ActionCatalog.For(paths, _services.Capabilities); } // may wait for the startup probe: off the UI thread
+            try { actions = ActionCatalog.For(paths, _services.Capabilities, _services.Preferences.Conversions); } // may wait for the startup probe: off the UI thread
             catch (Exception ex) { WheelLog.Error("ActionCatalog.For failed (click mode)", ex); actions = []; }
             string summary;
             try { summary = SelectionSummary.For(paths, paths.Count > 1 ? Kind.CommonOf(paths) : null); }

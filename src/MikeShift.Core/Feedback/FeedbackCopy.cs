@@ -66,7 +66,7 @@ public static partial class FeedbackCopy
     private static string ToolGerund(string title, bool withObject) => title switch
     {
         "Compress" => "Compressing",
-        "Resize 50%" => withObject ? "Resizing to 50%" : "Resizing",
+        _ when ActionCatalog.ResizePercentIn(title) is { } percent => withObject ? $"Resizing to {percent}%" : "Resizing",
         "Crop" => "Cropping",
         "Strip EXIF" => withObject ? "Removing EXIF data" : "Cleaning",
         "Trim" => "Trimming",

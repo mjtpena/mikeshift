@@ -96,8 +96,14 @@ public static class PdfConverter
     // ------------------------------------------------------------------ PDF -> images
 
     /// <summary>Renders pages to PNG/JPG. One page: <c>name.png</c>; several: folder <c>name pages\name 01.png...</c>. Returns the file or folder.</summary>
-    public static async Task<string> ToImagesAsync(string input, PdfPageFormat format, CancellationToken ct)
+    public static Task<string> ToImagesAsync(string input, PdfPageFormat format, CancellationToken ct) =>
+        ToImagesAsync(input, format, ConversionOptions.Default, ct);
+
+    /// <summary>As above; JPG pages are encoded at <paramref name="options"/>'s <see cref="ConversionOptions.Quality"/>.</summary>
+    public static async Task<string> ToImagesAsync(string input, PdfPageFormat format, ConversionOptions options, CancellationToken ct)
     {
+        ArgumentNullException.ThrowIfNull(options);
+        var quality = options.QualityFraction;
         var bytes = PdfGuard.ReadBytes(input);
         PdfGuard.RequireNotEncrypted(bytes);
         var doc = await PdfRender.OpenAsync(bytes).ConfigureAwait(false);
@@ -109,7 +115,7 @@ public static class PdfConverter
             var spec = Naming.Plan(input, ext);
             var single = await Naming.CommitAsync(spec, async (temp, token) =>
             {
-                var data = await PdfRender.RenderPageAsync(doc, 0, format).ConfigureAwait(false);
+                var data = await PdfRender.RenderPageAsync(doc, 0, format, quality).ConfigureAwait(false);
                 await File.WriteAllBytesAsync(temp, data, token).ConfigureAwait(false);
             }, ct).ConfigureAwait(false);
             return single.Path;
@@ -122,7 +128,7 @@ public static class PdfConverter
             for (var i = 0; i < count; i++)
             {
                 token.ThrowIfCancellationRequested();
-                var data = await PdfRender.RenderPageAsync(doc, (uint)i, format).ConfigureAwait(false);
+                var data = await PdfRender.RenderPageAsync(doc, (uint)i, format, quality).ConfigureAwait(false);
                 await File.WriteAllBytesAsync(Path.Combine(tempDir, NumberedName(baseName, i + 1, count, ext)), data, token).ConfigureAwait(false);
             }
         }, ct).ConfigureAwait(false);
@@ -242,11 +248,7 @@ public static class PdfConverter
 
     // ------------------------------------------------------------------ helpers
 
-    private static OutputSpec MergedSpec(string first)
-    {
-        var dir = Path.GetDirectoryName(Path.GetFullPath(first)) ?? ".";
-        return new OutputSpec(dir, "Merged", ".pdf");
-    }
+    private static OutputSpec MergedSpec(string first) => Naming.PlanNamed(first, "Merged", ".pdf");
 
     private static void RequireInputs(IReadOnlyList<string> inputs)
     {

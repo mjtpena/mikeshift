@@ -88,7 +88,7 @@ public sealed class JobRunner
             try
             {
                 // Read here, not on the UI thread: the first read waits for the startup capability probe.
-                var ctx = new ActionContext(_capabilities(), notifying, progress);
+                var ctx = new ActionContext(_capabilities(), notifying, progress, _prefs.Conversions);
                 result = await action.Run(snapshot, ctx, ct).ConfigureAwait(false);
             }
             catch (OperationCanceledException)

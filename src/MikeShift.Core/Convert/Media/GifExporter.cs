@@ -5,19 +5,25 @@ using Windows.Win32.Media.MediaFoundation;
 namespace MikeShift.Core.Media;
 
 /// <summary>
-/// Video -> animated GIF (PLAN §1.2): the first 15 s at 10 fps, longest side at most 480 px, looping forever.
+/// Video -> animated GIF (PLAN §1.2): the first 15 s (the "GIF length" setting: 5, 10, 15 or 30 s) at 10 fps, longest side at most 480 px, looping forever.
 /// Frames come from an <c>IMFSourceReader</c> converted to RGB32, are box-filtered down, and go through <see cref="GifWriter"/>.
 /// </summary>
 internal static class GifExporter
 {
-    public const int MaxSeconds = 15;
+    /// <summary>The length a GIF gets when the caller does not say (the "GIF length" setting's default).</summary>
+    public const int MaxSeconds = ConversionOptions.DefaultGifSeconds;
     public const int FramesPerSecond = 10;
     public const int MaxSide = 480;
     private const long TickHns = 10_000_000L / FramesPerSecond;
-    private const int MaxFrames = MaxSeconds * FramesPerSecond;
 
-    public static void Export(string input, string destination, CancellationToken ct)
+    public static void Export(string input, string destination, CancellationToken ct) =>
+        Export(input, destination, MaxSeconds, ct);
+
+    /// <summary>Exports at most <paramref name="seconds"/> of the video (5, 10, 15 or 30 from the settings; 10 frames per second, so the GIF never has more than <c>seconds * 10</c> frames).</summary>
+    public static void Export(string input, string destination, int seconds, CancellationToken ct)
     {
+        if (seconds < 1) throw new ArgumentOutOfRangeException(nameof(seconds), seconds, "A GIF needs at least one second.");
+        var maxFrames = seconds * FramesPerSecond;
         MfInterop.EnsureStarted();
 
         IMFAttributes? attrs = null;
@@ -43,7 +49,7 @@ internal static class GifExporter
             long? origin = null;
             var halfFrameHns = TickHns / 4;
             // Frames repeat when the source is slower than 10 fps, so the animation keeps real time.
-            while (frames < MaxFrames)
+            while (frames < maxFrames)
             {
                 ct.ThrowIfCancellationRequested();
                 IMFSample? sample;
@@ -58,10 +64,10 @@ internal static class GifExporter
                 {
                     origin ??= ts;
                     var t = ts - origin.Value;
-                    if (t >= MaxSeconds * 10_000_000L) break;
+                    if (t >= seconds * 10_000_000L) break;
 
                     var repeats = 0;
-                    while (t + halfFrameHns >= nextTick && frames + repeats < MaxFrames)
+                    while (t + halfFrameHns >= nextTick && frames + repeats < maxFrames)
                     {
                         repeats++;
                         nextTick += TickHns;
