@@ -1,20 +1,19 @@
 # Microsoft Store listing: MikeShift
 
-Ready to paste into Partner Center (Product > Store listing, English). Everything between the "Paste" markers is final text; everything else is a note for the owner. Facts come from the repository's own test runs and [LIMITS.md](../LIMITS.md); the market claims come from [the market study](../research/positioning.md) (2026-10-24). Character counts are for the text exactly as written.
+Ready to paste into Partner Center (Product > Store listing, English). Everything between the "Paste" markers is final text; everything else is a note for the publisher. Facts come from the repository's own measurements and the [known limitations](../limitations.md). Character counts are for the text exactly as written.
 
-Fields in Partner Center change over time. Where a limit or a drop-down value below is from memory rather than from the current form, it says so; the form is authoritative.
+Fields in Partner Center change over time. Where a limit or a drop-down value below may be out of date, it says so; the form is authoritative.
 
-## Before you submit (owner checklist)
+## Before you submit (publisher checklist)
 
-1. **Reserve the name** "MikeShift: offline file converter" (or just "MikeShift") in Partner Center, and run a trademark search first (not done; the market study notes neighbours such as ShiftDrop and Shiftvert).
-2. **Associate the app with the Store.** The package currently has `Publisher="CN=MikeShift Dev"` and `Version="0.1.0.0"`. The Store assigns its own identity (Name, Publisher) on association, and Store package versions need the last digit to be `0` (use `1.0.0.0` for this listing). These are code and manifest changes outside this document.
+1. **Reserve the name** "MikeShift: offline file converter" (or just "MikeShift") in Partner Center, and run a trademark search first (not done; names such as ShiftDrop and Shiftvert are close neighbours).
+2. **Associate the app with the Store.** The package currently has `Publisher="CN=MikeShift Dev"` and `Version="0.1.0.0"`. The Store assigns its own identity (Name, Publisher) on association, and Store package versions need the last digit to be `0` (use `1.0.0.0` for this listing). Make those changes in `src/MikeShift.App/Package.appxmanifest` and `Directory.Build.props` ([releasing](../developer/releasing.md#versioning)).
 3. **Submit the "store" flavour** (about 23 MB per architecture; `./scripts/release.ps1 -Flavor store`, upload the `.msixbundle` or both `_store_` `.msix` files). The Store installs the Windows App Runtime dependency itself.
-4. **Host the privacy policy** ([privacy-policy.md](privacy-policy.md)) at a public URL and paste the URL in Properties > Privacy policy. A public GitHub repository page or a GitHub Pages page works; the repository is not public today (the project URL returned 404 on 2026-10-24).
-5. **Fill in the support contact** (placeholders below).
-6. **Decide the Windows 10 question.** The package declares Windows 10 1809 (build 17763) as the minimum, but the right-click entry has not been seen on Windows 10 ([LIMITS.md](../LIMITS.md)). Either keep 1809 and keep the honest note in the description, or set the minimum to Windows 11 until a Windows 10 PC has been tried.
-7. **Run the Windows App Certification Kit** on the Store package and fix findings. Not done here.
-8. **Manifest text.** The tile description in `Package.appxmanifest` still reads "Shift-drag a file to convert it." Consider "Convert files from File Explorer" so the Start menu and the Store agree. (Code change; not made here.)
-9. **Pricing and markets:** free, all markets is what the positioning study recommends (free and MIT like every rival; decide on money after about 1,000 installs). Owner's call.
+4. **Host the privacy statement** ([privacy.md](../privacy.md), see [privacy-policy.md](privacy-policy.md)) at a public URL and paste the URL in Properties > Privacy policy. A public GitHub repository page or a GitHub Pages page works; the repository must be public first.
+5. **Fill in the support contact and website** (suggested values below; use an email address if you prefer one).
+6. **Decide the Windows 10 question.** The package declares Windows 10 1809 (build 17763) as the minimum, but the right-click entry has not been seen on Windows 10 ([limitations](../limitations.md#the-right-click-entry)). Either keep 1809 and keep the honest note in the description, or set the minimum to Windows 11 until a Windows 10 PC has been tried.
+7. **Run the Windows App Certification Kit** on the Store package and fix findings.
+8. **Pricing and markets:** free, all markets, like the comparable open-source tools. Your call.
 
 ---
 
@@ -136,7 +135,7 @@ Free and open source under the MIT licence. A Windows port of Shiftvert by roieg
 
 ## Paste: search terms
 
-Partner Center asks for a small number of search terms (I recall up to 7 terms of up to 30 characters each; check the form). Use the first seven if that is the limit; the rest are spares, ordered by priority. None is a competitor's name, which Store policy discourages.
+Partner Center asks for a small number of search terms (up to 7 terms of up to 30 characters each at the time of writing; check the form). Use the first seven if that is the limit; the rest are spares, ordered by priority. None is a competitor's name, which Store policy discourages.
 
 ```
 file converter
@@ -165,7 +164,7 @@ no upload converter
 
 * **Recommended:** Utilities & tools > File management.
 * **Alternative:** Photo & video (the biggest jobs are photos and video), or Productivity.
-* The Store suggests a single primary category. File management matches what Explorer users search for, and the name carries "file converter". The category names are as I recall them; use whatever the Partner Center drop-down offers that is closest.
+* The Store suggests a single primary category. File management matches what Explorer users search for, and the name carries "file converter". The category names may differ; use whatever the Partner Center drop-down offers that is closest.
 
 ## Age rating (IARC questionnaire answers)
 
@@ -176,7 +175,7 @@ Questionnaire category: **Utility, productivity, collaboration or other**. All a
 | Violence, blood, fear, sexual content, nudity, language, controlled substances, gambling | No | The app converts the user's own files; it contains no such content. |
 | User-generated content (users create and share content with other users) | **No** | The app has no sharing, posting, chat or accounts. It converts files already on the user's PC and writes copies next to them. |
 | Users interact or communicate with each other | No | No networking exists. |
-| Shares the user's location or personal information | No | No network code, no telemetry ([privacy policy](privacy-policy.md)). |
+| Shares the user's location or personal information | No | No network code, no telemetry ([privacy statement](../privacy.md)). |
 | Unrestricted internet access or a web browser | No | The app has no browser. A few buttons hand a link to the user's own browser or the Store app (Check for updates, GitHub, Get HEIF). |
 | In-app purchases, ads, digital goods | No | Free, no ads, no purchases. |
 | Collects data from children | No | Collects no data from anyone. |
@@ -185,14 +184,14 @@ Expected result: the lowest rating (IARC 3+, ESRB Everyone, PEGI 3). IARC comput
 
 ## Privacy policy URL
 
-Host [privacy-policy.md](privacy-policy.md) (rendered) and paste its URL. Draft URL once the repository is public: `https://github.com/mjtpena/mikeshift/blob/main/docs/store/privacy-policy.md` (use GitHub Pages if you want a clean rendered page). Placeholder until then: `[PRIVACY POLICY URL]`.
+Host [privacy.md](../privacy.md) (rendered) and paste its URL. Once the repository is public: `https://github.com/mjtpena/mikeshift/blob/main/docs/privacy.md` (use GitHub Pages if you want a clean rendered page). Placeholder until then: `[PRIVACY POLICY URL]`.
 
-## Support contact and website (placeholders for the owner)
+## Support contact and website
 
 | Field | Value |
 |---|---|
-| Support contact info (email or web page) | `[SUPPORT EMAIL OR URL]` |
-| Website | `[WEBSITE OR https://github.com/mjtpena/mikeshift]` |
+| Support contact info (email or web page) | `https://github.com/mjtpena/mikeshift/issues` (or an email address) |
+| Website | `https://github.com/mjtpena/mikeshift` |
 | Copyright and trademark info | `© 2026 MikeShift contributors. MIT licence.` |
 | Additional license terms | `MIT licence: https://github.com/mjtpena/mikeshift/blob/main/LICENSE. Based on Shiftvert by roiegold (MIT).` |
 | Developer / publisher display name | `[AS REGISTERED IN PARTNER CENTER]` (the manifest says "Michael John Peña") |
@@ -214,7 +213,7 @@ OS: Windows 11
 Architecture: x64
 ```
 
-Notes: the memory and storage figures are from the project's measurements ([LIMITS.md](../LIMITS.md): about 17 MB idle, about 115 MB for the wheel in a fresh process; store package about 57 MB installed). The "4 GB RAM" line is a conventional floor, not something measured. ARM64 is built but has not been run on ARM64 hardware.
+Notes: the memory and storage figures are from the project's measurements ([limitations](../limitations.md#platform-size-and-memory): about 17 MB idle, about 115 MB for the wheel in a fresh process; store package about 57 MB installed). The "4 GB RAM" line is a conventional floor, not something measured. ARM64 is built but has not been run on ARM64 hardware.
 
 ## Notes for certification (paste in Product > Submission options > Notes for certification)
 
@@ -236,6 +235,6 @@ The "Open at login" startup task is off by default. The app adds a "mikeshift" c
 
 * **Device families:** Windows desktop. **Architectures:** x64, ARM64 (use the bundle).
 * **Free trial / subscription / purchases:** none.
-* **Accessibility declaration** (if the form asks): do not tick screen-reader support until a Narrator pass has been done; the wheel has UI Automation names and a click-mode keyboard path, but the audit is open (P1-3 in the study).
+* **Accessibility declaration** (if the form asks): do not tick screen-reader support until a Narrator pass has been done; the wheel has UI Automation names and a click-mode keyboard path, but it has not been checked with a screen reader yet.
 * **Screenshots:** [screenshots.md](screenshots.md). **Trailer / demo video:** [demo-script.md](demo-script.md).
-* **Store logo and tile art:** from `assets/brand/mikeshift.svg` (`scripts/make-icons.ps1`; preview `docs/screenshots/brand/icon-sheet.png`).
+* **Store logo and tile art:** from `assets/brand/mikeshift.svg` (`scripts/make-icons.ps1`; preview [icon-sheet.png](../images/icon-sheet.png)).

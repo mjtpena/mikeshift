@@ -30,8 +30,8 @@ Total: 20 s. The first caption must be readable without sound and without the po
 
 ## Notes per shot
 
-* **Shot 2:** the submenu list depends on the file and the PC. With the HEIF extensions installed a HEIC offers Convert to JPG first (see `docs/screenshots/context-menu/modern-menu-heic.png`). On a PC without them the menu is built from extensions only and still lists JPG; the click then shows the "Get HEIF" tile instead of converting. Rehearse on the recording PC first.
-* **Shot 3:** the toast fades after a few seconds. Start counting from the click; it appears within about a quarter of a second for a small file ([context-menu test run](../test-runs/2026-10-24-context-menu.md): about 220 ms for a small JPG).
+* **Shot 2:** the submenu list depends on the file and the PC. With the HEIF extensions installed a HEIC offers Convert to JPG first (see `docs/images/right-click-menu.png`). On a PC without them the menu is built from extensions only and still lists JPG; the click then shows the "Get HEIF" tile instead of converting. Rehearse on the recording PC first.
+* **Shot 3:** the toast fades after a few seconds. Start counting from the click; it appears within about a quarter of a second for a small file (about 220 ms for a small JPG on the test PC).
 * **Shot 4:** hold Shift **before** the pointer reaches the tile, not after; the wheel appears about 22 ms after the key (median on the test PC), so there is no need to hurry. Release over the PNG tile. Do not release over an empty folder with Shift held: Explorer itself treats a Shift-drop as a move. If you prefer, choose Ctrl in the welcome window and say "hold Ctrl" in the caption instead.
 * **Shot 5:** the Merge PDF line appears only when two or more images or PDFs are selected, which is the point of the shot.
 * If something fails in a take (a toast disappears, a menu closes early), cut and retake that shot; shots are independent and can be recorded separately.

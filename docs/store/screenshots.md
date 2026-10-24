@@ -1,8 +1,8 @@
 # Microsoft Store screenshots
 
-What to upload, with captions; what is still missing; and exactly how to capture the missing ones.
+What to upload, with captions; what is still missing; and how to capture the missing ones.
 
-## Store requirements (as I recall them; check Partner Center)
+## Store requirements (check Partner Center for the current rules)
 
 * PNG, at least 1366 x 768 (1920 x 1080 recommended), up to 10 screenshots, 16:9 landscape works everywhere. A caption of up to about 200 characters per image is optional.
 * The first screenshots decide the listing. Show the right-click menu first, because that is how most people will use the app.
@@ -10,22 +10,22 @@ What to upload, with captions; what is still missing; and exactly how to capture
 
 ## Ready to upload (in `docs/media/store/`)
 
-None of the existing captures in `docs/screenshots/` is big enough for the Store on its own (the largest, `surfaces-v2/picker-dark.png`, is 1200 x 720), so eight 1920 x 1080 images were composed from them with `docs/media/compose-store-images.py` (Pillow; unmodified captures scaled up by at most 2x, on a light neutral gradient, with a caption; nothing is drawn over a capture). Re-run the script after replacing a source capture.
+None of the captures in `docs/images/` is big enough for the Store on its own, so eight 1920 x 1080 images were composed from them with `docs/media/compose-store-images.py` (Pillow; unmodified captures scaled up by at most 2x, on a light neutral gradient, with a caption; nothing is drawn over a capture). Re-run the script after replacing a source capture.
 
 | # | File | Caption for the Store (paste) | Source captures |
 |---|---|---|---|
-| 1 | `01-right-click.png` | Right-click a file in File Explorer, choose Convert with MikeShift, and pick a format. The converted copy appears next to the original. | `context-menu/modern-menu-heic.png`, `context-menu/toast-after-convert.png` |
-| 2 | `02-wheel-in-explorer.png` | Or drag a file and hold Shift (or Ctrl). A wheel of formats appears under the pointer; drop the file on one. Your original is never changed. | `real-drag/01-formats-top-half-real-thumbnail.png` |
-| 3 | `03-formats-and-tools.png` | Formats on one page, tools on the other: Compress, Resize 50%, Crop, Strip EXIF and Zip. Press the other key to switch. | `wheel-v2/formats-dark-highlight.png`, `wheel-v2/tools-dark-highlight.png` |
-| 4 | `04-merge-and-zip.png` | The menu fits what you selected: three images offer Merge PDF, a folder offers Zip. | `context-menu/modern-menu-multi-images.png`, `context-menu/modern-menu-folder.png` |
-| 5 | `05-keyboard-and-settings.png` | Select files in File Explorer and press Ctrl+Alt+Shift+Space to open the wheel from the keyboard. Settings choose the keys and keep Word off by default. | `onboarding/real-hotkey-wheel.png`, `onboarding/settings-open-the-wheel.png` |
-| 6 | `06-private-and-small.png` | Nothing is uploaded: no network code, no account, no telemetry. Originals are never moved or changed. About 23 MB to download. | `onboarding/welcome-shift-default.png` |
-| 7 | `07-heic-guidance.png` | iPhone HEIC photos need Microsoft's free HEIF and HEVC extensions. If they are missing, MikeShift says so and opens the Store page. | `onboarding/wheel-heic-missing-click-light.png`, `onboarding/failure-dialog-heic.png` |
-| 8 | `08-crop-and-trim.png` | Crop a photo or trim a clip in a small editor. Results are saved as copies. | `surfaces-v2/crop-dark.png`, `surfaces-v2/trim-dark.png` |
+| 1 | `01-right-click.png` | Right-click a file in File Explorer, choose Convert with MikeShift, and pick a format. The converted copy appears next to the original. | `right-click-menu.png`, `toast.png` |
+| 2 | `02-drag-to-wheel.png` | Or drag a file and hold Shift (or Ctrl). A wheel of formats appears under the pointer; drop the file on one. Your original is never changed. | `wheel-formats-dark.png` |
+| 3 | `03-formats-and-tools.png` | Formats on one page, tools on the other: Compress, Resize 50%, Crop, Strip EXIF and Zip. Press the other key to switch. | `wheel-formats-dark.png`, `wheel-tools-dark.png` |
+| 4 | `04-merge-and-zip.png` | The menu fits what you selected: three images offer Merge PDF, a folder offers Zip. | `right-click-menu-multiple.png`, `right-click-menu-folder.png` |
+| 5 | `05-keyboard-and-settings.png` | Select files in File Explorer and press Ctrl+Alt+Shift+Space to open the wheel from the keyboard. Settings choose the keys and keep Word off by default. | `wheel-keyboard-dark.png`, `settings-open-the-wheel.png` |
+| 6 | `06-private-and-small.png` | Nothing is uploaded: no network code, no account, no telemetry. Originals are never moved or changed. About 23 MB to download. | `welcome.png` |
+| 7 | `07-heic-guidance.png` | iPhone HEIC photos need Microsoft's free HEIF and HEVC extensions. If they are missing, MikeShift says so and opens the Store page. | `heic-extension-hint.png`, `failure-dialog.png` |
+| 8 | `08-crop-and-trim.png` | Crop a photo or trim a clip in a small editor. Results are saved as copies. | `crop-editor.png`, `trim-dialog.png` |
 
-Suggested upload order: 1, 2, 4, 3, 6, 5, 7, 8 (jobs first, then the wheel, then trust, then edge cases). Images 1 and 4 show other apps' entries in the Windows menu (Clipchamp, OneDrive, Acrobat, ChatGPT and PowerToys entries from the capture PC). That is normal for a Windows menu, but a hero shot on a clean PC (below) is cleaner and should replace image 1 and 4 when you have it.
+Suggested upload order: 1, 2, 4, 3, 6, 5, 7, 8 (jobs first, then the wheel, then trust, then edge cases). Images 1 and 4 show other apps' entries in the Windows menu (Clipchamp, OneDrive, Acrobat, ChatGPT and PowerToys entries from the capture PC). That is normal for a Windows menu, but a hero shot on a clean PC (below) is cleaner and should replace images 1 and 4 when you have it. Images 2, 3 and 5 show the wheel over a synthetic backdrop, so no desktop pixels are in them.
 
-Image 6 says "About 23 MB" and "no network code" and is true of the Store package as built (23.3 MB x64, 22.5 MB ARM64) and of the measurement in the [offline test run](../test-runs/2026-10-24-local-and-integrity.md). If a later build grows, re-check the number.
+Image 6 says "About 23 MB" and "no network code" and is true of the Store package as built (23.3 MB x64, 22.5 MB ARM64) and of the measurement described in [offline verification](../developer/testing.md#offline-verification). If a later build grows, re-check the number.
 
 ## What is missing
 
@@ -66,7 +66,7 @@ Use a fresh Windows 11 user account or a VM so the right-click menu shows only W
 ### C. The wheel over real Explorer
 
 1. Start a drag of a file from the Explorer window (left button held), then hold Shift. The wheel opens under the pointer.
-2. While still holding both, press Print Screen. If the drag image does not appear in the capture, record instead (Xbox Game Bar: Win+Alt+R; or `tools/DragHarness`, see [TESTPLAN.md](../TESTPLAN.md)) and export a frame. The real-drag captures in `docs/screenshots/real-drag/` were made with the harness.
+2. While still holding both, press Print Screen. If the drag image does not appear in the capture, record instead (Xbox Game Bar: Win+Alt+R) and export a frame. Do not use the drag harness (`tools/DragHarness`) on your own desktop for this: it takes over the mouse and keyboard, and its captures include whatever is on screen.
 3. Press Esc to cancel; nothing is converted.
 
 ### D. Light-theme versions
@@ -95,11 +95,11 @@ $env:MIKESHIFT_THEME = 'light'; & $app --dev --show-welcome     # welcome window
 ./scripts/capture-scene.ps1 -AppArgs '--scene','tray-menu' -Theme light -Out .\tray-light.png -Title 'MikeShift' -Backdrop
 ```
 
-(`-Backdrop` puts a synthetic gradient behind translucent popups so no desktop pixels end up in the image.) To use a new capture in the Store set, drop it in `docs/screenshots/`, add a function to `docs/media/compose-store-images.py` and run it. The wheel itself can be rendered offscreen over a synthetic desktop with `MikeShift.exe --dev --render-wheel list` (lists scenarios) and `--render-wheel <scenario> <out.png>`; that synthetic desktop is the kind of "Quarterly results" background seen in images 3 and 7.
+(`-Backdrop` puts a synthetic gradient behind translucent popups so no desktop pixels end up in the image.) To use a new capture in the Store set, drop it in `docs/images/`, add a function to `docs/media/compose-store-images.py` and run it. The wheel itself can be rendered offscreen over a synthetic desktop with `MikeShift.exe --dev --render-wheel list` (lists scenarios) and `--render-wheel <scenario> <out.png>`; that synthetic desktop is the kind of "Quarterly results" background seen in images 3 and 7.
 
 ## Accuracy checklist before uploading
 
 * Every screenshot shows a feature that is in the submitted build (right-click, wheel, hotkey, Crop, Trim, Settings, Word off by default).
 * No image says "Windows 10" or shows a Windows 10 desktop until that has been tested.
 * Nothing says "signed" or "in the Microsoft Store" before it is.
-* No personal names, paths with your user name, emails, notifications or other apps' account pictures. Image 1 and 4 show third-party menu entries only; replace them with clean-PC captures (A) when you can.
+* No personal names, paths with your user name, emails, notifications or other apps' account pictures. Images 1 and 4 show third-party menu entries only; replace them with clean-PC captures (A) when you can.
