@@ -17,7 +17,7 @@ internal static class MenuScenarios
 
     public static int Run(string[] args)
     {
-        if (args.Length < 2) { Console.Error.WriteLine("usage: menu <workfolder> dump|all|<scenario>... (scenarios: jpg-png multi-merge folder-zip mixed heic big600 classic more)"); return 2; }
+        if (args.Length < 2) { Console.Error.WriteLine("usage: menu <workfolder> dump|all|<scenario>... (scenarios: jpg-png multi-merge folder-zip mixed heic big600 mixed-big fallback classic more)"); return 2; }
         Work = Path.GetFullPath(args[0]);
         ShotsDir = Environment.GetEnvironmentVariable("HARNESS_SHOTS");
         if (ShotsDir is not null) Directory.CreateDirectory(ShotsDir);
@@ -25,7 +25,7 @@ internal static class MenuScenarios
         var wanted = args[1..];
         if (wanted is ["dump"]) return Dump();
         if (wanted is ["timing", ..]) return Timing(wanted.Length > 1 ? int.Parse(wanted[1]) : 6);
-        if (wanted is ["all"]) wanted = ["jpg-png", "multi-merge", "folder-zip", "mixed", "heic", "classic", "more", "big600"];
+        if (wanted is ["all"]) wanted = ["jpg-png", "multi-merge", "folder-zip", "mixed", "heic", "classic", "more", "big600", "mixed-big", "fallback"];
         if (Environment.GetEnvironmentVariable("HARNESS_NO_TRAY") != "1") PrepareTray();
         foreach (var name in wanted)
         {
@@ -40,6 +40,8 @@ internal static class MenuScenarios
                     case "mixed": Mixed(); break;
                     case "heic": Heic(); break;
                     case "big600": Big600(); break;
+                    case "mixed-big": MixedBig(); break;
+                    case "fallback": Fallback(); break;
                     case "classic": Classic(); break;
                     case "more": MoreOptions(); break;
                     default: Console.WriteLine("unknown scenario"); s_failures++; break;
@@ -195,6 +197,63 @@ internal static class MenuScenarios
         }
     }
 
+    /// <summary>
+    /// 18 JPEGs and 4 PDFs selected together. Explorer builds the menu from a 16-item sample of the selection (which items it picks is Explorer's
+    /// business), so the entries are those of the sample; the tray app gets the whole selection. Either way nothing may be converted wrongly.
+    /// </summary>
+    private static void MixedBig()
+    {
+        var folder = Path.Combine(Work, "mixedbig");
+        using var session = OpenFolder(folder);
+        var selected = session.SelectAll();
+        Check(selected == 22, $"{selected} items selected in the folder");
+        var (ms, entry) = RightClickAndFindEntry(session, null, "a05.jpg");
+        Check(entry is not null, $"menu for 22 mixed files ({ms:F0} ms)");
+        if (entry is null) return;
+        var items = OpenSubmenu(entry, "Zip");
+        Console.WriteLine("submenu: " + string.Join(" | ", items));
+        Check(items.Contains("Zip") && items.Contains("More options…"), "Zip and More options… are there");
+        Console.WriteLine(items.Contains("Convert to PNG")
+            ? "  Explorer's sample held only images, so image conversions are offered; the tray app falls back to the wheel when they do not fit the whole selection (see 'fallback')"
+            : "  Explorer's sample held both kinds, so only Zip is offered");
+        Shot("modern-menu-22-mixed.png");
+        Check(!Directory.EnumerateFiles(folder, "*.png").Any(), "nothing was converted");
+    }
+
+    /// <summary>
+    /// The tray app's answer when an action does not fit the selection it finally receives: a request for "PNG" on a JPEG plus a PDF (a mixed
+    /// selection) opens the wheel, which offers what is possible (Zip), instead of failing or converting some of the files.
+    /// </summary>
+    private static void Fallback()
+    {
+        var paths = new[] { Path.Combine(Work, "photo1.jpg"), Path.Combine(Work, "doc.pdf") };
+        var pipe = "mikeshift-shell-" + System.Security.Principal.WindowsIdentity.GetCurrent().User!.Value;
+        using (var client = new System.IO.Pipes.NamedPipeClientStream(".", pipe, System.IO.Pipes.PipeDirection.InOut))
+        {
+            client.Connect(5000);
+            using (var w = new BinaryWriter(client, System.Text.Encoding.UTF8, leaveOpen: true))
+            {
+                w.Write(0x3148534Du); w.Write((byte)1); w.Write("PNG"); w.Write(paths.Length);
+                foreach (var p in paths) w.Write(p);
+                w.Flush();
+            }
+            Check(client.ReadByte() == 1, "the tray app accepted the request");
+        }
+        var stamp = Stopwatch.GetTimestamp();
+        AutomationElement? tile = null;
+        while (RealInput.MsSince(stamp) < 8000 && tile is null)
+        {
+            tile = FindWheelTile("Zip");
+            if (tile is null) Thread.Sleep(50);
+        }
+        Check(tile is not null, $"a mixed selection asked to convert to PNG opens the wheel with Zip ({RealInput.MsSince(stamp):F0} ms)");
+        Thread.Sleep(500);
+        ShotWheel("wheel-fallback-mixed.png");
+        RealInput.Press(RealInput.VkEscape);
+        Thread.Sleep(400);
+        Check(!File.Exists(Path.Combine(Work, "photo1.png")) && !File.Exists(Path.Combine(Work, "doc.png")), "nothing was converted");
+    }
+
     private static void Classic()
     {
         using var session = OpenFolder(Work);
@@ -204,7 +263,7 @@ internal static class MenuScenarios
         var items = OpenSubmenu(top, "Convert to PNG", classic: true);
         Console.WriteLine("submenu: " + string.Join(" | ", items));
         Check(items.Contains("Convert to PNG"), "classic menu submenu has the formats");
-        ShotClassic("classic-menu-jpg.png", top);
+        ShotClassic("classic-menu-jpg.png", top, MenuFinder.FindClassic("Convert to PNG"));
         CloseMenus();
         Thread.Sleep(500);
 
@@ -406,7 +465,14 @@ internal static class MenuScenarios
 
     private static void ClickName(string name)
     {
-        var e = MenuFinder.FindInPopups(name) ?? MenuFinder.FindClassic(name) ?? throw new InvalidOperationException($"menu item \"{name}\" not found");
+        AutomationElement? e = null;
+        var sw = Stopwatch.StartNew();
+        while (e is null && sw.ElapsedMilliseconds < 3000)
+        {
+            e = MenuFinder.FindInPopups(name) ?? MenuFinder.FindClassic(name);
+            if (e is null) Thread.Sleep(50);
+        }
+        if (e is null) throw new InvalidOperationException($"menu item \"{name}\" not found");
         var r = e.Current.BoundingRectangle;
         RealInput.LeftClick((int)(r.X + r.Width / 2), (int)(r.Y + r.Height / 2));
     }
@@ -447,43 +513,44 @@ internal static class MenuScenarios
 
     private static void Shot(string name)
     {
+        // The menu bodies only (the rows of each popup plus a little padding); the shadow around them and whatever lies between two popups stays
+        // transparent, so no other window that happens to be behind the menu ends up in the picture.
+        var bodies = MenuFinder.PopupBodies();
+        if (bodies.Count == 0) { Console.WriteLine("  (no popup to capture)"); return; }
+        SaveParts(name, bodies.Select(r => new Rectangle((int)r.X, (int)r.Y, (int)r.Width, (int)r.Height)).ToList());
+    }
+
+    private static void ShotClassic(string name, AutomationElement top, AutomationElement? submenuItem)
+    {
+        // The entry's row and the rows below it, and the submenu: the rows above can name the user's OneDrive accounts.
+        var menus = MenuFinder.ClassicMenuRects();
+        var row = top.Current.BoundingRectangle;
+        var main = menus.FirstOrDefault(r => r.Contains(row));
+        if (main.IsEmpty) return;
+        var parts = new List<Rectangle>();
+        var topY = (int)row.Top - 3;
+        parts.Add(new Rectangle((int)main.Left, topY, (int)main.Width, Math.Min((int)main.Bottom, topY + 25 * 10) - topY));
+        if (submenuItem is not null && TreeWalker.ControlViewWalker.GetParent(submenuItem) is { } panel)
+        {
+            var sub = panel.Current.BoundingRectangle;
+            if (!sub.IsEmpty) parts.Add(new Rectangle((int)sub.Left, (int)sub.Top, (int)sub.Width, (int)sub.Height));
+        }
+        SaveParts(name, parts);
+    }
+
+    /// <summary>Saves the union of <paramref name="parts"/> as a PNG with only those parts copied from the screen and the rest transparent.</summary>
+    private static void SaveParts(string name, List<Rectangle> parts)
+    {
         if (ShotsDir is null) return;
-        // Copy only the menu bodies (the rows of each popup plus their padding); whatever lies between two popups, and the shadow around them,
-        // stays transparent, so no other window that happens to be behind the menu ends up in the picture.
-        var rects = MenuFinder.PopupBodies();
-        if (rects.Count == 0) { Console.WriteLine("  (no popup to capture)"); return; }
-        var u = Union(rects);
+        var u = parts.Aggregate(Rectangle.Union);
         using var bmp = new Bitmap(u.Width, u.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
         using (var g = Graphics.FromImage(bmp))
         {
             g.Clear(Color.Transparent);
-            foreach (var r in rects)
-            {
-                var body = new Rectangle((int)r.X, (int)r.Y, (int)r.Width, (int)r.Height);
-                g.CopyFromScreen(body.X, body.Y, body.X - u.X, body.Y - u.Y, body.Size);
-            }
+            foreach (var p in parts) g.CopyFromScreen(p.X, p.Y, p.X - u.X, p.Y - u.Y, p.Size);
         }
-        var path = Path.Combine(ShotsDir, name);
-        bmp.Save(path, System.Drawing.Imaging.ImageFormat.Png);
+        bmp.Save(Path.Combine(ShotsDir, name), System.Drawing.Imaging.ImageFormat.Png);
         Console.WriteLine($"  screenshot {name} ({u.Width}x{u.Height})");
-    }
-
-    private static void ShotClassic(string name, AutomationElement top)
-    {
-        if (ShotsDir is null) return;
-        // Crop to the entry's row, the rows below it and the submenu: the rows above can name the user's OneDrive accounts.
-        var rects = MenuFinder.ClassicMenuRects();
-        if (rects.Count == 0) return;
-        foreach (var r in rects) Console.WriteLine($"  classic menu window {r}");
-        var row = top.Current.BoundingRectangle;
-        var left = (int)rects.Min(r => r.Left);
-        var right = (int)rects.Max(r => r.Right);
-        var topY = (int)row.Top - 4;
-        var bottom = Math.Min((int)rects.Max(r => r.Bottom), topY + 24 * 10);
-        // The submenu may extend above/below the row; include it fully if it fits next to the row.
-        var sub = rects.Where(r => r.Left > row.Right - 20).ToList();
-        if (sub.Count > 0) { bottom = Math.Max(bottom, (int)sub.Max(r => r.Bottom)); topY = Math.Min(topY, (int)sub.Min(r => r.Top)); }
-        SaveCrop(Path.Combine(ShotsDir, name), new Rectangle(left, topY, right - left, bottom - topY));
     }
 
     private static void ShotToast(string name)
@@ -496,7 +563,8 @@ internal static class MenuScenarios
 
     private static void ShotWheel(string name)
     {
-        if (ShotsDir is null) return;
+        // The wheel is a see-through window: its corners show whatever is behind it. Only captured when asked for (HARNESS_WHEEL_SHOTS=1, scratch use).
+        if (ShotsDir is null || Environment.GetEnvironmentVariable("HARNESS_WHEEL_SHOTS") != "1") return;
         var r = MikeShiftWindowRects().OrderByDescending(x => x.Width * x.Height).FirstOrDefault(x => x.Width >= 300);
         if (r.IsEmpty) { Console.WriteLine("  (no wheel window found)"); return; }
         SaveCrop(Path.Combine(ShotsDir, name), r);

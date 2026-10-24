@@ -219,7 +219,7 @@ internal static class MenuFinder
                     if (!r.IsEmpty && outer.Contains(r)) body.Union(r);
                 }
                 if (body.IsEmpty) continue;
-                body.Inflate(8, 7);
+                body.Inflate(4, 3);
                 body.Intersect(outer);
                 bodies.Add(body);
             }
