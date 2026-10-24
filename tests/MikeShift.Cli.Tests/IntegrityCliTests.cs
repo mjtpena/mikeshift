@@ -72,7 +72,7 @@ public class IntegrityCliTests
     {
         using var tmp = new TempDir();
         var input = tmp.WriteFile("report.docx", Fixtures.DocxSample());
-        // PDF may go through Word when it is installed; the other formats are MikeShift's own writers.
+        // Word is opt-in (--use-word), so every format here is MikeShift's own writer.
         await RunEvery(input, tmp, ["PDF", "RTF", "TXT", "HTML", "ODT", "Zip"]);
     }
 

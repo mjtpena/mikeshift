@@ -1,3 +1,4 @@
+using MikeShift.Core;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -104,7 +105,7 @@ internal sealed class JsonFileStore : IPreferenceStore
 }
 
 /// <summary>
-/// The user's preferences (PLAN §3.3): <c>chime</c>, <c>showsToast</c>, <c>toolsKey</c>, <c>showInFolderAfter</c>, <c>launched</c>.
+/// The user's preferences (PLAN §3.3): <c>chime</c>, <c>showsToast</c>, <c>toolsKey</c>, <c>showInFolderAfter</c>, <c>useWord</c>, <c>launched</c>.
 /// Packaged apps use <c>ApplicationData.LocalSettings</c>; unpackaged runs use a JSON file under
 /// <c>%LOCALAPPDATA%\MikeShift</c>. Open at Login is NOT stored here: it lives in the OS (<see cref="StartupService"/>).
 /// Thread-safe for reads and writes; <see cref="Changed"/> may fire on any thread.
@@ -122,6 +123,9 @@ public sealed class Preferences
 
     /// <summary>Key: open Explorer on the result after a conversion (bool, default false).</summary>
     public const string ShowInFolderAfterKey = "showInFolderAfter";
+
+    /// <summary>Key: let MikeShift use Microsoft Word for Word documents (bool, default false: MikeShift stays fully local).</summary>
+    public const string UseWordKey = "useWord";
 
     /// <summary>Key: the welcome window has been shown once (bool, default false).</summary>
     public const string LaunchedKey = "launched";
@@ -156,6 +160,16 @@ public sealed class Preferences
     {
         get => GetBool(ShowInFolderAfterKey, false);
         set => SetBool(ShowInFolderAfterKey, value);
+    }
+
+    /// <summary>
+    /// Use Microsoft Word (if installed) for legacy .doc files and better-looking PDFs from Word files. Default false: Word connects to
+    /// Microsoft on its own, so MikeShift only starts it when the user asked for it.
+    /// </summary>
+    public bool UseWord
+    {
+        get => GetBool(UseWordKey, Capabilities.WordAllowedByDefault);
+        set => SetBool(UseWordKey, value);
     }
 
     /// <summary>The key that switches the wheel to tools. Default <see cref="ToolsKey.Ctrl"/>.</summary>

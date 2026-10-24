@@ -35,6 +35,13 @@
                               AutomationProperties.Name="Show the file in its folder after converting" MinWidth="0" />
             </local:SettingsCard>
 
+            <local:SettingsCard x:Name="WordCard" Header="Use Microsoft Word for Word documents"
+                                Description="Better-looking PDFs from Word files and support for old .doc files. Word may connect to Microsoft."
+                                HeaderIcon="&#xE8A5;">
+                <ToggleSwitch x:Name="WordSwitch" OnContent="On" OffContent="Off" Toggled="OnWordToggled"
+                              AutomationProperties.Name="Use Microsoft Word for Word documents" MinWidth="0" />
+            </local:SettingsCard>
+
             <!-- ============================== Wheel ============================== -->
             <TextBlock Text="Wheel" Style="{StaticResource SettingsGroupHeaderStyle}" />
 
@@ -113,7 +120,7 @@
                         <TextBlock Text="MikeShift" FontSize="16" FontWeight="SemiBold" />
                         <TextBlock x:Name="VersionText" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                         <TextBlock TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" Margin="0,6,0,0"
-                                   Text="Shift-drag files in File Explorer to convert them. Your original files are never changed, and MikeShift never goes online." />
+                                   Text="Shift-drag files in File Explorer to convert them. Your original files are never changed, and MikeShift itself never goes online." />
                         <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,10,0,0">
                             <Button x:Name="UpdatesButton" Content="Check for updates" Click="OnCheckUpdatesClicked" />
                             <Button x:Name="GitHubButton" Content="View on GitHub" Click="OnGitHubClicked" />

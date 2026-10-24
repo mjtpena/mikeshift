@@ -1,8 +1,10 @@
+using MikeShift.Core;
 using System.Text;
 
 namespace MikeShift.Cli.Tests;
 
 /// <summary>Documents end to end through the real executable.</summary>
+[Collection("WordCom")] // some tests below start (or look for) a real Word; they never overlap with each other
 public class DocumentCliTests
 {
     [Fact]
@@ -97,5 +99,67 @@ public class DocumentCliTests
         Assert.Equal(0, r.ExitCode);
         Assert.Equal([tmp.Combine("b.txt")], r.StdoutLines);
         Assert.Contains("1 already TXT", r.Stderr);
+    }
+
+    // ------------------------------------------------------------------ Word is opt-in (--use-word)
+
+    [Fact]
+    public void A_legacy_doc_is_zip_only_without_use_word_even_when_Word_is_installed()
+    {
+        using var tmp = new TempDir();
+        var doc = tmp.WriteFile("old.doc", Fixtures.Noise(256));
+
+        var r = CliProcess.Run("--list", doc);
+
+        Assert.Equal(0, r.ExitCode);
+        Assert.Equal("Zip", r.Stdout.Trim());
+
+        var run = CliProcess.Run("--run", "PDF", doc);
+        Assert.Equal(1, run.ExitCode);
+        Assert.Contains("unknown action", run.Stderr);
+    }
+
+    [SkipIfNoCapability(nameof(Capabilities.WordInstalled))]
+    public async Task Without_use_word_the_CLI_never_starts_Word_for_docx_to_pdf()
+    {
+        using var tmp = new TempDir();
+        var docx = tmp.WriteFile("report.docx", Fixtures.DocxSample());
+
+        var seen = await WordWatch.RunAsync(TimeSpan.FromMinutes(2), "--run", "PDF", docx);
+
+        Assert.Equal(0, seen.Result.ExitCode);
+        Assert.Empty(seen.NewWordProcesses);
+        using var pdf = UglyToad.PdfPig.PdfDocument.Open(Assert.Single(seen.Result.StdoutLines));
+        Assert.Contains("Quarterly Report", string.Join(" ", pdf.GetPage(1).GetWords().Select(w => w.Text)));
+    }
+
+    [SkipIfNoCapability(nameof(Capabilities.WordInstalled))]
+    public async Task Without_use_word_the_CLI_never_starts_Word_for_a_legacy_doc_either()
+    {
+        using var tmp = new TempDir();
+        var doc = tmp.WriteFile("legacy.doc", Encoding.ASCII.GetBytes(Fixtures.RtfSample()));
+
+        var seen = await WordWatch.RunAsync(TimeSpan.FromMinutes(2), "--run", "TXT", doc);
+
+        Assert.Equal(1, seen.Result.ExitCode); // TXT is not offered for a .doc without Word
+        Assert.Empty(seen.NewWordProcesses);
+    }
+
+    /// <summary>The positive control of the two tests above: the same watcher does see Word when the run asks for it.</summary>
+    [SlowFact, Trait("Category", "Slow")]
+    public async Task With_use_word_a_legacy_doc_is_converted_by_Word()
+    {
+        if (!Capabilities.Current.WordInstalled) return;
+        using var tmp = new TempDir();
+        var doc = tmp.WriteFile("legacy.doc", Encoding.ASCII.GetBytes(Fixtures.RtfSample()));
+
+        var list = CliProcess.Run("--use-word", "--list", doc);
+        Assert.Equal("PDF, DOCX, RTF, TXT, HTML, ODT, Zip", list.Stdout.Trim());
+
+        var seen = await WordWatch.RunAsync(TimeSpan.FromMinutes(3), "--use-word", "--run", "TXT", doc);
+
+        Assert.Equal(0, seen.Result.ExitCode);
+        Assert.NotEmpty(seen.NewWordProcesses); // Word really was started (so the empty sets above mean something)
+        Assert.Contains("Quarterly Report", File.ReadAllText(Assert.Single(seen.Result.StdoutLines)));
     }
 }

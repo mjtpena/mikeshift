@@ -40,7 +40,7 @@ public static class CodecSummary
         new("AAC audio output", c.AacEncode, "Not available on this edition of Windows."),
         new("MP3 audio output", c.Mp3Encode, "Not available on this edition of Windows."),
         new("FLAC audio output", c.FlacEncode, "Requires Windows 10 1703 or later."),
-        new("Word documents (.doc, best-fidelity PDF)", c.WordCom, "Install Microsoft Word to enable."),
+        new("Word documents (.doc, best-fidelity PDF)", c.WordInstalled, "Install Microsoft Word to enable. It is only used when \"Use Microsoft Word\" is on."),
     ];
 
     /// <summary>The summary line of the expander: "2 not installed" or "All available".</summary>

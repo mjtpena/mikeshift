@@ -11,8 +11,10 @@
        --crop / --range; Merge, Merge PDF get two inputs). Each run is a separate mikeshift.exe process.
     3. App session: MikeShift.exe (MIKESHIFT_NO_SINGLE_INSTANCE=1) idles for -IdleSeconds, then a second instance is launched with
        `--convert <samples>` (the click-mode wheel) and an Enter key press picks the first tile; then the apps are closed.
-    4. Word: the document conversions that start Microsoft Word (legacy .doc, DOCX to PDF) are measured separately, with the
-       WINWORD.EXE process in the watch list, so Office's own network behaviour is reported honestly and apart from MikeShift's.
+    4. Word: Microsoft Word is OFF by default (Settings "Use Microsoft Word for Word documents", CLI `--use-word`), so this run, which
+       never passes --use-word, must not start Word at all. WINWORD.EXE stays in the watch list: any Word process started during the run
+       is reported (and fails the run), together with whatever sockets it owned, apart from MikeShift's own. Add -UseWord to measure the
+       opt-in path instead (every CLI run gets --use-word; legacy .doc and DOCX to PDF then go through Word, which connects to Microsoft).
 
   What is watched (no administrator rights, no OS setting is changed):
     * A native sampler (iphlpapi GetExtendedTcpTable / GetExtendedUdpTable, IPv4 and IPv6, every TCP state including LISTEN) polls
@@ -25,12 +27,13 @@
       attribution; the DNS-Client ETW/event log needs administrator rights to enable, so it is not used.
 
   The result is written as JSON (-ReportPath) and summarised on screen. Exit code 0 when no MikeShift process owned any
-  connection or endpoint, 1 otherwise.
+  connection or endpoint and (without -UseWord) no Word process was started, 1 otherwise.
 
 .PARAMETER SkipApp      Do not start MikeShift.exe.
 .PARAMETER IdleSeconds  How long the app idles before the --convert step (default 60).
 .PARAMETER PollMs       Sampling interval (default 50).
 .PARAMETER KeepWork     Keep the work folder (samples and outputs) for inspection.
+.PARAMETER UseWord      Pass --use-word to every CLI run (the opt-in path). Word processes are then expected and only reported.
 #>
 [CmdletBinding()]
 param(
@@ -41,6 +44,7 @@ param(
   [int]$IdleSeconds = 60,
   [int]$PollMs = 50,
   [switch]$SkipApp,
+  [switch]$UseWord,
   [switch]$KeepWork
 )
 
@@ -196,6 +200,7 @@ function Invoke-Cli {
   $psi = [Diagnostics.ProcessStartInfo]::new($CliPath)
   $psi.UseShellExecute = $false; $psi.RedirectStandardOutput = $true; $psi.RedirectStandardError = $true; $psi.CreateNoWindow = $true
   $psi.StandardOutputEncoding = [Text.Encoding]::UTF8; $psi.StandardErrorEncoding = [Text.Encoding]::UTF8
+  if ($UseWord) { $psi.ArgumentList.Add('--use-word') }
   foreach ($a in $Arguments) { $psi.ArgumentList.Add($a) }
   $p = [Diagnostics.Process]::Start($psi)
   $out = $p.StandardOutput.ReadToEndAsync(); $err = $p.StandardError.ReadToEndAsync()
@@ -323,7 +328,10 @@ $productHits = @($hits | Where-Object { $_.Process -ne 'WINWORD' })
 $wordHits = @($hits | Where-Object { $_.Process -eq 'WINWORD' })
 $observed = @($poller.PidsSeen.GetEnumerator() | ForEach-Object { [pscustomobject]@{ Pid = $_.Key; Process = $_.Value } }) + @($hits | ForEach-Object { [pscustomobject]@{ Pid = $_.Pid; Process = $_.Process } })
 $pidsByName = $observed | Where-Object { $preexistingWord -notcontains $_.Pid } | Sort-Object Pid -Unique | Group-Object Process | ForEach-Object { [pscustomobject]@{ Process = $_.Name; DistinctPidsObserved = $_.Count } }
+$wordStarted = @($poller.PidsSeen.GetEnumerator() | Where-Object { $_.Value -eq 'WINWORD' -and $preexistingWord -notcontains $_.Key }).Count
 $result = [pscustomobject]@{
+  UseWordFlag = [bool]$UseWord
+  WinwordProcessesStartedDuringTheRun = $wordStarted
   Started = $started.ToString('s'); Finished = (Get-Date).ToString('s')
   PollMs = $PollMs; PollerSamples = $poller.Samples
   ProcessesObserved = @($pidsByName)
@@ -351,6 +359,7 @@ $pidsByName | Format-Table -AutoSize | Out-String | Write-Host
 "App session: $appSummary"
 "TCP/UDP connections or endpoints owned by MikeShift processes: $($productHits.Count)"
 $productHits | Format-Table Proto, Local, Remote, State, Process, Pid -AutoSize | Out-String | Write-Host
+"WINWORD.EXE processes started during the run: $wordStarted" + $(if ($UseWord) { ' (--use-word was passed)' } else { ' (Word is off by default: must be 0)' })
 "Owned by WINWORD.EXE (Microsoft Word, a separate product): $($wordHits.Count)"
 $wordHits | Format-Table Proto, Local, Remote, State, Pid -AutoSize | Out-String | Write-Host
 "Cmdlet cross-check (Get-NetTCPConnection/Get-NetUDPEndpoint, $($cmdletStop.Rounds) rounds): $($cmdletLog.Count) entries"
@@ -360,4 +369,4 @@ if ($failures.Count) { "Unexpected CLI failures:"; $failures | ForEach-Object { 
 "Report: $ReportPath"
 
 if (-not $KeepWork) { Remove-Item -Recurse -Force $WorkDir -ErrorAction SilentlyContinue }
-exit ([int]($productHits.Count -gt 0))
+exit ([int]($productHits.Count -gt 0 -or (-not $UseWord -and $wordStarted -gt 0)))

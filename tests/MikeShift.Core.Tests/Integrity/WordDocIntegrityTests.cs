@@ -18,7 +18,8 @@ public class WordDocIntegrityTests
     [SlowTheory, MemberData(nameof(Titles))]
     public async Task A_doc_file_converts_with_all_its_words(string title)
     {
-        if (!Capabilities.Current.WordCom) return;
+        if (!Capabilities.Current.WordInstalled) return;
+        using var wordOn = Kit.WithCaps(Capabilities.Current.WithWord(true)); // Word is opt-in: this test is the opt-in
         using var tmp = new TempDir();
         // Word opens RTF saved with a .doc extension as a Word document.
         var input = tmp.WriteFile("legacy.doc", Encoding.ASCII.GetBytes(Fixtures.RtfSample()));

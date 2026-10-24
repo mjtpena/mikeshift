@@ -60,8 +60,8 @@ public class InfrastructureTests
     public void Capability_skip_reason_follows_the_probe_and_rejects_unknown_names()
     {
         var caps = Capabilities.Current;
-        Assert.Equal(caps.WordCom, CapabilityCheck.SkipReason([nameof(Capabilities.WordCom)]) is null);
-        Assert.Contains("HeifEncode", CapabilityCheck.SkipReason([nameof(Capabilities.HeifEncode), nameof(Capabilities.WordCom)]) ?? "HeifEncode");
+        Assert.Equal(caps.WordInstalled, CapabilityCheck.SkipReason([nameof(Capabilities.WordInstalled)]) is null);
+        Assert.Contains("HeifEncode", CapabilityCheck.SkipReason([nameof(Capabilities.HeifEncode), nameof(Capabilities.WordInstalled)]) ?? "HeifEncode");
         Assert.Null(CapabilityCheck.SkipReason([]));
         Assert.Throws<ArgumentException>(() => CapabilityCheck.SkipReason(["NoSuchCapability"]));
     }

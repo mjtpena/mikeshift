@@ -14,7 +14,7 @@ using WinUIEx;
 namespace MikeShift.App.Settings;
 
 /// <summary>
-/// Settings as Windows 11 setting cards (UX review S-01 to S-04): General (open at login, sound, message, show in folder), Wheel (tools
+/// Settings as Windows 11 setting cards (UX review S-01 to S-04): General (open at login, sound, message, show in folder, use Word), Wheel (tools
 /// key), Format support (what this PC can convert, with text state, Store links and a restart hint) and About.
 /// </summary>
 public sealed partial class SettingsWindow : Window
@@ -39,6 +39,13 @@ public sealed partial class SettingsWindow : Window
         ChimeSwitch.IsOn = prefs.Chime;
         ToastSwitch.IsOn = prefs.ShowsToast;
         RevealSwitch.IsOn = prefs.ShowInFolderAfter;
+        WordSwitch.IsOn = prefs.UseWord;
+        if (!_startupCapabilities.WordInstalled)
+        {
+            // Nothing to turn on: say so instead of offering a switch that changes nothing.
+            WordSwitch.IsEnabled = false;
+            WordCard.Description = "Microsoft Word is not installed on this PC.";
+        }
         foreach (RadioButton rb in ToolsKeyChoice.Items)
             if (string.Equals((string)rb.Tag, prefs.ToolsKey.ToString(), StringComparison.Ordinal))
                 ToolsKeyChoice.SelectedItem = rb;
@@ -192,6 +199,11 @@ public sealed partial class SettingsWindow : Window
     private void OnRevealToggled(object sender, RoutedEventArgs e)
     {
         if (!_loading) _services.Preferences.ShowInFolderAfter = RevealSwitch.IsOn;
+    }
+
+    private void OnWordToggled(object sender, RoutedEventArgs e)
+    {
+        if (!_loading) _services.Preferences.UseWord = WordSwitch.IsOn;
     }
 
     private void OnToolsKeyChanged(object sender, SelectionChangedEventArgs e)

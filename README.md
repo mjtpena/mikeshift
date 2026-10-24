@@ -24,7 +24,7 @@ MikeShift is a Windows port of [Shiftvert](https://github.com/roiegold/shiftvert
 | Image conversions (PNG, JPG, TIFF, GIF, BMP, HEIC*, WebP, PDF; Compress, Resize 50%, Strip EXIF, Crop, Merge PDF) | built |
 | PDF conversions (pages to PNG/JPG, TXT, Compress, Split, Merge) | built |
 | Video conversions (MP4, M4V, WMV, GIF, extract M4A/MP3; Compress, Trim) and audio conversions (M4A, WAV, AIFF, FLAC*, MP3*; Compress, Trim) through Media Foundation | built |
-| Document conversions (PDF, DOCX, RTF, TXT, HTML, ODT; legacy `.doc` through Word) | built |
+| Document conversions (PDF, DOCX, RTF, TXT, HTML, ODT; legacy `.doc` and Word-exported PDFs only if you turn on Microsoft Word) | built |
 | Tray app: Fluent flyout menu, Convert files…, toast with Show in folder, failure dialogs, settings cards, welcome window, Open at login, single instance | built |
 | Input monitor (low-level hooks), drag state machine, modifier tracking, wheel geometry | built (unit-tested) |
 | The wheel: layered Win32 window drawn with Win2D, OLE drop target, Explorer drag-image text ("Convert to PNG"), click mode, UI Automation, light/dark/high-contrast themes | built; driven end to end by `tools/DragHarness` |
@@ -41,7 +41,7 @@ MikeShift is a Windows port of [Shiftvert](https://github.com/roiegold/shiftvert
 * Several files of the same kind get that kind's tiles; a mixed selection or unknown files get **Zip** only. A drag from something that is not a real file on disk (an Outlook attachment, a file inside a `.zip`, a browser image) shows "Save the file first".
 * **Crop** (images) and **Trim** (video, audio) open a small editor window: aspect presets, scale slider and pixel boxes for Crop; a range slider with start/end boxes for Trim. Enter confirms, Esc cancels.
 * Outputs go next to the original: `photo.heic` becomes `photo.png` (`photo 2.png` if that exists). If that folder is not writable they go to Downloads and the toast says so.
-* **Tray icon**: left click opens Convert files…; right click opens the menu (Convert files…, Open at login, Settings, How it works, Check for updates, Exit; "Check for updates" opens the releases page in your browser, the app itself never goes online). **Settings**: open at login, a sound and a message when a file is converted (the sound is off by default), show the result in its folder, the tools key, which formats this PC supports (with links to the free Microsoft Store extensions), and About.
+* **Tray icon**: left click opens Convert files…; right click opens the menu (Convert files…, Open at login, Settings, How it works, Check for updates, Exit; "Check for updates" opens the releases page in your browser, the app itself never goes online). **Settings**: open at login, a sound and a message when a file is converted (the sound is off by default), show the result in its folder, **use Microsoft Word for Word documents (off by default)**, the tools key, which formats this PC supports (with links to the free Microsoft Store extensions), and About.
 
 ## Command line
 
@@ -55,9 +55,10 @@ mikeshift --run Merge a.pdf b.pdf              # Merged.pdf next to a.pdf
 mikeshift --run Trim --range 0:05-0:12.5 clip.mp4
 mikeshift --run Crop --crop 100,50,800,600@400x300 photo.jpg
 mikeshift --run Zip "My Folder"
+mikeshift --use-word --run PDF old.doc          # legacy .doc needs Word, and Word is opt-in per run (see Privacy)
 ```
 
-Errors go to stderr as `error: …` with exit code 1; an unknown action title lists the available ones; any other flag prints usage and exits 2. Without installing: `dotnet run --project src/MikeShift.Cli -- --list file.png`.
+Errors go to stderr as `error: …` with exit code 1; an unknown action title lists the available ones; any other flag prints usage and exits 2. `--use-word` lets that one run use Microsoft Word (if installed) for legacy `.doc` files and for DOCX to PDF; without it the command line never starts Word. Without installing: `dotnet run --project src/MikeShift.Cli -- --list file.png`.
 
 ## Install (sideload)
 
@@ -108,7 +109,7 @@ or directly: `dotnet build MikeShift.sln`, `dotnet test MikeShift.sln`. CI (GitH
 ## Privacy
 
 * No network access anywhere in the product. No telemetry, no update check inside the app.
-  Measured, not just claimed: `scripts/verify-offline.ps1` runs every conversion through the real command line and a `MikeShift.exe` session while polling every 50 ms for sockets owned by MikeShift (none were ever seen); `scripts/audit-network-imports.ps1` lists the networking APIs a build can reach ([docs/test-runs/2026-10-24-local-and-integrity.md](docs/test-runs/2026-10-24-local-and-integrity.md)). One caveat that is not MikeShift's: **if Microsoft Word is installed, legacy `.doc` files and DOCX to PDF are handed to Word, a separate Microsoft program that opens its own connections to Microsoft services** (licensing, "connected experiences" and similar, governed by your Office privacy settings). Without Word, or for any other format, nothing leaves the PC. Reading an OneDrive "online only" file makes OneDrive download it; that is OneDrive, not MikeShift.
+  Measured, not just claimed: `scripts/verify-offline.ps1` runs every conversion through the real command line and a `MikeShift.exe` session while polling every 50 ms for sockets owned by MikeShift (none were ever seen); `scripts/audit-network-imports.ps1` lists the networking APIs a build can reach ([docs/test-runs/2026-10-24-local-and-integrity.md](docs/test-runs/2026-10-24-local-and-integrity.md)). **MikeShift is fully local by default.** The one optional exception is Microsoft Word: **Settings -> "Use Microsoft Word for Word documents" (off by default; `--use-word` on the command line, per run)** hands legacy `.doc` files and DOCX to PDF to Word, a separate Microsoft program that opens its own connections to Microsoft services (licensing, "connected experiences" and similar, governed by your Office privacy settings; it opened 234 connections to Microsoft in the measurement below). With it off, Word is never started even if it is installed: DOCX to PDF uses MikeShift's own converter and `.doc` files can only be zipped ("Turn on Microsoft Word in Settings to convert .doc files"). For any other format, nothing leaves the PC. Reading an OneDrive "online only" file makes OneDrive download it; that is OneDrive, not MikeShift.
 * Originals are never modified or moved: every conversion writes a new file (via a temporary file in the same folder, then a rename, so a failure never leaves a half-written output).
 * The input hook sees only mouse movement, the left button, the wheel and the Shift/Ctrl/Alt/Esc keys, and only to run the gesture. No other key is read or stored.
 * While the wheel is up, a small screenshot of the pixels under it is blurred to make the glass effect; it stays in memory and is discarded when the wheel hides.

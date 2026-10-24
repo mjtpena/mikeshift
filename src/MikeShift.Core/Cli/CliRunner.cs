@@ -6,9 +6,11 @@ namespace MikeShift.Core.Cli;
 /// <summary>
 /// The <c>mikeshift</c> command line (PLAN §3.6): the same catalog and converters as the wheel, without the UI.
 /// <code>
-/// mikeshift --list FILES...                                              comma-separated action titles, exit 0
-/// mikeshift --run TITLE [--range m:ss-m:ss] [--crop X,Y,W,H[@OWxOH]] FILES...   prints each output path, exit 0
+/// mikeshift [--use-word] --list FILES...                                 comma-separated action titles, exit 0
+/// mikeshift [--use-word] --run TITLE [--range m:ss-m:ss] [--crop X,Y,W,H[@OWxOH]] FILES...   prints each output path, exit 0
 /// </code>
+/// MikeShift is fully local: without <c>--use-word</c> the CLI never starts Microsoft Word (so legacy .doc is not offered and DOCX to
+/// PDF uses the built-in converter). <c>--use-word</c> opts in for that run; Word may then connect to Microsoft on its own.
 /// Exit codes: 0 success; 1 an error ("error: ..." on stderr; unknown title lists the available actions; Trim/Crop
 /// without --range/--crop prints syntax help); 2 usage (any other flag, missing arguments).
 /// It lives in Core so tests can call it in-process; <c>MikeShift.Cli</c> is a thin <c>Main</c> around it.
@@ -21,8 +23,11 @@ public static class CliRunner
 
     public const string UsageText =
         "usage:\n" +
-        "  mikeshift --list FILES...\n" +
-        "  mikeshift --run TITLE [--range m:ss-m:ss] [--crop X,Y,W,H[@OWxOH]] FILES...\n";
+        "  mikeshift [--use-word] --list FILES...\n" +
+        "  mikeshift [--use-word] --run TITLE [--range m:ss-m:ss] [--crop X,Y,W,H[@OWxOH]] FILES...\n" +
+        "\n" +
+        "  --use-word   let this run use Microsoft Word if it is installed (legacy .doc files, Word's own PDF export).\n" +
+        "               Off by default: MikeShift is fully local, and Word may connect to Microsoft.\n";
 
     public const string RangeSyntax =
         "--range m:ss-m:ss   start and end of the part to keep, e.g. --range 0:05-0:12.5 (also h:mm:ss, fractions allowed)";
@@ -41,7 +46,8 @@ public static class CliRunner
             return ExitUsage;
         }
 
-        caps ??= Capabilities.Current;
+        // Word is opt-in per run: whatever the caller or the machine says, it is only used with --use-word.
+        caps = (caps ?? Capabilities.Current).WithWord(cmd.UseWord);
 
         var paths = new List<string>();
         foreach (var f in cmd.Files)
@@ -139,7 +145,7 @@ public static class CliRunner
 
     private enum Mode { List, Run }
 
-    private sealed record Command(Mode Mode, string? Title, string? Range, string? Crop, IReadOnlyList<string> Files);
+    private sealed record Command(Mode Mode, string? Title, string? Range, string? Crop, IReadOnlyList<string> Files, bool UseWord = false);
 
     private static bool TryParse(string[] args, out Command cmd, out string? error)
     {
@@ -148,6 +154,7 @@ public static class CliRunner
 
         Mode? mode = null;
         string? title = null, range = null, crop = null;
+        var useWord = false;
         var files = new List<string>();
         var onlyFiles = false;
 
@@ -175,6 +182,9 @@ public static class CliRunner
                     if (++i >= args.Length) { error = "--run needs an action title"; return false; }
                     title = args[i];
                     break;
+                case "--use-word":
+                    useWord = true;
+                    break;
                 case "--range":
                     if (++i >= args.Length) { error = "--range needs a value"; return false; }
                     range = args[i];
@@ -193,7 +203,7 @@ public static class CliRunner
         if (files.Count == 0) { error = "no files given"; return false; }
         if (mode == Mode.List && (range is not null || crop is not null)) { error = "--range and --crop only apply to --run"; return false; }
 
-        cmd = new Command(mode.Value, title, range, crop, files);
+        cmd = new Command(mode.Value, title, range, crop, files, useWord);
         return true;
     }
 

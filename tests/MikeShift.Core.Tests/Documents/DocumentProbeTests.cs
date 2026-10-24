@@ -71,6 +71,26 @@ public class DocumentProbeTests
     }
 
     [Fact]
+    public void Legacy_doc_with_Word_installed_but_not_allowed_is_zip_only()
+    {
+        using var tmp = new TempDir();
+        var doc = tmp.WriteFile("old.doc", Fixtures.Noise(128));
+        var installedNotAllowed = Capabilities.All.WithWord(false);
+        Assert.True(installedNotAllowed.WordInstalled);
+        Assert.Equal(["Zip"], Titles(installedNotAllowed, doc));
+        Assert.Equal(["Zip"], Titles(installedNotAllowed, doc, tmp.WriteFile("old2.doc", Fixtures.Noise(64))));
+        Assert.Equal(["PDF", "DOCX", "RTF", "TXT", "HTML", "ODT", "Zip"], Titles(installedNotAllowed.WithWord(true), doc));
+    }
+
+    [Fact]
+    public void Docx_is_offered_the_same_with_or_without_Word_allowed()
+    {
+        using var tmp = new TempDir();
+        var docx = tmp.WriteFile("a.docx", Fixtures.DocxSample());
+        Assert.Equal(Titles(Capabilities.All, docx), Titles(Capabilities.All.WithWord(false), docx));
+    }
+
+    [Fact]
     public void Unreadable_or_missing_files_never_hide_tiles()
     {
         Assert.True(DocumentProbe.CanConvertTo([@"C:\no\such\folder\a.docx"], DocFormat.Txt, Capabilities.None));

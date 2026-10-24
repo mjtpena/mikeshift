@@ -20,11 +20,16 @@ public enum DocFormat
 /// <summary>
 /// Document conversions via the DocModel pivot (PLAN §3.4 Documents).
 /// <para>Returns the path written via <c>Naming.CommitAsync</c>; throws <see cref="ConversionException"/> for expected failures.</para>
-/// <para>With Microsoft Word installed (<see cref="Capabilities.WordCom"/>) legacy <c>.doc</c> is converted by Word, and DOCX to PDF
-/// uses Word's own exporter for fidelity (falling back to the pivot path if Word fails). Everything else uses the pivot model.</para>
+/// <para>Word is optional and opt-in (<see cref="Capabilities.WordCom"/>: installed and allowed by the user's setting or <c>--use-word</c>).
+/// With it, legacy <c>.doc</c> is converted by Word, and DOCX to PDF uses Word's own exporter for fidelity (falling back to the pivot
+/// path if Word fails). Without it Word is never started, DOCX to PDF uses the built-in writer, and <c>.doc</c> is refused.
+/// Everything else uses the pivot model.</para>
 /// </summary>
 public static class DocumentConverter
 {
+    /// <summary>How to allow Word, for messages: the app setting and the CLI flag.</summary>
+    public const string WordOffHint = "Turn on Microsoft Word in Settings (command line: --use-word).";
+
     /// <summary>Test hook: decides A4 (true) or Letter (false). Defaults to <c>RegionInfo.CurrentRegion.IsMetric</c>.</summary>
     internal static Func<bool> UseA4 { get; set; } = () => RegionInfo.CurrentRegion.IsMetric;
 
@@ -42,7 +47,7 @@ public static class DocumentConverter
 
     /// <summary>
     /// Converts <paramref name="input"/> to <paramref name="format"/>; output <c>name.ext</c>.
-    /// <paramref name="caps"/> tells the converter whether Word COM is available (legacy .doc, high-fidelity PDF).
+    /// <paramref name="caps"/> tells the converter whether it may use Word (<see cref="Capabilities.WordCom"/>: legacy .doc, high-fidelity PDF).
     /// </summary>
     public static async Task<string> ToFormatAsync(string input, DocFormat format, Capabilities caps, CancellationToken ct)
     {
@@ -57,7 +62,9 @@ public static class DocumentConverter
         if (ext == "doc")
         {
             if (!caps.WordCom)
-                throw new ConversionException("Legacy .doc files need Microsoft Word to be installed.");
+                throw new ConversionException(caps.WordInstalled
+                    ? "Legacy .doc files need Microsoft Word, and MikeShift is not allowed to use it. " + WordOffHint
+                    : "Legacy .doc files need Microsoft Word to be installed.");
             // Word would happily "open" random bytes as text and hand back a garbage document; only real Word files go through.
             if (!LooksLikeWordFile(input))
                 throw new ConversionException("This isn't a valid Word document (.doc); it may be damaged.");

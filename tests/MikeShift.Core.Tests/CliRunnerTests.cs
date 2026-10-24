@@ -34,6 +34,46 @@ public class CliRunnerTests
     }
 
     [Fact]
+    public async Task Word_is_only_used_with_use_word_even_when_the_caller_allows_it()
+    {
+        using var tmp = new TempDir();
+        var doc = tmp.WriteFile("old.doc", Fixtures.Noise(64));
+
+        // Capabilities.All has Word installed AND allowed; the CLI still ignores that unless this run says --use-word.
+        var (exit, stdout, _) = await Run("--list", doc);
+        Assert.Equal(0, exit);
+        Assert.Equal("Zip", stdout.Trim());
+
+        var (exit2, stdout2, _) = await Run("--use-word", "--list", doc);
+        Assert.Equal(0, exit2);
+        Assert.Equal("PDF, DOCX, RTF, TXT, HTML, ODT, Zip", stdout2.Trim());
+
+        var (exit3, stdout3, _) = await Run("--list", "--use-word", doc);
+        Assert.Equal(0, exit3);
+        Assert.Equal(stdout2, stdout3);
+    }
+
+    [Fact]
+    public async Task Use_word_cannot_conjure_Word_where_it_is_not_installed()
+    {
+        using var tmp = new TempDir();
+        var doc = tmp.WriteFile("old.doc", Fixtures.Noise(64));
+        var o = new StringWriter();
+        var exit = await CliRunner.RunAsync(["--use-word", "--list", doc], o, new StringWriter(), Capabilities.None);
+        Assert.Equal(0, exit);
+        Assert.Equal("Zip", o.ToString().Trim());
+    }
+
+    [Fact]
+    public async Task Use_word_without_a_command_is_a_usage_error_and_usage_mentions_it()
+    {
+        var (exit, _, stderr) = await Run("--use-word");
+        Assert.Equal(2, exit);
+        Assert.Contains("--use-word", stderr);
+        Assert.Contains("fully local", CliRunner.UsageText);
+    }
+
+    [Fact]
     public async Task List_prints_comma_separated_titles_for_the_selection()
     {
         using var tmp = new TempDir();
