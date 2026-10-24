@@ -1,139 +1,148 @@
 # MikeShift
 
-Right-click files in File Explorer and choose **Convert with MikeShift**, or start dragging a file, hold **Shift** (or **Ctrl**, your choice on first run), and a wheel of output formats appears under the cursor. Drop the file on a tile and a converted **copy** appears next to the original. Press the other key (**Ctrl** by default) while the wheel is up to switch it to tools (compress, resize, crop, trim, split, merge, zip). Prefer the keyboard? Select files in File Explorer and press **Ctrl+Alt+Shift+Space**.
+**Convert any file from File Explorer. Nothing leaves your PC.**
 
-MikeShift is a Windows port of [Shiftvert](https://github.com/roiegold/shiftvert) by roiegold (MIT), for Windows 10 (1809+) and Windows 11. It has no network code, no bundled third-party programs, and it never touches your original files.
+MikeShift turns iPhone photos into JPGs, WebP images into PNGs, and loose PDFs into one PDF, and it turns video into MP4, GIF or MP3, without a website, an upload or a separate converter app. Right-click a file in File Explorer, pick a format, and a converted **copy** appears next to the original. The original is never changed.
 
-| Formats page | Tools page | Light theme |
-|:-:|:-:|:-:|
-| ![The wheel in dark theme, formats page](docs/screenshots/wheel-dark.png) | ![The wheel in dark theme, tools page](docs/screenshots/wheel-tools-dark.png) | ![The wheel in light theme](docs/screenshots/wheel-light.png) |
+It is a free, open-source tray app for Windows 10 (1809 and later) and Windows 11, with no network code and no account. MikeShift is a Windows port of [Shiftvert](https://github.com/roiegold/shiftvert) by roiegold (MIT).
 
-| Convert Files… (click mode) | Virtual file | Crop | Trim |
-|:-:|:-:|:-:|:-:|
-| ![Click-mode wheel](docs/screenshots/wheel-click-mode-light.png) | ![The "Save the file first" hint](docs/screenshots/wheel-save-first-hint.png) | ![The crop editor](docs/screenshots/crop-editor.png) | ![The trim dialog](docs/screenshots/trim-dialog.png) |
+| Right-click in File Explorer | Or drag a file and hold Shift (or Ctrl) |
+|:-:|:-:|
+| <img src="docs/screenshots/context-menu/modern-menu-heic.png" alt="Right-clicking a HEIC photo in Windows 11 shows Convert with MikeShift with Convert to JPG, Convert to PNG, Convert to PDF, Compress, Resize 50%, Zip and More options" width="300"> | <img src="docs/screenshots/real-drag/01-formats-top-half-real-thumbnail.png" alt="A wheel of output formats under the pointer during a drag in File Explorer" width="420"> |
 
-| Tray menu | Toast | Failure dialog | Settings |
-|:-:|:-:|:-:|:-:|
-| ![The tray menu](docs/screenshots/surfaces-v2/tray-flyout-dark.png) | ![The result toast](docs/screenshots/surfaces-v2/toast-success-dark.png) | ![A partial failure](docs/screenshots/surfaces-v2/dialog-partial-dark.png) | ![Settings](docs/screenshots/surfaces-v2/settings-dark.png) |
+> **Status: 0.1, not yet signed or in the Microsoft Store.** All features below are built and were tested on one Windows 11 x64 PC. Not yet run on ARM64 hardware, on Windows 10, or with a screen reader. [How to install it today](#install) and [what the tests did and did not cover](docs/LIMITS.md) are written out; nothing here is rounded up.
 
-| Right-click a photo | Right-click three images | Folder | "Show more options" |
-|:-:|:-:|:-:|:-:|
-| ![The Convert with MikeShift submenu for a JPG](docs/screenshots/context-menu/modern-menu-jpg.png) | ![The submenu for three images offers Merge PDF](docs/screenshots/context-menu/modern-menu-multi-images.png) | ![The submenu for a folder](docs/screenshots/context-menu/modern-menu-folder.png) | ![The entry in the classic menu](docs/screenshots/context-menu/classic-menu-jpg.png) |
+## What people use it for
 
-| Welcome: choose Shift or Ctrl, optional HEIC card | Settings: ways to open the wheel | HEIC without the extension | Failure dialog |
-|:-:|:-:|:-:|:-:|
-| ![The welcome window with the activation choice and the codec card](docs/screenshots/onboarding/welcome-ctrl-codec-card.png) | ![Settings, Open the wheel](docs/screenshots/onboarding/settings-open-the-wheel.png) | ![The Get HEIF tile and its pill](docs/screenshots/onboarding/wheel-heic-missing-click-light.png) | ![The HEIC failure dialog with a Get the extension button](docs/screenshots/onboarding/failure-dialog-heic.png) |
-
-> **Status.** Feature complete against [docs/PLAN.md](docs/PLAN.md); not yet run on real multi-monitor / touch / ARM64 hardware, and not signed for public distribution. [docs/TESTPLAN.md](docs/TESTPLAN.md) says exactly what has and has not been exercised.
-
-| Area | State |
+| I want to… | Do this |
 |---|---|
-| Core: action catalog, file classification, output naming, Zip, CLI | built |
-| Image conversions (PNG, JPG, TIFF, GIF, BMP, HEIC*, WebP, PDF; Compress, Resize 50%, Strip EXIF, Crop, Merge PDF) | built |
-| PDF conversions (pages to PNG/JPG, TXT, Compress, Split, Merge) | built |
-| Video conversions (MP4, M4V, WMV, GIF, extract M4A/MP3; Compress, Trim) and audio conversions (M4A, WAV, AIFF, FLAC*, MP3*; Compress, Trim) through Media Foundation | built |
-| Document conversions (PDF, DOCX, RTF, TXT, HTML, ODT; legacy `.doc` and Word-exported PDFs only if you turn on Microsoft Word) | built |
-| Tray app: Fluent flyout menu, Convert files…, toast with Show in folder, failure dialogs, settings cards, welcome window, Open at login, single instance | built |
-| Input monitor (low-level hooks), drag state machine, modifier tracking, wheel geometry | built (unit-tested) |
-| The wheel: layered Win32 window drawn with Win2D, OLE drop target, Explorer drag-image text ("Convert to PNG"), click mode, UI Automation, light/dark/high-contrast themes | built; driven end to end by `tools/DragHarness` |
-| Explorer right-click entry "Convert with MikeShift" (top-level in the Windows 11 menu, one submenu level, "More options…" opens the wheel; out-of-process COM server) | built; driven end to end through the real File Explorer by `tools/ContextMenuHarness` (not run on Windows 10) |
-| Crop editor and Trim dialog | built |
-| Packaging: IL-trimmed MSIX x64 + ARM64 (self-contained 45 MB, or 23 MB on the shared Windows App Runtime), per-PC downloads plus a bundle, bundled CLI, dev certificate, release script, CI | built (not installed on ARM64 hardware) |
+| Turn an iPhone **HEIC** photo into a JPG or PNG | Right-click, **Convert with MikeShift**, **Convert to JPG**. (Needs Microsoft's two free codec extensions; see [HEIC](#heic-photos).) |
+| Turn a **WebP** (or any web image) into a PNG or JPG | Same. Select many files and they all convert at once. |
+| **Merge** images or PDFs into one PDF, **split** a PDF, get a PDF's pages as images or its text | Select two or more files, right-click, **Merge PDF**. Split, page images and text are in the wheel. |
+| Make a video an **MP4**, a short **GIF**, or pull out the **MP3** | Right-click, or drag the video onto a format in the wheel. |
+| **Shrink** photos to email them | **Compress** or **Resize 50%**. Also Crop and Strip EXIF. |
+| Convert a document (DOCX, RTF, ODT, HTML, TXT) or **zip** files and folders | Right-click, pick the format or **Zip**. |
 
-`*` depends on optional Windows codec packages; see [docs/LIMITS.md](docs/LIMITS.md).
+Everything runs on your PC. **Nothing is uploaded**, there is no telemetry, and you can unplug the network cable and it works the same.
 
-## Using it
+## Three ways in
 
-* **Right-click** (Windows 11 and 10, nothing to learn): select one or more files or folders in File Explorer, right-click, choose **Convert with MikeShift** and pick a line of its submenu. For a HEIC photo that is, for instance, *Convert to JPG*, *Convert to PNG*, *Convert to PDF*, *Compress*, *Resize 50%*, *Zip*; three images also offer *Merge PDF*; a folder, a mixed selection or unknown files offer *Zip*. The last line, **More options…**, opens the wheel of Convert files… (click mode, the same selection) for everything else: the other formats, Crop, Trim, Strip EXIF. A choice runs exactly like a drop on the wheel: a converted copy appears next to the original, the toast says so, the original is never touched. The entry is in Windows 11's top-level menu (no "Show more options" needed; on the Windows 11 build tested it is listed in the classic menu too), and it lives in its own small process, never inside Explorer. If MikeShift is not running, the first click starts it. Limits (Windows 10 not yet tested, the classic menu on other Windows 11 builds, the first click after a quiet spell, Explorer showing only 16 items of a big selection): [docs/LIMITS.md](docs/LIMITS.md).
-* **Shift-drag**: begin dragging one or more files or folders in Explorer or on the Desktop, then hold Shift. Drop on a tile to convert. Release anywhere else (or press Esc) and Explorer's own drop proceeds as usual. MikeShift never cancels or changes the drag, and it always asks for a *copy*, so Shift-drag does not move your files.
-* **Which key opens the wheel** is your choice, asked on first run and changeable in Settings (*Open the wheel*): **Shift** (the default; Shift-drag is rare in daily use) or **Ctrl** (Explorer's own "copy" key, so letting go early can never move a file). Your originals are never moved or changed, and Esc cancels, in both modes.
-* The *other* key switches the wheel between *formats* and *tools* (**Ctrl** in Shift mode, **Shift** in Ctrl mode); the opening key switches back. A mouse-wheel tick toggles too. (Alt is not the default because Left Alt+Shift is Windows' input-language hotkey; it can be chosen in Settings.)
-* **Keyboard, touch and pen: the Explorer hotkey.** Select files in a File Explorer window (or on the Desktop) and press **Ctrl+Alt+Shift+Space**: the click-mode wheel opens next to your pointer with exactly those files (arrow keys and Enter). With nothing selected, a toast says "Select files in File Explorer first". Change or turn off the shortcut in Settings (*Convert the files selected in File Explorer*). The default avoids the shortcuts apps already use; Windows tells MikeShift when another program owns the one you pick, and Settings says so.
-* **HEIC (iPhone) photos on a PC without Windows' free HEIF extension** are no longer a dead end: the wheel offers **Get HEIF** (and **Get HEVC**, **Get AV1** for AVIF), which opens that extension's Microsoft Store page, and says why. The welcome window offers the same extensions up front, and the command line prints the same advice (`error: Windows can't open HEIC photos yet. Install the free "HEIF Image Extensions"…`).
-* **Convert files…** (click the tray icon, or the tray menu): pick files in a dialog; the same wheel opens in the middle of the screen in *click mode* (arrow keys and Enter, or click a tile; Tab switches pages; Esc or clicking elsewhere closes it). Folders cannot be picked there (a Windows dialog limitation); drag them instead.
-* Several files of the same kind get that kind's tiles; a mixed selection or unknown files get **Zip** only. A drag from something that is not a real file on disk (an Outlook attachment, a file inside a `.zip`, a browser image) shows "Save the file first".
-* **Crop** (images) and **Trim** (video, audio) open a small editor window: aspect presets, scale slider and pixel boxes for Crop; a range slider with start/end boxes for Trim. Enter confirms, Esc cancels.
-* Outputs go next to the original: `photo.heic` becomes `photo.png` (`photo 2.png` if that exists). If that folder is not writable they go to Downloads and the toast says so.
-* **Tray icon**: left click opens Convert files…; right click opens the menu (Convert files…, Open at login, Settings, How it works, Check for updates, Exit; "Check for updates" opens the releases page in your browser, the app itself never goes online). **Settings**: open at login, a sound and a message when a file is converted (the sound is off by default), show the result in its folder, **use Microsoft Word for Word documents (off by default)**, the key that opens the wheel, the Explorer hotkey, the tools key, which formats this PC supports (with links to the free Microsoft Store extensions), and About.
+**1. Right-click (start here).** Select one or more files or folders in File Explorer, right-click, and choose **Convert with MikeShift**. The submenu lists the five most likely conversions for what you selected, then **Zip**, then **More options…**, which opens the full wheel. It is in Windows 11's main right-click menu, no "Show more options" needed.
+
+<img src="docs/screenshots/context-menu/modern-menu-multi-images.png" alt="Right-clicking three images offers Convert to PNG, Merge PDF, Convert to PDF, Compress, Resize 50%, Zip and More options" width="300"> <img src="docs/screenshots/context-menu/toast-after-convert.png" alt="The toast after a conversion: Saved photo1.png, Next to the original, Show in folder" width="250">
+
+**2. The wheel.** Start dragging a file, then hold **Shift** (or **Ctrl**; you choose on first run). A wheel of output formats appears under the pointer. Drop the file on a tile. Press the other key to switch the wheel to tools: Compress, Resize, Crop, Trim, Zip. Letting go anywhere else, or pressing Esc, cancels, and Explorer handles the drop as it normally would. Note that Explorer itself treats a Shift-drop onto a folder as a *move*; if that worries you, choose **Ctrl** (Explorer's copy key) on first run or in Settings.
+
+<img src="docs/screenshots/wheel-v2/formats-dark-highlight.png" alt="The wheel's formats page: PNG, JPG, TIFF, GIF, BMP, HEIC, WebP, PDF" width="330"> <img src="docs/screenshots/wheel-v2/tools-dark-highlight.png" alt="The wheel's tools page: Compress, Resize 50%, Crop, Strip EXIF, Zip" width="330">
+
+**3. Keyboard and command line.** Select files in File Explorer and press **Ctrl+Alt+Shift+Space** to open the wheel with those files (arrow keys, Enter; changeable in Settings). Or use the `mikeshift` command in a terminal, [below](#command-line). The tray icon's **Convert files…** is a file picker for everything else.
+
+<img src="docs/screenshots/onboarding/real-hotkey-wheel.png" alt="The wheel opened from the keyboard for two images, with arrow keys, Enter, Tab and Esc hints" width="260">
+
+## Why MikeShift
+
+**Local and private, with the evidence.** The package declares no internet capability and the code has no networking calls. Because a desktop app is not sandboxed by that declaration alone, it was also measured: 14,436 samples of the network tables, taken every 50 ms over 19 minutes while every action ran on every kind of file (271 command-line runs plus a tray-app session), found **no TCP connection, listener or UDP endpoint owned by MikeShift**. The method and its limits are in the [test run](docs/test-runs/2026-10-24-local-and-integrity.md). The one exception is yours to choose: Microsoft Word, if you turn it on in Settings (off by default), is a separate program that talks to Microsoft on its own.
+
+**Originals are never touched.** Every conversion writes a new file next to the original (`photo.heic` becomes `photo.png`, or `photo 2.png` if that exists) through a temporary file, so a failure leaves no half-written output. The checks compare the original's SHA-256 before and after. Results: 288 input-by-action checks across all 41 actions, judged by decoders other than MikeShift's own, all passing; 32 scripted drags from a real File Explorer with more than 400 checks, in which no MikeShift conversion changed or moved an original. Six defects found along the way are fixed ([details](docs/test-runs/2026-10-24-local-and-integrity.md)).
+
+**Small, and quiet when idle.** The Microsoft Store package is about 23 MB to download and the sideload package about 45 MB, with no bundled third-party programs. Idle, the tray app used 16.5 MB of memory and 0.00% CPU on the test PC, and the wheel appeared a median 22 ms after Shift (20 warm drags, [measurement](docs/test-runs/2026-10-24-real-drag.md)). For scale, download sizes the [market study](docs/research/positioning.md) recorded on 2026-10-24:
+
+| Tool | Download | What comes with it |
+|---|---:|---|
+| **MikeShift** (Store / sideload) | **23 / 45 MB** | 41 actions, uses Windows' own codecs where it can |
+| File Converter (Tichau) | about 58 MB (MSI) | FFmpeg, ImageMagick, Ghostscript; more formats, custom presets |
+| Filee | 128 MB installer, 155 MB portable | 255 formats; some need engines of 100 to 420 MB more |
+| ZestDrop | 251 MB portable | about 341 conversions |
+
+Those tools offer more formats and options than MikeShift. If you need one of those formats, use them; MikeShift's job is the common ones, done offline and small.
+
+**Looks like Windows.** WinUI 3 with Mica, light, dark and high-contrast themes, per-monitor scaling, and a wheel that moves away from the taskbar. The wheel has named UI Automation tiles and a keyboard path; it has **not** yet been checked with Narrator, and the drag gesture itself needs a mouse.
+
+## Install
+
+Download the file for your PC. **x64** suits most PCs; **ARM64** is for Snapdragon and other ARM PCs (built, not yet run on ARM hardware).
+
+| Package | Size | When to use it |
+|---|---:|---|
+| **Microsoft Store** | about 23 MB | Planned. Installs signed with no certificate steps and fetches the Windows App Runtime itself. This will be the recommended route; a link will be here once it is published. |
+| `MikeShift_<version>_x64.msix` / `_arm64.msix` | about 45 MB | Sideload. Complete, nothing else to install. |
+| `MikeShift_<version>_store_x64.msix` / `_arm64.msix` | about 23 MB | Sideload, smaller, needs the [Windows App Runtime 2.5](https://learn.microsoft.com/windows/apps/windows-app-sdk/downloads) first. |
+| `MikeShift_<version>.msixbundle` | about 88 MB | Both architectures in one file; twice the download. |
+
+**There is no signed release yet.** Windows only installs a package whose signer it trusts, and public signing (the Store, or a purchased or Azure Trusted Signing certificate) is not set up. Until it is, you build the package and sign it with a certificate you make yourself. This takes a few minutes, needs administrator rights once to trust that certificate, and changes your PC's certificate store, so only do it for software you built or reviewed:
+
+```powershell
+./packaging/make-dev-cert.ps1 -Password (Read-Host -AsSecureString 'PFX password')   # makes the dev certificate (CN=MikeShift Dev)
+Import-Certificate -FilePath .\artifacts\dev-cert\MikeShiftDev.cer -CertStoreLocation Cert:\LocalMachine\TrustedPeople   # ELEVATED PowerShell, once
+./scripts/release.ps1 -PfxPath .\artifacts\dev-cert\MikeShiftDev.pfx -PfxPassword (Read-Host -AsSecureString 'PFX password')
+Add-AppxPackage -Path .\artifacts\MikeShift_0.1.0.0_x64.msix                          # _arm64 on ARM PCs
+```
+
+Uninstall with `Get-AppxPackage MikeShift | Remove-AppxPackage`. To verify a file, compare `Get-FileHash <file> -Algorithm SHA256` with its line in `artifacts\SHA256SUMS.txt`. First run shows a short welcome window; Windows 11 may keep the tray icon in the overflow area until you drag it onto the taskbar (the window links to that setting).
+
+### HEIC photos
+
+iPhone photos (HEIC) can only be read on Windows with Microsoft's free **HEIF Image Extensions** and the **HEVC Video Extensions from Device Manufacturer**, both from the Microsoft Store. Without them MikeShift cannot open a HEIC file and says so: the wheel shows a **Get HEIF** tile that opens the Store page, and the welcome window and error dialog offer the same. Install them, restart MikeShift, and HEIC works.
+
+## Supported formats
+
+41 actions in all; the wheel and the right-click menu show only the ones that fit your selection and your PC.
+
+| You have | Convert to | Tools |
+|---|---|---|
+| **Images**: PNG, JPG, HEIC, TIFF, GIF, WebP, BMP, AVIF | PNG, JPG, TIFF, GIF, BMP, WebP, HEIC, PDF | Compress, Resize 50%, Crop, Strip EXIF, Merge PDF |
+| **PDF** | PNG or JPG (pages), TXT | Compress, Split, Merge |
+| **Video**: MP4, MOV, MKV, AVI, WMV, WebM and others | MP4, M4V, WMV, GIF, or audio only (M4A, MP3) | Compress, Trim |
+| **Audio**: MP3, WAV, M4A, FLAC, AIFF, WMA, AAC | M4A, WAV, AIFF, FLAC, MP3 | Compress, Trim |
+| **Documents**: DOCX, RTF, ODT, HTML, TXT, Markdown, DOC (needs Word) | PDF, DOCX, RTF, TXT, HTML, ODT | none |
+| **Anything, including folders** | Zip | none |
+
+What depends on your PC: HEIC, WebP reading, AVIF reading, MP3, FLAC and H.264 encoding, and some video codecs rely on Windows features or optional Microsoft extensions, and MikeShift hides tiles that cannot work. Not offered: MOV and AVIF output, dithered GIFs (GIF is capped at 15 s, 480 px), lossless video trim, OCR. Documents become PDF with MikeShift's own plain layout, so they will not match Word's pagination; with Word installed and turned on they can use Word. Details and every refusal message: **[docs/LIMITS.md](docs/LIMITS.md)**.
+
+**Limits worth knowing first:** the Windows 10 right-click entry follows Microsoft's documentation but has not been seen on a Windows 10 PC; elevated (administrator) Explorer windows are invisible to MikeShift; files that are not real files on disk (browser images, Outlook attachments) need saving first; encrypted PDFs are refused.
 
 ## Command line
 
-The MSIX puts `mikeshift.exe` on your PATH (an app execution alias, available in new terminals after install). It is the same engine as the wheel and is what the automated tests drive.
+The package puts `mikeshift.exe` on your PATH (open a new terminal after installing). It uses the same engine as the wheel.
 
 ```powershell
-mikeshift --list photo.heic                    # e.g. PNG, JPG, TIFF, GIF, BMP, WebP, PDF, Compress, Resize 50%, Crop, Strip EXIF, Zip (depends on codecs installed)
+mikeshift --list photo.heic                    # what can be done with this file on this PC
 mikeshift --run PNG photo.heic                 # prints the output path, exit code 0
 mikeshift --run "Resize 50%" a.jpg b.jpg
 mikeshift --run Merge a.pdf b.pdf              # Merged.pdf next to a.pdf
 mikeshift --run Trim --range 0:05-0:12.5 clip.mp4
 mikeshift --run Crop --crop 100,50,800,600@400x300 photo.jpg
 mikeshift --run Zip "My Folder"
-mikeshift --use-word --run PDF old.doc          # legacy .doc needs Word, and Word is opt-in per run (see Privacy)
+mikeshift --use-word --run PDF old.doc         # legacy .doc needs Word, opt-in per run
 ```
 
-Errors go to stderr as `error: …` with exit code 1; an unknown action title lists the available ones; any other flag prints usage and exits 2. `--use-word` lets that one run use Microsoft Word (if installed) for legacy `.doc` files and for DOCX to PDF; without it the command line never starts Word. Without installing: `dotnet run --project src/MikeShift.Cli -- --list file.png`.
+Errors go to stderr as `error: …` with exit code 1; unknown actions list the available ones; bad flags print usage and exit 2. Without installing: `dotnet run --project src/MikeShift.Cli -- --list file.png`.
 
-## Install (sideload)
+## Privacy
 
-The MSIX is signed with a certificate you create yourself; Windows only installs packages whose signer it trusts.
-
-```powershell
-# 1. Create a self-signed code-signing certificate (subject must match the manifest: CN=MikeShift Dev).
-#    Writes artifacts\dev-cert\MikeShiftDev.pfx (private, git-ignored) and MikeShiftDev.cer.
-./packaging/make-dev-cert.ps1 -Password (Read-Host -AsSecureString 'PFX password')
-
-# 2. Trust it once, in an ELEVATED PowerShell (the script prints this line for you; it never does it itself).
-Import-Certificate -FilePath .\artifacts\dev-cert\MikeShiftDev.cer -CertStoreLocation Cert:\LocalMachine\TrustedPeople
-
-# 3. Build x64 + ARM64, sign, write the per-PC packages, the bundle and the checksums.
-./scripts/release.ps1 -PfxPath .\artifacts\dev-cert\MikeShiftDev.pfx -PfxPassword (Read-Host -AsSecureString 'PFX password')
-
-# 4. Install the file for your PC: _x64 for most PCs, _arm64 for Snapdragon / ARM PCs.
-#    (The .msixbundle holds both and Windows picks the right one, but it is twice the download.)
-Add-AppxPackage -Path .\artifacts\MikeShift_0.1.0.0_x64.msix
-```
-
-Uninstall: `Get-AppxPackage MikeShift | Remove-AppxPackage`. Verify a download: compare `Get-FileHash <file> -Algorithm SHA256` with that file's line in `artifacts\SHA256SUMS.txt`.
-
-**Download the file for your PC**: `MikeShift_<version>_x64.msix` (about 45 MB) for most PCs, `MikeShift_<version>_arm64.msix` (about 44 MB) for Snapdragon / ARM PCs. Each is a complete app for one architecture, about 112 MB once installed. The combined `.msixbundle` is about 88 MB for both architectures. The packages are IL-trimmed and carry the .NET 10 runtime and the Windows App SDK, and the command-line tool runs on that same runtime, so **nothing else needs installing**. Release signing for public distribution (Store, Azure Trusted Signing or a purchased certificate) is a separate decision that is not made yet.
-
-### The smaller "store" package (shared Windows App Runtime)
-
-`./scripts/release.ps1 -Flavor store` (or `-Flavor all`) also builds `MikeShift_<version>_store_x64.msix`, `_store_arm64.msix` and `MikeShift_<version>_store.msixbundle`: about **23 MB** per architecture (about 57 MB installed). They depend on the shared **Windows App Runtime 2.5** framework package (`Microsoft.WindowsAppRuntime.2`) instead of carrying WinUI themselves.
-
-* **Microsoft Store**: the Store installs that framework automatically. This is the flavour to submit.
-* **Sideloaded**: the framework must be on the PC first, otherwise Windows refuses the install and names the missing package. Install it once with Microsoft's installer for your PC type ([x64](https://aka.ms/windowsappsdk/2.5/2.5.1/windowsappruntimeinstall-x64.exe), [arm64](https://aka.ms/windowsappsdk/2.5/2.5.1/windowsappruntimeinstall-arm64.exe); all downloads: [Windows App SDK downloads](https://learn.microsoft.com/windows/apps/windows-app-sdk/downloads)), or pass the framework package with the install: `Add-AppxPackage -Path MikeShift_0.1.0.0_store_x64.msix -DependencyPath <path to Microsoft.WindowsAppRuntime.2.msix>` (the build leaves Microsoft's copies in `src\MikeShift.App\AppPackages\store\...\Dependencies\<arch>\`). Many PCs already have it because other apps need it.
-* For anyone who just wants it to install, hand out the default (non-store) files above.
+No network access, no telemetry, no account, no ads. The app never goes online: **Check for updates** and the GitHub and Store links open your browser or the Store app when you click them. The right-click entry sees the paths Explorer gives every menu extension, hands them to the tray app over a pipe only your Windows user can open, and keeps a small log of counts and errors without file names. The keyboard shortcut is registered with Windows, and MikeShift asks Explorer for the selection only when you press it. The wheel's mouse hook reads mouse movement, the left button, the scroll wheel and Shift, Ctrl, Alt and Esc, only to run the gesture, and stores nothing. The full statement is in [docs/store/privacy-policy.md](docs/store/privacy-policy.md).
 
 ## Build from source
 
 Needs the .NET 10 SDK and the Windows 10/11 SDK 10.0.26100 (Visual Studio is not required).
 
 ```powershell
-./scripts/build.ps1 -Test                      # dotnet build MikeShift.sln + dotnet test MikeShift.sln
-./scripts/build.ps1 -Configuration Release -Msix -Platforms x64,ARM64   # unsigned per-architecture .msix
+./scripts/build.ps1 -Test                      # build MikeShift.sln and run the tests
 ./scripts/release.ps1                          # unsigned artifacts\MikeShift_<version>_x64.msix, _arm64.msix, .msixbundle + SHA256SUMS.txt
-./scripts/release.ps1 -Flavor all              # the same plus the smaller _store_ packages (shared Windows App Runtime)
+./scripts/release.ps1 -Flavor all              # the same plus the smaller _store_ packages
 ./scripts/make-fixtures.ps1                    # sample files for manual testing -> .\fixtures
 ```
 
-or directly: `dotnet build MikeShift.sln`, `dotnet test MikeShift.sln`. CI (GitHub Actions, `windows-latest`) runs build + test and uploads the unsigned packages of both flavours. Package builds are IL-trimmed (`Trimming.props`; `-p:MikeShiftTrim=false` gives an untrimmed one for comparison). To run the CLI test suites against the trimmed command-line tool of a package, unpack the `.msix` (`makeappx unpack /p <msix> /d <dir> /nv`) and set `MIKESHIFT_CLI_EXE=<dir>\MikeShift.Cli.exe` before `dotnet test tests/MikeShift.Cli.Tests`. `tools/DragHarness` drives scripted Shift-drags against a running build (see [docs/TESTPLAN.md](docs/TESTPLAN.md)). The Windows App SDK is referenced by component (`Directory.Packages.props`), not through the `Microsoft.WindowsAppSDK` metapackage; see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) §7.
-
-## Privacy
-
-* No network access anywhere in the product. No telemetry, no update check inside the app.
-  Measured, not just claimed: `scripts/verify-offline.ps1` runs every conversion through the real command line and a `MikeShift.exe` session while polling every 50 ms for sockets owned by MikeShift (none were ever seen); `scripts/audit-network-imports.ps1` lists the networking APIs a build can reach ([docs/test-runs/2026-10-24-local-and-integrity.md](docs/test-runs/2026-10-24-local-and-integrity.md)). **MikeShift is fully local by default.** The one optional exception is Microsoft Word: **Settings -> "Use Microsoft Word for Word documents" (off by default; `--use-word` on the command line, per run)** hands legacy `.doc` files and DOCX to PDF to Word, a separate Microsoft program that opens its own connections to Microsoft services (licensing, "connected experiences" and similar, governed by your Office privacy settings; it opened 234 connections to Microsoft in the measurement below). With it off, Word is never started even if it is installed: DOCX to PDF uses MikeShift's own converter and `.doc` files can only be zipped ("Turn on Microsoft Word in Settings to convert .doc files"). For any other format, nothing leaves the PC. Reading an OneDrive "online only" file makes OneDrive download it; that is OneDrive, not MikeShift.
-* Originals are never modified or moved: every conversion writes a new file (via a temporary file in the same folder, then a rename, so a failure never leaves a half-written output).
-* The right-click entry sees what Explorer shows every context-menu extension: the paths of the selected items. It does not open them to build the menu, hands the request to the tray app over a local named pipe that only your Windows user can open, and keeps its own small log (`shell-log.txt` next to `log.txt`: a line per menu with item counts and errors, no file names).
-* The input hook sees only mouse movement, the left button, the wheel and the Shift/Ctrl/Alt/Esc keys, and only to run the gesture. No other key is read or stored. The Explorer hotkey is a Windows `RegisterHotKey` shortcut: Windows tells MikeShift when exactly that shortcut is pressed and nothing else. When you press it, MikeShift asks File Explorer which files are selected (only then).
-* While the wheel is up, a small screenshot of the pixels under it is blurred to make the glass effect; it stays in memory and is discarded when the wheel hides.
-* Settings (sound, message, tools key, show in folder) are stored locally in the app's settings; Open at login is Windows' own startup-task switch. A small diagnostic log (`log.txt`; Settings, About, "Open the log folder" opens it, which for the installed app is `%LOCALAPPDATA%\Packages\<MikeShift package>\LocalCache\Local\MikeShift`) records start-up and errors (never file contents) and is cut to its newest half when it passes 1 MB.
+Or `dotnet build MikeShift.sln` and `dotnet test MikeShift.sln`. CI runs on `windows-latest` and uploads unsigned packages. `tools/DragHarness` and `tools/ContextMenuHarness` drive scripted drags and right-clicks through a real File Explorer ([docs/TESTPLAN.md](docs/TESTPLAN.md)). Architecture, threading and the API references are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## More
 
-* [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) projects, threading, how drag detection and the wheel work, memory behaviour, Microsoft API references
-* [docs/LIMITS.md](docs/LIMITS.md) everything that works differently on Windows
-* [docs/TESTPLAN.md](docs/TESTPLAN.md) automated tests, the drag harness and the manual checklist
-* [assets/brand/mikeshift.svg](assets/brand/mikeshift.svg) the icon source (`scripts/make-icons.ps1` renders every icon; preview: [docs/screenshots/brand/icon-sheet.png](docs/screenshots/brand/icon-sheet.png))
-* [docs/PLAN.md](docs/PLAN.md) the original specification; [docs/WORKPLAN.md](docs/WORKPLAN.md) who built what
-* [LICENSE](LICENSE) (MIT) and [NOTICE](NOTICE) (credit to the original Shiftvert project and every third-party licence)
+* [docs/](docs/README.md): index of the documentation (limits, architecture, test runs, market study, Store listing material)
+* [docs/LIMITS.md](docs/LIMITS.md): everything that works differently on Windows or is refused
+* [docs/store/](docs/store/listing.md): Microsoft Store listing, privacy policy, screenshots and demo script
+
+## Credits and licence
+
+MikeShift is a Windows port of [Shiftvert](https://github.com/roiegold/shiftvert) by **roiegold** (MIT), the macOS app whose drag-a-file-and-pick-a-format idea it follows. The Windows code, the right-click integration and the packaging are new.
+
+[MIT licence](LICENSE). [NOTICE](NOTICE) lists the credit to Shiftvert and every third-party licence.
