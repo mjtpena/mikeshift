@@ -84,6 +84,21 @@ Result on 2026-10-23, Release self-contained build, Windows 11, two monitors (th
 | 7 Virtual files | `virtual` (a URL/virtual data object: "Save the file first", effect NONE) and `text` / `nodrag` (no wheel). Real Outlook, zip-folder and MTP sources are not covered. |
 | 9 Convert Files… click mode | `click-keys`, `click-mouse`, `click-esc`, `click-blur`, plus a UI Automation check that tiles are `ListItem`s. Narrator itself is not covered. |
 
+### 2b. The context-menu harness (`tools/ContextMenuHarness`)
+
+Checks the Explorer right-click entry ([ARCHITECTURE.md §9](ARCHITECTURE.md), results in [test-runs/2026-10-24-context-menu.md](test-runs/2026-10-24-context-menu.md)). It needs a **registered package** (the COM server and the menu entry only exist for an installed or registered MikeShift: `Add-AppxPackage -Register <layout>\AppxManifest.xml`, Developer Mode on, never a certificate import) and the desktop to itself.
+
+```powershell
+dotnet build tools/ContextMenuHarness
+$h = 'tools\ContextMenuHarness\bin\Debug\net10.0-windows10.0.26100.0\ContextMenuHarness.exe'
+& $h probe --repeat 3 --invoke "Convert to PNG" photo.jpg        # plays Explorer: activates the COM server, builds the menu, prints timings; no real input
+& $h menu <workfolder> all                                       # real File Explorer, real mouse and keyboard, UI Automation to read the menus
+& $h menu <workfolder> jpg-png multi-merge folder-zip mixed heic big600 mixed-big fallback classic more
+& $h menu <workfolder> timing 8                                  # right-click to menu on screen, with and without the extension registered
+```
+
+`menu` opens its own Explorer window on the work folder (a temp folder you created: `photo1.jpg` to `photo3.jpg`, `sample.png`, `doc.pdf`, `letter.docx`, `IMG_0001.heic`, `folder\`, `big\` with 600 JPEGs, `mixedbig\` with 18 JPEGs and 4 PDFs), selects items through the shell view, right-clicks with `SendInput`, finds the menu and its submenu through UI Automation, clicks real entries, then checks the folder (output beside the original, original SHA-256 unchanged). `HARNESS_SHOTS=<folder>` saves cropped menu screenshots (only the menu bodies are copied, the rest of the picture stays transparent). The tray app is started (and its one-time welcome window closed) first.
+
 ## 3. Idle memory and latency measurements (2026-10-23, Release, self-contained)
 
 | State | Working set | Private working set |
@@ -123,6 +138,7 @@ Run on a real Windows 11 machine (and, where noted, Windows 10) with the signed 
 | 17 | Windows 10 1809+ machine or VM: install, tray, CLI, Convert Files… | **Not run** | No Windows 10 machine. |
 | 18 | ARM64 hardware (or Windows 11 on ARM VM): install the same bundle, run items 12 and 16 | **Not run** | No ARM64 hardware. |
 | 19 | Codec variants: with and without HEIF/HEVC extensions the HEIC tile appears/disappears; with and without Word the `.doc` behaviour matches [LIMITS.md](LIMITS.md) | **Not run** | Only one codec configuration here (HEIC offered). |
+| 20 | Explorer right-click: on a JPG, three images, a folder, a folder + file, a HEIC, 600 files: Windows 11 modern menu shows "Convert with MikeShift" with the submenu; a pick converts beside the original; More options… opens the wheel; "Show more options" lists it; the first click after a quiet spell is not a hang; Windows 10 1809+ shows it in its menu | **Partial** | Pass on Windows 11 build 26300 through the real File Explorer, both flavours (`tools/ContextMenuHarness menu`, [results](test-runs/2026-10-24-context-menu.md)): all cases above, timings (+ about 50 ms once warm), classic menu lists the entry too on this build. Not run: Windows 10, other Windows 11 builds' classic menu, ARM64. |
 
 Measured in the same run (Debug build): idle after 2 minutes 16.5 MB working set, 6.5 MB private, 0.00 % CPU; Shift to wheel 13 to 28 ms ([section 8](test-runs/2026-10-24-real-drag.md#8-latency-and-idle-cost)).
 

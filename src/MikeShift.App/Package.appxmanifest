@@ -13,8 +13,10 @@
   xmlns:uap5="http://schemas.microsoft.com/appx/manifest/uap/windows10/5"
   xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
   xmlns:desktop4="http://schemas.microsoft.com/appx/manifest/desktop/windows10/4"
+  xmlns:desktop5="http://schemas.microsoft.com/appx/manifest/desktop/windows10/5"
+  xmlns:com="http://schemas.microsoft.com/appx/manifest/com/windows10"
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
-  IgnorableNamespaces="uap uap5 desktop desktop4 rescap">
+  IgnorableNamespaces="uap uap5 desktop desktop4 desktop5 com rescap">
 
   <Identity
     Name="MikeShift"
@@ -53,6 +55,29 @@
         <desktop:Extension Category="windows.startupTask" Executable="MikeShift.exe" EntryPoint="Windows.FullTrustApplication">
           <desktop:StartupTask TaskId="MikeShiftStartup" Enabled="false" DisplayName="MikeShift" />
         </desktop:Extension>
+
+        <!-- Explorer right-click entry "Convert with MikeShift" (X1; src\MikeShift.App\Shell, docs/ARCHITECTURE.md "Explorer right-click").
+             The COM server is OUT of process: Windows starts `MikeShift.exe -Embedding` (Program.Main hands it to ShellExtensionServer, which
+             never starts WinUI) the first time the menu is built, so no MikeShift or .NET code is loaded into explorer.exe.
+             One class: the IExplorerCommand for the Windows 11 modern menu (and the one menu of Windows 10). Keep the CLSID in step with
+             ShellNames. Whether "Show more options" also lists it depends on the Windows build; see docs/LIMITS.md. -->
+        <com:Extension Category="windows.comServer">
+          <com:ComServer>
+            <com:ExeServer Executable="MikeShift.exe" Arguments="-Embedding" DisplayName="MikeShift Explorer integration">
+              <com:Class Id="02dcb673-3099-4372-86cb-c7f4fad75db8" DisplayName="MikeShift Convert command" />
+            </com:ExeServer>
+          </com:ComServer>
+        </com:Extension>
+        <desktop4:Extension Category="windows.fileExplorerContextMenus">
+          <desktop4:FileExplorerContextMenus>
+            <desktop5:ItemType Type="*">
+              <desktop5:Verb Id="ConvertWithMikeShift" Clsid="02dcb673-3099-4372-86cb-c7f4fad75db8" />
+            </desktop5:ItemType>
+            <desktop5:ItemType Type="Directory">
+              <desktop5:Verb Id="ConvertFolderWithMikeShift" Clsid="02dcb673-3099-4372-86cb-c7f4fad75db8" />
+            </desktop5:ItemType>
+          </desktop4:FileExplorerContextMenus>
+        </desktop4:Extension>
       </Extensions>
     </Application>
 

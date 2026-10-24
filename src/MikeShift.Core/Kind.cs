@@ -194,6 +194,13 @@ public static class Kind
         return Category.Other;
     }
 
+    /// <summary>
+    /// The category the extension of <paramref name="path"/> implies, without touching the file system (no attribute read, no content sniff).
+    /// For the Explorer context menu, which is built on Explorer's UI thread and must stay fast. A file that is really something else is caught
+    /// by <see cref="Of"/> when the action runs. Folders are not recognised here (the caller knows them and maps them to <see cref="Category.Other"/>).
+    /// </summary>
+    public static Category ByExtension(string path) => ClassifyByExtensionOnly(ExtensionOf(path));
+
     /// <summary>Placeholder rule: extension verdict only; ambiguous TypeScript-like extensions stay Other.</summary>
     private static Category ClassifyByExtensionOnly(string ext)
     {

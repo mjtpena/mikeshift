@@ -19,6 +19,9 @@ public static class Program
     [STAThread]
     private static int Main(string[] args)
     {
+        // X1 Explorer right-click: COM starts `MikeShift.exe -Embedding` as the out-of-process context-menu server (no WinUI, no tray, no single-instance check).
+        if (Shell.ShellExtensionServer.IsEmbedding(args)) return Shell.ShellExtensionServer.Run();
+
         WinRT.ComWrappersSupport.InitializeComWrappers();
 
         // Dev-only (see DevSwitches): `MikeShift.exe --dev --render-wheel <scenario|all|list> <out.png|dir>` renders the wheel offscreen over a synthetic

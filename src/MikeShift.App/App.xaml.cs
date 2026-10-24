@@ -21,6 +21,7 @@ public partial class App : Application
     private readonly UnhandledPolicy _unhandled = new();
     private DragCoordinator? _drag;
     private Selection.ExplorerHotkey? _explorerHotkey; // X2
+    private Shell.ShellBridge? _shell; // X1
 
     public App()
     {
@@ -70,6 +71,7 @@ public partial class App : Application
         // X2 (begin): the global hotkey that opens the click-mode wheel for the current File Explorer selection.
         if (_drag is not null) _explorerHotkey = Selection.ExplorerHotkey.Start(Services, _drag.ShowClickMode);
         // X2 (end)
+        _shell = Shell.ShellBridge.Start(Services, Tray.RequestConvert); // X1: Explorer right-click entry (pipe from the -Embedding server)
         // Crop/Trim editors for interactive actions; dev flags `--crop <img>` / `--trim <media>` open them directly.
         Editors.EditorRegistration.Register(Services.Interaction);
         Editors.EditorRegistration.TryHandleDevArgs(DevSwitches.Args);
@@ -134,6 +136,8 @@ public partial class App : Application
         _explorerHotkey = null;     // X2
         _drag?.Dispose();
         _drag = null;
+        _shell?.Dispose(); // X1
+        _shell = null;
         Tray.Dispose();
         try { await Services.Jobs.ShutdownAsync(TimeSpan.FromSeconds(3)); }
         catch (Exception) { /* exit regardless */ }
