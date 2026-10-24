@@ -128,6 +128,49 @@ public static class CodecHelp
         return kindOf(paths[^1]) == Category.Other ? prompt : null;
     }
 
+    /// <summary>
+    /// <see cref="ForSelection"/> without looking at the files: the extension to offer when EVERY selected file has an extension that depends on
+    /// the same missing add-on. This is what the Explorer menu can know without opening anything (it runs on Explorer's UI thread), and what the
+    /// tray app asks again, with its live capabilities, when a "Get ..." line is picked, so the two always agree. Null for a mixed selection or
+    /// when the add-ons are there.
+    /// </summary>
+    public static CodecPrompt? ForExtensions(IReadOnlyList<string> paths, Capabilities caps)
+    {
+        ArgumentNullException.ThrowIfNull(paths);
+        ArgumentNullException.ThrowIfNull(caps);
+        if (paths.Count == 0) return null;
+
+        CodecPrompt? prompt = null;
+        foreach (var p in paths)
+        {
+            var wanted = ForExtension(Kind.ExtensionOf(p), caps);
+            if (wanted is null || (prompt is not null && wanted.Need != prompt.Need)) return null;
+            prompt = wanted;
+        }
+        return prompt;
+    }
+
+    /// <summary>The prompt whose tile is called <paramref name="title"/> ("Get HEIF"), or null for any other action title.</summary>
+    public static CodecPrompt? FindByTitle(string? title)
+    {
+        if (string.IsNullOrWhiteSpace(title)) return null;
+        var wanted = title.Trim();
+        foreach (var p in new[] { Heif, Hevc, Av1, Webp })
+            if (string.Equals(p.Title, wanted, StringComparison.OrdinalIgnoreCase)) return p;
+        return null;
+    }
+
+    /// <summary>
+    /// What the tray app does when the Explorer menu's "Get ..." line named <paramref name="title"/> is picked for <paramref name="paths"/>: the
+    /// prompt whose Store page to open, decided with the live capabilities by the same rule the menu used (<see cref="ForExtensions"/>), or null
+    /// when the title is not a "Get ..." line or the extension has been installed since the menu was drawn (the caller then resolves it normally).
+    /// </summary>
+    public static CodecPrompt? ResolvePick(string? title, IReadOnlyList<string> paths, Capabilities caps)
+    {
+        var asked = FindByTitle(title);
+        return asked is not null && ForExtensions(paths, caps) is { } now && now.Need == asked.Need ? now : null;
+    }
+
     /// <summary>The wheel tile for <paramref name="prompt"/>: on the Tools page next to Zip. The app opens <see cref="ActionDef.OpensUri"/> instead of running a job; run anyway (CLI), it fails with the same words as the pill.</summary>
     public static ActionDef TileFor(CodecPrompt prompt)
     {

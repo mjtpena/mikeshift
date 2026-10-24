@@ -21,6 +21,7 @@ param(
     [int] $SettleMs = 900,
     [int] $TimeoutMs = 15000,
     [string[]] $Invoke = @(),        # UIA: invoke (click/expand/toggle) the named elements, in order, before capturing
+    [int] $ScrollPercent = -1,       # UIA: scroll the Settings page (the ScrollViewer "PageScroller") to this percentage (0-100) after -Invoke
     [string[]] $Env = @(),           # extra NAME=VALUE environment variables for the process
     [switch] $Backdrop,              # put a synthetic gradient window directly BEHIND the captured window (for acrylic popups) and screen-grab the area: no desktop pixels end up in the image
     [switch] $Timeline,              # print when the window first exists, when it is uncloaked and what share of its pixels is pure black, every ~12 ms
@@ -248,6 +249,16 @@ try {
         elseif ($el.TryGetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern, [ref]$pat)) { $pat.Select() }
         elseif ($el.TryGetCurrentPattern([System.Windows.Automation.TogglePattern]::Pattern, [ref]$pat)) { $pat.Toggle() }
         else { throw "UIA element '$name' has no usable pattern" }
+        Start-Sleep -Milliseconds 500
+    }
+
+    if ($ScrollPercent -ge 0) {
+        $root = [System.Windows.Automation.AutomationElement]::FromHandle($target.H)
+        $cond = New-Object System.Windows.Automation.PropertyCondition ([System.Windows.Automation.AutomationElement]::AutomationIdProperty), 'PageScroller'
+        $scroller = $root.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $cond)
+        if (-not $scroller) { throw "UIA element 'PageScroller' not found" }
+        $sp = $scroller.GetCurrentPattern([System.Windows.Automation.ScrollPattern]::Pattern)
+        $sp.SetScrollPercent([System.Windows.Automation.ScrollPattern]::NoScroll, [double]$ScrollPercent)
         Start-Sleep -Milliseconds 500
     }
 

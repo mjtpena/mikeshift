@@ -48,7 +48,7 @@ public static class ZipAction
         var first = Path.GetFullPath(paths[0]);
         var spec = paths.Count == 1
             ? Naming.Plan(first, ".zip")
-            : new OutputSpec(ParentOf(first), "Archive", ".zip");
+            : Naming.PlanNamed(first, "Archive", ".zip");
 
         var result = await Naming.CommitAsync(spec, (temp, token) => WriteArchiveAsync(paths, temp, token), ct).ConfigureAwait(false);
         return result.Path;
@@ -175,9 +175,6 @@ public static class ZipAction
             if (used.Add(candidate)) return candidate;
         }
     }
-
-    private static string ParentOf(string full) =>
-        Path.GetDirectoryName(full.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)) ?? full;
 
     private static string DisplayName(string path) =>
         Path.GetFileName(path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)) is { Length: > 0 } n ? n : path;

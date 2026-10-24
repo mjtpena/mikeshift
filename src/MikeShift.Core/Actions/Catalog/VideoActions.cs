@@ -35,6 +35,6 @@ public static class VideoActions
 
     private static ActionDef Video(string title, VideoFormat format, Func<Capabilities, bool>? requires, string hideFor) =>
         ActionDef.PerFile(title, WheelPage.Format,
-            (input, _, ct) => VideoConverter.ToFormatAsync(input, format, ct),
+            (input, ctx, ct) => VideoConverter.ToFormatAsync(input, format, ctx.Options, ct),
             hideFor: [hideFor], requires: requires);
 }

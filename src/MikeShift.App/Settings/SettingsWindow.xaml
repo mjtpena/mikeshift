@@ -28,7 +28,7 @@
                               AutomationProperties.Name="Show a message when a file is converted" MinWidth="0" />
             </local:SettingsCard>
 
-            <local:SettingsCard Header="Show the file in its folder after converting"
+            <local:SettingsCard x:Name="RevealCard" Header="Show the file in its folder after converting"
                                 Description="Converted files are saved next to the originals. This also opens File Explorer on the result."
                                 HeaderIcon="&#xE838;">
                 <ToggleSwitch x:Name="RevealSwitch" OnContent="On" OffContent="Off" Toggled="OnRevealToggled"
@@ -41,6 +41,78 @@
                 <ToggleSwitch x:Name="WordSwitch" OnContent="On" OffContent="Off" Toggled="OnWordToggled"
                               AutomationProperties.Name="Use Microsoft Word for Word documents" MinWidth="0" />
             </local:SettingsCard>
+
+            <!-- ============================== Conversions ============================== -->
+            <TextBlock Text="Conversions" Style="{StaticResource SettingsGroupHeaderStyle}" />
+
+            <local:SettingsCard x:Name="QualityCard" Header="Picture quality"
+                                Description="How much detail JPG, WebP and HEIC pictures keep. Higher is sharper and makes bigger files. PNG is always lossless."
+                                HeaderIcon="&#xEB9F;">
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                    <Slider x:Name="QualitySlider" Minimum="50" Maximum="100" StepFrequency="5" SmallChange="5" LargeChange="10"
+                            TickFrequency="10" TickPlacement="None" SnapsTo="StepValues" Width="170" VerticalAlignment="Center"
+                            ValueChanged="OnQualityChanged" AutomationProperties.Name="Picture quality" />
+                    <TextBlock x:Name="QualityValue" MinWidth="64" VerticalAlignment="Center" TextAlignment="Right" />
+                </StackPanel>
+            </local:SettingsCard>
+
+            <local:SettingsCard x:Name="CompressCard" Header="Compress strength" HeaderIcon="&#xE7B8;">
+                <ComboBox x:Name="CompressChoice" MinWidth="150" SelectionChanged="OnCompressChanged" AutomationProperties.Name="Compress strength">
+                    <ComboBoxItem Content="Light" Tag="Light" />
+                    <ComboBoxItem Content="Medium" Tag="Medium" />
+                    <ComboBoxItem Content="Strong" Tag="Strong" />
+                </ComboBox>
+            </local:SettingsCard>
+
+            <local:SettingsCard x:Name="ResizeCard" Header="Resize" HeaderIcon="&#xE73F;">
+                <ComboBox x:Name="ResizeChoice" MinWidth="150" SelectionChanged="OnResizeChanged" AutomationProperties.Name="Resize to">
+                    <ComboBoxItem Content="25%" Tag="25" />
+                    <ComboBoxItem Content="50%" Tag="50" />
+                    <ComboBoxItem Content="75%" Tag="75" />
+                </ComboBox>
+            </local:SettingsCard>
+
+            <local:SettingsCard x:Name="GifCard" Header="GIF length"
+                                Description="The longest a GIF made from a video can run. GIFs play 10 pictures a second and are at most 480 pixels wide, so long ones get big."
+                                HeaderIcon="&#xE916;">
+                <ComboBox x:Name="GifChoice" MinWidth="150" SelectionChanged="OnGifSecondsChanged" AutomationProperties.Name="GIF length">
+                    <ComboBoxItem Content="5 seconds" Tag="5" />
+                    <ComboBoxItem Content="10 seconds" Tag="10" />
+                    <ComboBoxItem Content="15 seconds" Tag="15" />
+                    <ComboBoxItem Content="30 seconds" Tag="30" />
+                </ComboBox>
+            </local:SettingsCard>
+
+            <Expander x:Name="OutputExpander" Style="{StaticResource SettingsExpanderStyle}" AutomationProperties.Name="Where converted files go">
+                <Expander.Header>
+                    <Grid ColumnSpacing="16" Padding="0,8,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <FontIcon Glyph="&#xE8B7;" FontFamily="Segoe Fluent Icons" FontSize="20" VerticalAlignment="Center"
+                                  AutomationProperties.AccessibilityView="Raw" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="1">
+                            <TextBlock Text="Where converted files go" />
+                            <TextBlock x:Name="OutputSummary" FontSize="12" TextTrimming="CharacterEllipsis"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        </StackPanel>
+                    </Grid>
+                </Expander.Header>
+                <StackPanel Spacing="10" Padding="0,4,0,4">
+                    <RadioButtons x:Name="OutputChoice" SelectionChanged="OnOutputChoiceChanged" AutomationProperties.Name="Where converted files go">
+                        <RadioButton Content="Next to the original" Tag="Beside" />
+                        <RadioButton Content="A folder I choose" Tag="Folder" />
+                    </RadioButtons>
+                    <StackPanel x:Name="OutputFolderRow" Orientation="Horizontal" Spacing="12" Margin="28,0,0,0">
+                        <Button Content="Choose folder…" Click="OnChooseOutputFolderClicked" AutomationProperties.Name="Choose the folder for converted files" />
+                        <TextBlock x:Name="OutputFolderPath" VerticalAlignment="Center" MaxWidth="440" TextTrimming="CharacterEllipsis"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    </StackPanel>
+                    <InfoBar x:Name="OutputNote" Severity="Warning" IsOpen="False" IsClosable="False" />
+                    <TextBlock x:Name="OutputHint" TextWrapping="Wrap" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                </StackPanel>
+            </Expander>
 
             <!-- ============================== Ways to open the wheel ============================== -->
             <TextBlock Text="Open the wheel" Style="{StaticResource SettingsGroupHeaderStyle}" />

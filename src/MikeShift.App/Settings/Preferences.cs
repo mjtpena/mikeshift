@@ -96,7 +96,7 @@ internal sealed class JsonFileStore : IPreferenceStore
 }
 
 /// <summary>
-/// The user's preferences (PLAN §3.3): <c>chime</c>, <c>showsToast</c>, <c>toolsKey</c>, <c>showInFolderAfter</c>, <c>useWord</c>, <c>launched</c>.
+/// The user's preferences (PLAN §3.3): <c>chime</c>, <c>showsToast</c>, <c>toolsKey</c>, <c>showInFolderAfter</c>, <c>useWord</c>, <c>launched</c>, and the conversion settings (<c>convQuality</c>, <c>convCompress</c>, <c>convResize</c>, <c>convGifSeconds</c>, <c>convOutputFolder</c>; see <see cref="Conversions"/>).
 /// Packaged apps use <c>ApplicationData.LocalSettings</c>; unpackaged runs use a JSON file under
 /// <c>%LOCALAPPDATA%\MikeShift</c>. Open at Login is NOT stored here: it lives in the OS (<see cref="StartupService"/>).
 /// Thread-safe for reads and writes; <see cref="Changed"/> may fire on any thread.
@@ -126,6 +126,25 @@ public sealed class Preferences
 
     /// <summary>Key: the welcome window has been shown once (bool, default false).</summary>
     public const string LaunchedKey = "launched";
+
+    /// <summary>Key: JPEG/WebP/HEIC quality (whole number 50 to 100, default 90).</summary>
+    public const string QualityKey = "convQuality";
+
+    /// <summary>Key: Compress strength (<see cref="CompressStrength"/> name, default "Medium").</summary>
+    public const string CompressKey = "convCompress";
+
+    /// <summary>Key: the Resize percentage (25, 50 or 75, default 50).</summary>
+    public const string ResizeKey = "convResize";
+
+    /// <summary>Key: the longest GIF made from a video, in seconds (5, 10, 15 or 30, default 15).</summary>
+    public const string GifSecondsKey = "convGifSeconds";
+
+    /// <summary>Key: the folder converted files go to (a full path; absent or empty = next to the original).</summary>
+    public const string OutputFolderKey = "convOutputFolder";
+
+    /// <summary>True for the keys behind <see cref="Conversions"/>.</summary>
+    public static bool IsConversionKey(string key) =>
+        key is QualityKey or CompressKey or ResizeKey or GifSecondsKey or OutputFolderKey;
 
     private readonly IPreferenceStore _store;
 
@@ -211,6 +230,54 @@ public sealed class Preferences
             _store.Set(HotkeyKey, HotkeySpec.ToSetting(value));
             Changed?.Invoke(HotkeyKey);
         }
+    }
+
+    // ---- conversions (positioning P1-4): every value is validated on the way in and read leniently on the way out, so a settings file
+    // from an older version, or one edited by hand, only ever gives the defaults for what it does not say properly.
+
+    /// <summary>JPEG, WebP and HEIC quality, 50 to 100. Default 90.</summary>
+    public int Quality
+    {
+        get => ConversionOptions.TryParseQuality(_store.Get(QualityKey), out var q) ? q : ConversionOptions.DefaultQuality;
+        set => SetConversion(QualityKey, new ConversionOptions { Quality = value }.Quality.ToString(System.Globalization.CultureInfo.InvariantCulture));
+    }
+
+    /// <summary>How hard Compress squeezes a picture. Default <see cref="CompressStrength.Medium"/>.</summary>
+    public CompressStrength Compress
+    {
+        get => ConversionOptions.TryParseCompress(_store.Get(CompressKey), out var c) ? c : CompressStrength.Medium;
+        set => SetConversion(CompressKey, new ConversionOptions { Compress = value }.Compress.ToString());
+    }
+
+    /// <summary>The Resize percentage: 25, 50 or 75. Default 50.</summary>
+    public int ResizePercent
+    {
+        get => ConversionOptions.TryParseResizePercent(_store.Get(ResizeKey), out var p) ? p : ConversionOptions.DefaultResizePercent;
+        set => SetConversion(ResizeKey, new ConversionOptions { ResizePercent = value }.ResizePercent.ToString(System.Globalization.CultureInfo.InvariantCulture));
+    }
+
+    /// <summary>The longest GIF made from a video, in seconds: 5, 10, 15 or 30. Default 15.</summary>
+    public int GifSeconds
+    {
+        get => ConversionOptions.TryParseGifSeconds(_store.Get(GifSecondsKey), out var s) ? s : ConversionOptions.DefaultGifSeconds;
+        set => SetConversion(GifSecondsKey, new ConversionOptions { GifSeconds = value }.GifSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture));
+    }
+
+    /// <summary>The folder converted files go to (a full path), or null for "next to the original" (the default).</summary>
+    public string? OutputFolder
+    {
+        get => ConversionOptions.FromStored(null, null, null, null, _store.Get(OutputFolderKey)).OutputFolder;
+        set => SetConversion(OutputFolderKey, new ConversionOptions { OutputFolder = value }.OutputFolder ?? "");
+    }
+
+    /// <summary>All conversion settings as one immutable <see cref="ConversionOptions"/>: what a job is run with.</summary>
+    public ConversionOptions Conversions => ConversionOptions.FromStored(
+        _store.Get(QualityKey), _store.Get(CompressKey), _store.Get(ResizeKey), _store.Get(GifSecondsKey), _store.Get(OutputFolderKey));
+
+    private void SetConversion(string key, string value)
+    {
+        _store.Set(key, value);
+        Changed?.Invoke(key);
     }
 
     /// <summary>True once the welcome window was shown. Default false.</summary>

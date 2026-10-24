@@ -9,6 +9,9 @@ namespace MikeShift.Core.Cli;
 /// mikeshift [--use-word] --list FILES...                                 comma-separated action titles, exit 0
 /// mikeshift [--use-word] --run TITLE [--range m:ss-m:ss] [--crop X,Y,W,H[@OWxOH]] FILES...   prints each output path, exit 0
 /// </code>
+/// Both accept the conversion options <c>--quality N</c> (50-100), <c>--compress light|medium|strong</c>, <c>--resize 25|50|75</c>,
+/// <c>--gif-seconds 5|10|15|30</c> and <c>--out DIR</c> (an existing folder); each defaults to <see cref="ConversionOptions.Default"/> (the command line
+/// never reads the Settings window's choices, so a script gives the same result on every PC). A bad value is a usage error (exit 2).
 /// MikeShift is fully local: without <c>--use-word</c> the CLI never starts Microsoft Word (so legacy .doc is not offered and DOCX to
 /// PDF uses the built-in converter). <c>--use-word</c> opts in for that run; Word may then connect to Microsoft on its own.
 /// Exit codes: 0 success; 1 an error ("error: ..." on stderr; unknown title lists the available actions; Trim/Crop
@@ -23,11 +26,19 @@ public static class CliRunner
 
     public const string UsageText =
         "usage:\n" +
-        "  mikeshift [--use-word] --list FILES...\n" +
-        "  mikeshift [--use-word] --run TITLE [--range m:ss-m:ss] [--crop X,Y,W,H[@OWxOH]] FILES...\n" +
+        "  mikeshift [--use-word] [OPTIONS] --list FILES...\n" +
+        "  mikeshift [--use-word] [OPTIONS] --run TITLE [--range m:ss-m:ss] [--crop X,Y,W,H[@OWxOH]] FILES...\n" +
         "\n" +
         "  --use-word   let this run use Microsoft Word if it is installed (legacy .doc files, Word's own PDF export).\n" +
-        "               Off by default: MikeShift is fully local, and Word may connect to Microsoft.\n";
+        "               Off by default: MikeShift is fully local, and Word may connect to Microsoft.\n" +
+        "\n" +
+        "conversion options (the defaults are what the Settings window starts with; the command line does not read Settings):\n" +
+        "  --quality N        JPG, WebP and HEIC quality, 50 to 100 (default 90)\n" +
+        "  --compress LEVEL   how hard Compress squeezes a picture: light, medium or strong (default medium)\n" +
+        "  --resize P         the Resize percentage: 25, 50 or 75 (default 50; --run \"Resize 25%\" says the same)\n" +
+        "  --gif-seconds N    the longest a GIF made from a video runs: 5, 10, 15 or 30 (default 15)\n" +
+        "  --out DIR          put converted files in this existing folder instead of next to the originals\n" +
+        "                     (Downloads if it can't be written to)\n";
 
     public const string RangeSyntax =
         "--range m:ss-m:ss   start and end of the part to keep, e.g. --range 0:05-0:12.5 (also h:mm:ss, fractions allowed)";
@@ -67,7 +78,8 @@ public static class CliRunner
             paths.Add(full);
         }
 
-        var actions = ActionCatalog.For(paths, caps);
+        var options = cmd.Options;
+        var actions = ActionCatalog.For(paths, caps, options);
 
         if (cmd.Mode == Mode.List)
         {
@@ -105,7 +117,7 @@ public static class CliRunner
         }
 
         var interaction = new CliInteraction(range is { } r ? new TimeRange(r.Start, r.End) : null, crop);
-        var ctx = new ActionContext(caps, interaction);
+        var ctx = new ActionContext(caps, interaction, options: options);
 
         ActionResult result;
         try
@@ -124,7 +136,9 @@ public static class CliRunner
         if (result.AlreadyInFormat > 0)
             stderr.WriteLine($"note: {result.AlreadyInFormat} already {result.AlreadyLabel ?? action.Title}");
         if (result.AnyDownloadsFallback)
-            stderr.WriteLine("note: saved in Downloads (the original's folder is not writable)");
+            stderr.WriteLine(options.OutputFolder is { } chosen
+                ? $"note: saved in Downloads ({chosen} is not writable)"
+                : "note: saved in Downloads (the original's folder is not writable)");
 
         if (result.Cancelled)
         {
@@ -153,7 +167,11 @@ public static class CliRunner
 
     private enum Mode { List, Run }
 
-    private sealed record Command(Mode Mode, string? Title, string? Range, string? Crop, IReadOnlyList<string> Files, bool UseWord = false);
+    private sealed record Command(Mode Mode, string? Title, string? Range, string? Crop, IReadOnlyList<string> Files, bool UseWord = false,
+        ConversionOptions? ParsedOptions = null)
+    {
+        public ConversionOptions Options => ParsedOptions ?? ConversionOptions.Default;
+    }
 
     private static bool TryParse(string[] args, out Command cmd, out string? error)
     {
@@ -165,6 +183,8 @@ public static class CliRunner
         var useWord = false;
         var files = new List<string>();
         var onlyFiles = false;
+        var options = ConversionOptions.Default;
+        int? resizeFlag = null;
 
         for (var i = 0; i < args.Length; i++)
         {
@@ -201,6 +221,52 @@ public static class CliRunner
                     if (++i >= args.Length) { error = "--crop needs a value"; return false; }
                     crop = args[i];
                     break;
+                case "--quality":
+                    if (++i >= args.Length) { error = "--quality needs a number from 50 to 100"; return false; }
+                    if (!ConversionOptions.TryParseQuality(args[i], out var quality))
+                    {
+                        error = $"--quality must be a whole number from {ConversionOptions.MinQuality} to {ConversionOptions.MaxQuality}, not \"{args[i]}\"";
+                        return false;
+                    }
+                    options = options with { Quality = quality };
+                    break;
+                case "--compress":
+                    if (++i >= args.Length) { error = "--compress needs light, medium or strong"; return false; }
+                    if (!ConversionOptions.TryParseCompress(args[i], out var strength))
+                    {
+                        error = $"--compress must be light, medium or strong, not \"{args[i]}\"";
+                        return false;
+                    }
+                    options = options with { Compress = strength };
+                    break;
+                case "--resize":
+                    if (++i >= args.Length) { error = "--resize needs 25, 50 or 75"; return false; }
+                    if (!ConversionOptions.TryParseResizePercent(args[i], out var percent))
+                    {
+                        error = $"--resize must be 25, 50 or 75, not \"{args[i]}\"";
+                        return false;
+                    }
+                    resizeFlag = percent;
+                    options = options with { ResizePercent = percent };
+                    break;
+                case "--gif-seconds":
+                    if (++i >= args.Length) { error = "--gif-seconds needs 5, 10, 15 or 30"; return false; }
+                    if (!ConversionOptions.TryParseGifSeconds(args[i], out var seconds))
+                    {
+                        error = $"--gif-seconds must be 5, 10, 15 or 30, not \"{args[i]}\"";
+                        return false;
+                    }
+                    options = options with { GifSeconds = seconds };
+                    break;
+                case "--out":
+                    if (++i >= args.Length) { error = "--out needs a folder"; return false; }
+                    if (!TryResolveFolder(args[i], out var folder, out var folderError))
+                    {
+                        error = "--out: " + folderError;
+                        return false;
+                    }
+                    options = options with { OutputFolder = folder };
+                    break;
                 default:
                     error = $"unknown option {a}";
                     return false;
@@ -211,8 +277,36 @@ public static class CliRunner
         if (files.Count == 0) { error = "no files given"; return false; }
         if (mode == Mode.List && (range is not null || crop is not null)) { error = "--range and --crop only apply to --run"; return false; }
 
-        cmd = new Command(mode.Value, title, range, crop, files, useWord);
+        // --run "Resize 25%" names the percentage itself; it only conflicts with a --resize that says something else.
+        if (mode == Mode.Run && ActionCatalog.ResizePercentIn(title!) is { } titled)
+        {
+            if (resizeFlag is { } flagged && flagged != titled)
+            {
+                error = $"\"{title}\" and --resize {flagged} disagree";
+                return false;
+            }
+            options = options with { ResizePercent = titled };
+        }
+
+        cmd = new Command(mode.Value, title, range, crop, files, useWord, options);
         return true;
+    }
+
+    /// <summary>An <c>--out</c> value: relative to the current folder is fine; it must already exist.</summary>
+    private static bool TryResolveFolder(string text, out string? folder, out string error)
+    {
+        folder = null;
+        error = "";
+        string full;
+        try { full = Path.GetFullPath(text); }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            error = $"\"{text}\" is not a valid folder name";
+            return false;
+        }
+        folder = ConversionOptions.ValidateOutputFolder(full, out var problem);
+        if (folder is null) error = problem ?? $"\"{text}\" can't be used";
+        return folder is not null;
     }
 
     private readonly record struct RangeArg(TimeSpan Start, TimeSpan End);

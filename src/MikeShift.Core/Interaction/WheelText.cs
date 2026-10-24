@@ -45,7 +45,9 @@ public static class WheelText
         return action.Title switch
         {
             "Compress" => "Make the files smaller",
-            "Resize 50%" => "Save a copy at half the width and height",
+            _ when ActionCatalog.ResizePercentIn(action.Title) is { } percent => percent == 50
+                ? "Save a copy at half the width and height"
+                : $"Save a copy at {percent}% of the width and height",
             "Crop" => "Choose the part of the picture to keep",
             "Strip EXIF" => "Save a copy without camera and location data",
             "Trim" => "Choose the part to keep",

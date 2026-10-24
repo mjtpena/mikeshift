@@ -119,9 +119,24 @@ public sealed record FeedbackPlan(ToastContent? Toast, DialogContent? Dialog, bo
     private static string LocationText(ActionResult r)
     {
         var plural = r.Outputs.Count > 1;
+        if (r.ChosenFolder is { } chosen)
+        {
+            if (!r.AnyDownloadsFallback) return "In " + FolderName(chosen);
+            return r.Outputs.All(o => o.UsedDownloadsFallback)
+                ? $"In Downloads ({FolderName(chosen)} isn't available)"
+                : $"Some are in Downloads ({FolderName(chosen)} isn't available)";
+        }
         if (!r.AnyDownloadsFallback) return plural ? "Next to the originals" : "Next to the original";
         var all = r.Outputs.All(o => o.UsedDownloadsFallback);
         return all ? "In Downloads (that folder isn't writable)" : "Some are in Downloads (that folder isn't writable)";
+    }
+
+    /// <summary>The last part of a folder path for a toast ("Converted"), or the whole path for a drive root.</summary>
+    private static string FolderName(string folder)
+    {
+        var trimmed = folder.TrimEnd('\\', '/');
+        var name = System.IO.Path.GetFileName(trimmed);
+        return name.Length > 0 ? name : folder;
     }
 
     private static string AllFailedTitle(ActionResult r) =>
@@ -190,6 +205,13 @@ public sealed record FeedbackPlan(ToastContent? Toast, DialogContent? Dialog, bo
     private static string PartialFooter(ActionResult r)
     {
         var n = r.Outputs.Count;
+        if (r.ChosenFolder is { } chosen)
+        {
+            if (!r.AnyDownloadsFallback) return n == 1 ? $"The converted file is in {FolderName(chosen)}." : $"The {n} converted files are in {FolderName(chosen)}.";
+            return r.Outputs.All(o => o.UsedDownloadsFallback)
+                ? (n == 1 ? "The converted file is in Downloads." : $"The {n} converted files are in Downloads.") + $" {FolderName(chosen)} isn't available."
+                : $"Some converted files are in Downloads because {FolderName(chosen)} isn't available. The rest are in {FolderName(chosen)}.";
+        }
         if (r.AnyDownloadsFallback)
             return r.Outputs.All(o => o.UsedDownloadsFallback)
                 ? (n == 1 ? "The converted file is in Downloads." : $"The {n} converted files are in Downloads.")

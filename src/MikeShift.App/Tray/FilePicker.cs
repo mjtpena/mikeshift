@@ -103,6 +103,64 @@ internal static unsafe class FilePicker
         }
     }
 
+    /// <summary>Remembers the last folder of the "where converted files go" dialog separately from the file dialog above.</summary>
+    private static readonly Guid FolderClientGuid = new("a3e8c2d1-4b7f-4e2a-8c35-6d1f0b9a7e42");
+
+    /// <summary>
+    /// Shows the common folder dialog ("Where converted files go", Settings) over <paramref name="owner"/> and returns the chosen file-system
+    /// folder, or null if cancelled or on failure. Starts in <paramref name="startFolder"/> when it exists, else wherever Windows last
+    /// opened it.
+    /// </summary>
+    public static string? PickFolder(nint owner, string? startFolder = null)
+    {
+        try
+        {
+            var dialog = (IFileOpenDialog)new FileOpenDialog();
+            dialog.GetOptions(out var options);
+            dialog.SetOptions(options
+                | FILEOPENDIALOGOPTIONS.FOS_PICKFOLDERS
+                | FILEOPENDIALOGOPTIONS.FOS_FORCEFILESYSTEM
+                | FILEOPENDIALOGOPTIONS.FOS_PATHMUSTEXIST);
+            dialog.SetTitle("Choose a folder for converted files");
+            dialog.SetOkButtonLabel("Choose folder");
+            dialog.SetClientGuid(FolderClientGuid);
+            try
+            {
+                if (!string.IsNullOrEmpty(startFolder) && Directory.Exists(startFolder)) dialog.SetFolder(ItemFor(startFolder));
+            }
+            catch (Exception ex)
+            {
+                Wheel.WheelLog.Error("folder picker start folder", ex); // the dialog opens wherever Windows likes
+            }
+
+            try
+            {
+                dialog.Show(new HWND(owner));
+            }
+            catch (COMException ex) when (ex.HResult == HResultCancelled)
+            {
+                return null;
+            }
+
+            dialog.GetResult(out var item);
+            item.GetDisplayName(SIGDN.SIGDN_FILESYSPATH, out var name);
+            try
+            {
+                var path = name.ToString();
+                return string.IsNullOrEmpty(path) ? null : path;
+            }
+            finally
+            {
+                Marshal.FreeCoTaskMem((nint)name.Value);
+            }
+        }
+        catch (Exception ex) when (!UnhandledPolicy.IsFatal(ex))
+        {
+            Wheel.WheelLog.Error("folder picker failed", ex);
+            return null;
+        }
+    }
+
     private static void SetFileTypes(IFileOpenDialog dialog, List<nint> allocations)
     {
         var filters = FileTypeFilters.All;

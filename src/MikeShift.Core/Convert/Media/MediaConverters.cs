@@ -39,9 +39,14 @@ public static class VideoConverter
     private const double ConvertBitsPerPixel = 0.15;
     private const double CompressBitsPerPixel = 0.07;
 
-    /// <summary>Re-encode to MP4, M4V, WMV or animated GIF; output <c>name.ext</c>.</summary>
-    public static async Task<string> ToFormatAsync(string input, VideoFormat format, CancellationToken ct)
+    /// <summary>Re-encode to MP4, M4V, WMV or animated GIF (first 15 s); output <c>name.ext</c>.</summary>
+    public static Task<string> ToFormatAsync(string input, VideoFormat format, CancellationToken ct) =>
+        ToFormatAsync(input, format, ConversionOptions.Default, ct);
+
+    /// <summary>As above; a GIF runs at most <paramref name="options"/>'s <see cref="ConversionOptions.GifSeconds"/>.</summary>
+    public static async Task<string> ToFormatAsync(string input, VideoFormat format, ConversionOptions options, CancellationToken ct)
     {
+        ArgumentNullException.ThrowIfNull(options);
         var info = await MediaCommon.RequireVideoAsync(input, ct).ConfigureAwait(false);
         var ext = format switch { VideoFormat.Mp4 => ".mp4", VideoFormat.M4v => ".m4v", VideoFormat.Wmv => ".wmv", _ => ".gif" };
 
@@ -50,7 +55,7 @@ public static class VideoConverter
             switch (format)
             {
                 case VideoFormat.Gif:
-                    await Task.Run(() => GifExporter.Export(input, temp, token), token).ConfigureAwait(false);
+                    await Task.Run(() => GifExporter.Export(input, temp, options.GifSeconds, token), token).ConfigureAwait(false);
                     break;
                 case VideoFormat.Wmv:
                     await MediaTranscode.RunAsync(input, temp, MediaTranscode.Wmv(info, info.Height, ConvertBitsPerPixel), null,

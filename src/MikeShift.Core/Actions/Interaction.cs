@@ -46,11 +46,12 @@ public sealed class NoInteraction : IInteraction
 /// <summary>Everything an action run needs besides the file list.</summary>
 public sealed class ActionContext
 {
-    public ActionContext(Capabilities capabilities, IInteraction? interaction = null, IProgress<string>? progress = null)
+    public ActionContext(Capabilities capabilities, IInteraction? interaction = null, IProgress<string>? progress = null, ConversionOptions? options = null)
     {
         Capabilities = capabilities;
         Interaction = interaction ?? NoInteraction.Instance;
         Progress = progress;
+        Options = options ?? ConversionOptions.Default;
     }
 
     /// <summary>What this machine can do (also what the catalog was filtered with).</summary>
@@ -58,6 +59,9 @@ public sealed class ActionContext
 
     /// <summary>Source of crop/range decisions.</summary>
     public IInteraction Interaction { get; }
+
+    /// <summary>The user's conversion settings (quality, Compress strength, Resize percentage, GIF length, output folder); <see cref="ConversionOptions.Default"/> unless the host passed some.</summary>
+    public ConversionOptions Options { get; }
 
     /// <summary>Optional status sink; <c>Each</c> reports the file name it is starting.</summary>
     public IProgress<string>? Progress { get; }

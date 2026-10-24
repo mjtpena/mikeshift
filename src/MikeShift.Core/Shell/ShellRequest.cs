@@ -1,4 +1,5 @@
 using System.Text;
+using MikeShift.Core.Interaction;
 
 namespace MikeShift.Core.Shell;
 
@@ -28,10 +29,11 @@ public enum ShellReply : byte
 /// <summary>
 /// One message from the Explorer extension process to the tray app over the local named pipe. A small length-prefixed binary format, so
 /// neither side needs a serializer (the extension process starts cold on the first right-click; the tray app validates every field).
+/// <paramref name="Anchor"/> is where the pointer was (physical screen pixels) when the line was picked; "More options…" opens the wheel there. Null = unknown.
 /// </summary>
-public sealed record ShellRequest(ShellVerb Verb, string ActionTitle, IReadOnlyList<string> Paths)
+public sealed record ShellRequest(ShellVerb Verb, string ActionTitle, IReadOnlyList<string> Paths, PointPx? Anchor = null)
 {
-    private const uint Magic = 0x3148534D; // "MSH1"
+    internal const uint Magic = 0x3248534D; // "MSH2": MSH1 had no pointer position
     private const int MaxPaths = 100_000;
     private const int MaxStringChars = 33_000;
 
@@ -44,6 +46,9 @@ public sealed record ShellRequest(ShellVerb Verb, string ActionTitle, IReadOnlyL
         writer.Write(ActionTitle ?? "");
         writer.Write(Paths.Count);
         foreach (var p in Paths) writer.Write(p);
+        writer.Write(Anchor is not null);
+        writer.Write(Anchor?.X ?? 0);
+        writer.Write(Anchor?.Y ?? 0);
         writer.Flush();
     }
 
@@ -61,7 +66,10 @@ public sealed record ShellRequest(ShellVerb Verb, string ActionTitle, IReadOnlyL
             if (count is < 0 or > MaxPaths) throw new InvalidDataException("Bad item count.");
             var paths = new List<string>(Math.Min(count, 4096));
             for (var i = 0; i < count; i++) paths.Add(ReadString(reader));
-            return new ShellRequest(verb, title, paths);
+            var hasAnchor = reader.ReadBoolean();
+            var x = reader.ReadInt32();
+            var y = reader.ReadInt32();
+            return new ShellRequest(verb, title, paths, hasAnchor ? new PointPx(x, y) : null);
         }
         catch (EndOfStreamException ex)
         {

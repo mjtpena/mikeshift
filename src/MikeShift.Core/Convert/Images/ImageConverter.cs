@@ -27,53 +27,63 @@ public static class ImageConverter
 {
     // Naming suffixes (PLAN §1.1).
     private const string CompressedSuffix = " compressed";
-    private const string ResizedSuffix = " 50%";
     private const string CroppedSuffix = " cropped";
     private const string CleanSuffix = " clean";
 
-    private const double DefaultQuality = 0.9;
-    private const double CompressQuality = 0.6;
     private const double StripQuality = 0.95;
-    private const int CompressMaxLongSide = 3000;
     private const double CompressMinSaving = 0.05;
     private const int MaxOutputSide = 30_000;
 
     // ------------------------------------------------------------------ Format page
 
-    /// <summary>Converts to <paramref name="format"/>; output <c>name.ext</c> (no suffix), uniquified.</summary>
+    /// <summary>Converts to <paramref name="format"/>; output <c>name.ext</c> (no suffix), uniquified. Lossy formats use the default quality (90).</summary>
     public static Task<string> ToFormatAsync(string input, ImageFormat format, CancellationToken ct) =>
-        ToFormatAsync(input, format, ImageCodec.MaxPixels, ct);
+        ToFormatAsync(input, format, ConversionOptions.Default, ct);
 
-    internal static async Task<string> ToFormatAsync(string input, ImageFormat format, long maxPixels, CancellationToken ct)
+    /// <summary>As above; JPG, WebP and HEIC are encoded at <paramref name="options"/>'s <see cref="ConversionOptions.Quality"/>.</summary>
+    public static Task<string> ToFormatAsync(string input, ImageFormat format, ConversionOptions options, CancellationToken ct) =>
+        ToFormatAsync(input, format, ImageCodec.MaxPixels, ct, options);
+
+    internal static Task<string> ToFormatAsync(string input, ImageFormat format, long maxPixels, CancellationToken ct) =>
+        ToFormatAsync(input, format, maxPixels, ct, ConversionOptions.Default);
+
+    private static async Task<string> ToFormatAsync(string input, ImageFormat format, long maxPixels, CancellationToken ct, ConversionOptions options)
     {
+        ArgumentNullException.ThrowIfNull(options);
         var img = await ImageCodec.DecodeAsync(input, maxPixels, ct).ConfigureAwait(false);
-        var bytes = await EncodeAsync(img, img.Pixels, format, DefaultQuality, keepExif: true, ct).ConfigureAwait(false);
+        var bytes = await EncodeAsync(img, img.Pixels, format, options.QualityFraction, keepExif: true, ct).ConfigureAwait(false);
         return await CommitAsync(input, ExtensionFor(format, null), "", bytes, ct).ConfigureAwait(false);
     }
 
     // ------------------------------------------------------------------ Tool page
 
-    /// <summary>Compress: long side to 3000 px, quality 0.6, " compressed"; keep only if at least 5 % smaller.</summary>
+    /// <summary>Compress at the default (Medium) strength: long side to 3000 px, quality 0.6, " compressed"; keep only if at least 5 % smaller.</summary>
     public static Task<string> CompressAsync(string input, CancellationToken ct) =>
         CompressAsync(input, Capabilities.Current, ct);
+
+    /// <summary>Compress at the default (Medium) strength.</summary>
+    public static Task<string> CompressAsync(string input, Capabilities caps, CancellationToken ct) =>
+        CompressAsync(input, caps, ConversionOptions.Default, ct);
 
     /// <summary>
     /// Compress. Output is a JPG (flattened on white) unless the source has real transparency (then PNG, which keeps it) or is
     /// HEIC (then HEIC when <paramref name="caps"/> allows encoding it, else PNG). Animated GIF/APNG/WebP are refused. If the result is not at least
-    /// 5 % smaller than the original a <see cref="ConversionException"/> ("already small") is thrown and nothing is written.
+    /// 5 % smaller than the original a <see cref="ConversionException"/> ("already small") is thrown and nothing is written. The strength
+    /// (<see cref="ConversionOptions.Compress"/>) sets the longest side (4000, 3000 or 2000 px) and the quality (0.75, 0.6 or 0.45).
     /// </summary>
-    public static async Task<string> CompressAsync(string input, Capabilities caps, CancellationToken ct)
+    public static async Task<string> CompressAsync(string input, Capabilities caps, ConversionOptions options, CancellationToken ct)
     {
+        ArgumentNullException.ThrowIfNull(options);
         var img = await ImageCodec.DecodeAsync(input, ImageCodec.MaxPixels, ct).ConfigureAwait(false);
         RequireSingleFrame(img, "compressed");
 
-        var pixels = LongSideAtMost(img.Pixels, CompressMaxLongSide);
+        var pixels = LongSideAtMost(img.Pixels, options.CompressMaxLongSide);
         var hasAlpha = img.HasRealAlpha;
 
         // Real transparency must survive, and neither JPEG nor Windows' HEIF encoder can store it: those pictures stay PNG.
         // HEIC photos stay HEIC when this PC can encode it; everything else becomes JPEG.
         ImageFormat format;
-        const double quality = CompressQuality;
+        var quality = options.CompressQuality;
         if (hasAlpha)
             format = ImageFormat.Png;
         else if (img.Container == ImageContainer.Heic)
@@ -95,31 +105,51 @@ public static class ImageConverter
         ResizeHalfAsync(input, Capabilities.Current, ct);
 
     /// <summary>Resize to half width and height, keeping the format (PNG when the format can't be written on this PC).</summary>
-    public static async Task<string> ResizeHalfAsync(string input, Capabilities caps, CancellationToken ct)
+    public static Task<string> ResizeHalfAsync(string input, Capabilities caps, CancellationToken ct) =>
+        ResizeAsync(input, ConversionOptions.DefaultResizePercent, caps, ConversionOptions.Default, ct);
+
+    /// <summary>
+    /// Resize to <paramref name="percent"/> of the width and height (25, 50 or 75; each side rounds half up to a whole pixel, at least 1), keeping
+    /// the format (PNG when it can't be written on this PC). The output is named " 25%" / " 50%" / " 75%"; lossy formats use
+    /// <paramref name="options"/>'s quality.
+    /// </summary>
+    public static async Task<string> ResizeAsync(string input, int percent, Capabilities caps, ConversionOptions options, CancellationToken ct)
     {
+        ArgumentNullException.ThrowIfNull(options);
+        if (!ConversionOptions.ResizeChoices.Contains(percent))
+            throw new ArgumentOutOfRangeException(nameof(percent), percent, "Resize must be 25, 50 or 75 percent.");
         var img = await ImageCodec.DecodeAsync(input, ImageCodec.MaxPixels, ct).ConfigureAwait(false);
         RequireSingleFrame(img, "resized");
 
-        var w = Math.Max(1, (img.Width + 1) / 2);
-        var h = Math.Max(1, (img.Height + 1) / 2);
+        var w = ScaledSide(img.Width, percent);
+        var h = ScaledSide(img.Height, percent);
         var pixels = img.Pixels.CropScale(new RectPx(0, 0, img.Width, img.Height), w, h);
 
         var format = SameFormat(img, caps);
-        var bytes = await EncodeAsync(img, pixels, format, DefaultQuality, keepExif: true, ct).ConfigureAwait(false);
-        return await CommitAsync(input, ExtensionFor(format, input), ResizedSuffix, bytes, ct).ConfigureAwait(false);
+        var bytes = await EncodeAsync(img, pixels, format, options.QualityFraction, keepExif: true, ct).ConfigureAwait(false);
+        return await CommitAsync(input, ExtensionFor(format, input), $" {percent}%", bytes, ct).ConfigureAwait(false);
     }
+
+    /// <summary>A side length scaled to <paramref name="percent"/>, rounded half up, never below 1 (50 % of 101 is 51, as it always was).</summary>
+    internal static int ScaledSide(int side, int percent) =>
+        Math.Max(1, (int)Math.Round(side * percent / 100.0, MidpointRounding.AwayFromZero));
 
     /// <summary>Crop to <paramref name="crop"/> (+ optional scale), same format, " cropped".</summary>
     public static Task<string> CropAsync(string input, CropChoice crop, CancellationToken ct) =>
         CropAsync(input, crop, Capabilities.Current, ct);
 
+    /// <summary>Crop at the default quality.</summary>
+    public static Task<string> CropAsync(string input, CropChoice crop, Capabilities caps, CancellationToken ct) =>
+        CropAsync(input, crop, caps, ConversionOptions.Default, ct);
+
     /// <summary>
     /// Crops the upright image to <c>crop.Rect</c> (clamped to the image) and scales the piece to
-    /// <c>OutputWidth x OutputHeight</c> with high-quality interpolation.
+    /// <c>OutputWidth x OutputHeight</c> with high-quality interpolation. Lossy formats use <paramref name="options"/>'s quality.
     /// </summary>
-    public static async Task<string> CropAsync(string input, CropChoice crop, Capabilities caps, CancellationToken ct)
+    public static async Task<string> CropAsync(string input, CropChoice crop, Capabilities caps, ConversionOptions options, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(crop);
+        ArgumentNullException.ThrowIfNull(options);
         var img = await ImageCodec.DecodeAsync(input, ImageCodec.MaxPixels, ct).ConfigureAwait(false);
         RequireSingleFrame(img, "cropped");
 
@@ -139,7 +169,7 @@ public static class ImageConverter
 
         var pixels = img.Pixels.CropScale(rect, ow, oh);
         var format = SameFormat(img, caps);
-        var bytes = await EncodeAsync(img, pixels, format, DefaultQuality, keepExif: true, ct).ConfigureAwait(false);
+        var bytes = await EncodeAsync(img, pixels, format, options.QualityFraction, keepExif: true, ct).ConfigureAwait(false);
         return await CommitAsync(input, ExtensionFor(format, input), CroppedSuffix, bytes, ct).ConfigureAwait(false);
     }
 

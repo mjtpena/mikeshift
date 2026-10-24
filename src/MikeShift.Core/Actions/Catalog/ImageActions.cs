@@ -10,6 +10,14 @@ namespace MikeShift.Core.Actions.Catalog;
 /// </summary>
 public static class ImageActions
 {
+    /// <summary>The Resize tool for each percentage the settings offer: "Resize 25%", "Resize 50%", "Resize 75%" (all with the stable <see cref="ActionDef.Id"/> "Resize").</summary>
+    private static readonly IReadOnlyDictionary<int, ActionDef> ResizeTools = ConversionOptions.ResizeChoices.ToDictionary(
+        percent => percent,
+        percent => ActionDef.PerFile(ConversionOptions.ResizeTitle(percent), WheelPage.Tool,
+            (input, ctx, ct) => ImageConverter.ResizeAsync(input, percent, ctx.Capabilities, ctx.Options, ct),
+            glyph: Glyphs.Resize, id: "Resize"));
+
+    /// <summary>The list with the default Resize percentage (50). <see cref="WithResize"/> names it for the user's setting.</summary>
     public static IReadOnlyList<ActionDef> All { get; } =
     [
         // ---- Format page
@@ -25,19 +33,17 @@ public static class ImageActions
 
         // ---- Tool page
         ActionDef.PerFile("Compress", WheelPage.Tool,
-            (input, ctx, ct) => ImageConverter.CompressAsync(input, ctx.Capabilities, ct),
+            (input, ctx, ct) => ImageConverter.CompressAsync(input, ctx.Capabilities, ctx.Options, ct),
             glyph: Glyphs.Compress,
             appliesTo: CanCompress),
-        ActionDef.PerFile("Resize 50%", WheelPage.Tool,
-            (input, ctx, ct) => ImageConverter.ResizeHalfAsync(input, ctx.Capabilities, ct),
-            glyph: Glyphs.Resize),
+        ResizeTools[ConversionOptions.DefaultResizePercent],
         ActionDef.PerFile("Crop", WheelPage.Tool,
             async (input, ctx, ct) =>
             {
                 // Refuse animated GIF / multi-page TIFF / animated WebP now, not after the user drew the crop.
                 await ImageConverter.RequireSingleFrameAsync(input, "cropped", ct).ConfigureAwait(false);
                 var choice = await ctx.RequireCropAsync(input, ct).ConfigureAwait(false);
-                return await ImageConverter.CropAsync(input, choice, ctx.Capabilities, ct).ConfigureAwait(false);
+                return await ImageConverter.CropAsync(input, choice, ctx.Capabilities, ctx.Options, ct).ConfigureAwait(false);
             },
             glyph: Glyphs.Crop, interactive: true),
         ActionDef.PerFile("Strip EXIF", WheelPage.Tool,
@@ -48,6 +54,16 @@ public static class ImageActions
             glyph: Glyphs.MergePdf,
             appliesTo: ActionDef.AtLeast(2)),
     ];
+
+    private static readonly IReadOnlyDictionary<int, IReadOnlyList<ActionDef>> ByResize = ConversionOptions.ResizeChoices.ToDictionary(
+        percent => percent,
+        percent => percent == ConversionOptions.DefaultResizePercent
+            ? All
+            : (IReadOnlyList<ActionDef>)All.Select(a => a.Id == "Resize" ? ResizeTools[percent] : a).ToArray());
+
+    /// <summary>The list with the Resize tool named for <paramref name="percent"/> (25, 50 or 75): same tiles, same order.</summary>
+    public static IReadOnlyList<ActionDef> WithResize(int percent) =>
+        ByResize.TryGetValue(percent, out var list) ? list : All;
 
     /// <summary>
     /// Compress turns HEIC into HEIC, or into PNG when no HEIF encoder exists; PNG is almost always bigger, so the tile would only
@@ -61,6 +77,6 @@ public static class ImageActions
 
     private static ActionDef Format(string title, ImageFormat format, Func<Capabilities, bool>? requires, string[] hideFor) =>
         ActionDef.PerFile(title, WheelPage.Format,
-            (input, _, ct) => ImageConverter.ToFormatAsync(input, format, ct),
+            (input, ctx, ct) => ImageConverter.ToFormatAsync(input, format, ctx.Options, ct),
             hideFor: hideFor, requires: requires);
 }

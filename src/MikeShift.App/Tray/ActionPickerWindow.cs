@@ -16,7 +16,7 @@ internal sealed class ActionPickerWindow : Window
     private ActionPickerWindow(AppServices services, IReadOnlyList<string> paths)
     {
 
-        var actions = ActionCatalog.For(paths, services.Capabilities);
+        var actions = ActionCatalog.For(paths, services.Capabilities, services.Preferences.Conversions);
 
         var panel = new StackPanel { Spacing = 6, Padding = new Thickness(20) };
         var names = string.Join(", ", paths.Take(3).Select(Path.GetFileName));
