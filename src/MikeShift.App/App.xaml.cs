@@ -71,7 +71,13 @@ public partial class App : Application
         // X2 (begin): the global hotkey that opens the click-mode wheel for the current File Explorer selection.
         if (_drag is not null) _explorerHotkey = Selection.ExplorerHotkey.Start(Services, _drag.ShowClickMode);
         // X2 (end)
-        _shell = Shell.ShellBridge.Start(Services, Tray.RequestConvert); // X1: Explorer right-click entry (pipe from the -Embedding server)
+        // X1: Explorer right-click entry (pipe from the -Embedding server). "More options…" opens the wheel where the pointer was when the line was
+        // clicked; without a position (or without the wheel) it is the usual Convert Files… behaviour.
+        _shell = Shell.ShellBridge.Start(Services, (paths, anchor) =>
+        {
+            if (_drag is not null) _drag.ShowClickMode(paths, anchor);
+            else Tray.RequestConvert(paths);
+        });
         // Crop/Trim editors for interactive actions; dev flags `--crop <img>` / `--trim <media>` open them directly.
         Editors.EditorRegistration.Register(Services.Interaction);
         Editors.EditorRegistration.TryHandleDevArgs(DevSwitches.Args);

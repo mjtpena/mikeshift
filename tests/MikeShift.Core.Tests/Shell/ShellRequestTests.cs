@@ -50,7 +50,7 @@ public class ShellRequestTests
         using var ms = new MemoryStream();
         using (var w = new BinaryWriter(ms, System.Text.Encoding.UTF8, leaveOpen: true))
         {
-            w.Write(0x3148534Du);
+            w.Write(ShellRequest.Magic);
             w.Write((byte)ShellVerb.Run);
             w.Write("PNG");
             w.Write(int.MaxValue);

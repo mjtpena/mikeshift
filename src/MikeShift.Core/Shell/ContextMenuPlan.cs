@@ -1,4 +1,5 @@
 using MikeShift.Core.Actions;
+using MikeShift.Core.Feedback;
 
 namespace MikeShift.Core.Shell;
 
@@ -39,10 +40,10 @@ public static class ContextMenuPlanner
     /// <summary>A selection with more items than this is not looked at: Zip and "More options…" only (the wheel classifies large selections by sampling).</summary>
     public const int LargeSelection = 500;
 
-    /// <summary>Preferred order per category (titles from <c>Actions/Catalog</c>); visible actions not listed follow in catalog order.</summary>
-    private static readonly Dictionary<Category, string[]> Ranking = new()
+    /// <summary>Preferred order per category (<see cref="ActionDef.Id"/>s from <c>Actions/Catalog</c>, so "Resize" ranks whatever its percentage is); visible actions not listed follow in catalog order.</summary>
+    internal static readonly Dictionary<Category, string[]> Ranking = new()
     {
-        [Category.Image] = ["JPG", "PNG", "Merge PDF", "PDF", "Compress", "Resize 50%", "WebP", "HEIC", "TIFF", "GIF", "BMP", "Strip EXIF", "Crop"],
+        [Category.Image] = ["JPG", "PNG", "Merge PDF", "PDF", "Compress", "Resize", "WebP", "HEIC", "TIFF", "GIF", "BMP", "Strip EXIF", "Crop"],
         [Category.Pdf] = ["Merge", "Compress", "PNG", "JPG", "Split", "TXT"],
         [Category.Video] = ["MP4", "MP3", "GIF", "Compress", "WMV", "M4A", "M4V", "Trim"],
         [Category.Audio] = ["MP3", "M4A", "WAV", "Compress", "FLAC", "AIFF", "Trim"],
@@ -60,12 +61,17 @@ public static class ContextMenuPlanner
     /// <summary>
     /// The plan for <paramref name="paths"/>. <paramref name="kindOf"/> classifies one path without reading it (default
     /// <see cref="Kind.ByExtension"/>); Explorer's folders must map to <see cref="Category.Other"/> (the caller knows which items are folders).
+    /// <paramref name="options"/> only name the Resize line ("Resize 25%"). <paramref name="capabilitiesKnown"/> is false while the tray app has not
+    /// written its capability cache yet: <paramref name="caps"/> is then a guess in which no decoder exists, and a "Get the free HEIF extension" line
+    /// would be wrong for the many PCs that have it, so it is not offered.
     /// </summary>
-    public static ContextMenuPlan Build(IReadOnlyList<string> paths, Capabilities caps, Func<string, Category>? kindOf = null)
+    public static ContextMenuPlan Build(IReadOnlyList<string> paths, Capabilities caps, Func<string, Category>? kindOf = null, ConversionOptions? options = null,
+        bool capabilitiesKnown = true)
     {
         ArgumentNullException.ThrowIfNull(paths);
         ArgumentNullException.ThrowIfNull(caps);
         if (paths.Count == 0) return ContextMenuPlan.Hidden;
+        options ??= ConversionOptions.Default;
 
         var zip = new ContextMenuEntry(LabelFor(ZipAction.Def), ZipAction.Def.Title);
         if (paths.Count > LargeSelection) return new ContextMenuPlan(true, [zip], true);
@@ -73,12 +79,18 @@ public static class ContextMenuPlanner
         kindOf ??= Kind.ByExtension;
         var category = ActionCatalog.CommonCategory(paths, kindOf);
         var entries = new List<ContextMenuEntry>();
+
+        // HEIC/HEIF/AVIF photos Windows cannot open yet: the one useful line is the free extension that fixes it, not formats that would all fail.
+        // Decided from the file names and the cached capabilities only, the same rule the tray app applies again when the line is picked.
+        if (capabilitiesKnown && category is not null && CodecHelp.ForExtensions(paths, caps) is { } missing)
+            return new ContextMenuPlan(true, [new ContextMenuEntry(missing.Description, missing.Title), zip], false);
+
         if (category is { } c && Ranking.TryGetValue(c, out var order))
         {
-            var visible = ActionCatalog.ListFor(c).Where(a => IsVisible(a, c, paths, caps)).ToList();
+            var visible = ActionCatalog.ListFor(c, options).Where(a => IsVisible(a, c, paths, caps)).ToList();
             var ranked = new List<ActionDef>();
-            foreach (var title in order)
-                if (visible.FirstOrDefault(a => a.Title == title) is { } hit) ranked.Add(hit);
+            foreach (var id in order)
+                if (visible.FirstOrDefault(a => a.Id == id) is { } hit) ranked.Add(hit);
             ranked.AddRange(visible.Where(a => !ranked.Contains(a)));
             entries.AddRange(ranked.Take(MaxRankedActions).Select(a => new ContextMenuEntry(LabelFor(a), a.Title)));
         }

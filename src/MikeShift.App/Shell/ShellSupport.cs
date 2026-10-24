@@ -162,11 +162,11 @@ internal sealed record ShellSelection(int Count, IReadOnlyList<string>? Paths, I
     }
 
     /// <summary>The plan for this selection (hidden when it is empty or contains virtual items).</summary>
-    public ContextMenuPlan ToPlan(Capabilities caps)
+    public ContextMenuPlan ToPlan(Capabilities caps, ConversionOptions? options = null, bool capabilitiesKnown = true)
     {
         if (Count == 0 || Paths is null) return ContextMenuPlan.Hidden;
         if (Count > ContextMenuPlanner.LargeSelection) return new ContextMenuPlan(true, [new ContextMenuEntry("Zip", "Zip")], true);
-        return ContextMenuPlanner.Build(Paths, caps, p => Folders.Contains(p) ? Category.Other : Kind.ByExtension(p));
+        return ContextMenuPlanner.Build(Paths, caps, p => Folders.Contains(p) ? Category.Other : Kind.ByExtension(p), options, capabilitiesKnown);
     }
 }
 
@@ -175,6 +175,10 @@ internal static class CachedCapabilities
 {
     private static DateTime s_stamp;
     private static Capabilities s_value = Capabilities.Quick();
+    private static volatile bool s_known;
+
+    /// <summary>True once a cache file written by the tray app has been read. Until then <see cref="Get"/> is a guess without any decoder.</summary>
+    public static bool IsKnown => s_known;
 
     public static Capabilities Get()
     {
@@ -185,10 +189,38 @@ internal static class CachedCapabilities
             if (stamp == s_stamp) return s_value;
             s_value = CapabilityCache.Parse(File.ReadAllText(path));
             s_stamp = stamp;
+            s_known = true;
         }
         catch (Exception)
         {
             // No file yet (the tray app has not finished its first probe): the conservative snapshot stays.
+        }
+        return s_value;
+    }
+}
+
+/// <summary>
+/// The tray app's conversion settings as the menu needs them (the Resize percentage for "Resize 25%"), re-read when the file changes.
+/// Without a file (the tray app has not written it yet, or an older one) the defaults stand.
+/// </summary>
+internal static class CachedOptions
+{
+    private static DateTime s_stamp;
+    private static ConversionOptions s_value = ConversionOptions.Default;
+
+    public static ConversionOptions Get()
+    {
+        try
+        {
+            var path = Path.Combine(ShellNames.DataFolder(), OptionsCache.FileName);
+            var stamp = File.GetLastWriteTimeUtc(path);
+            if (stamp == s_stamp) return s_value;
+            s_value = OptionsCache.Parse(File.ReadAllText(path));
+            s_stamp = stamp;
+        }
+        catch (Exception)
+        {
+            // No file yet: the defaults stay.
         }
         return s_value;
     }

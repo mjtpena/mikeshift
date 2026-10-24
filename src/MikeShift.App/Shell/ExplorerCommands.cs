@@ -25,7 +25,7 @@ internal sealed partial class ConvertCommand : IExplorerCommand
             if (items is not null && _lastPlan is not null && ReferenceEquals(items, _lastItems)) return _lastPlan;
             var clock = System.Diagnostics.Stopwatch.StartNew();
             var selection = ShellSelection.Read(items, ContextMenuPlanner.LargeSelection);
-            var plan = selection.ToPlan(CachedCapabilities.Get());
+            var plan = selection.ToPlan(CachedCapabilities.Get(), CachedOptions.Get(), CachedCapabilities.IsKnown);
             ShellLog.Info($"menu for {selection.Count} item(s): {(plan.Visible ? plan.Entries.Count + " entries" : "hidden")}{(plan.Capped ? " (capped)" : "")}, {clock.Elapsed.TotalMilliseconds:F1} ms");
             if (items is not null)
             {
@@ -320,6 +320,19 @@ internal static class ShellDispatch
 {
     private const int MaxItems = 100_000;
 
+    /// <summary>The pointer in physical screen pixels, or null if Windows will not say.</summary>
+    private static MikeShift.Core.Interaction.PointPx? PointerNow()
+    {
+        try
+        {
+            return Windows.Win32.PInvoke.GetCursorPos(out var cursor) ? new MikeShift.Core.Interaction.PointPx(cursor.X, cursor.Y) : null;
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
+
     public static int Send(ShellVerb verb, string actionTitle, IShellItemArray? items)
     {
         try
@@ -331,7 +344,9 @@ internal static class ShellDispatch
                 return Hr.Ok;
             }
             ShellLog.Info($"{verb} {actionTitle}: {paths.Count} of {selection.Count} item(s) read from Explorer's selection");
-            var request = new ShellRequest(verb, actionTitle, paths);
+            // "More options…" opens the wheel where the pointer is, i.e. over the menu line that was just clicked. Read now: the tray app may need
+            // a moment to start, and the pointer is somewhere else by then.
+            var request = new ShellRequest(verb, actionTitle, paths, verb == ShellVerb.Wheel ? PointerNow() : null);
             var work = ServerLifetime.Begin(); // the process must outlive Invoke until the tray app has the request
             _ = Task.Run(() =>
             {
