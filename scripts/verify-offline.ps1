@@ -16,7 +16,7 @@
 
   What is watched (no administrator rights, no OS setting is changed):
     * A native sampler (iphlpapi GetExtendedTcpTable / GetExtendedUdpTable, IPv4 and IPv6, every TCP state including LISTEN) polls
-      every -PollMs (50 ms) for the PIDs of processes named mikeshift, MikeShift (and WINWORD, reported separately).
+      every -PollMs (50 ms) for the PIDs of processes named mikeshift, MikeShift, MikeShift.Cli (and WINWORD, reported separately).
       These are the tables Get-NetTCPConnection and Get-NetUDPEndpoint read, without their per-call cost, so 50 ms is achievable.
     * As a cross-check, Get-NetTCPConnection -OwningProcess and Get-NetUDPEndpoint -OwningProcess are polled in a second thread.
     * Loaded modules of the MikeShift processes are sampled and matched against networking libraries (ws2_32, winhttp, wininet,
@@ -229,13 +229,13 @@ $preexistingWord = @(Get-Process -Name WINWORD -ErrorAction SilentlyContinue | F
 if ($preexistingWord.Count) { "Ignoring $($preexistingWord.Count) WINWORD process(es) that were already running." }
 
 # ---- watchers ------------------------------------------------------------------------------------------------------------
-$poller = [NetPoller]::new(@('mikeshift', 'MikeShift', 'WINWORD'), $PollMs)
+$poller = [NetPoller]::new(@('mikeshift', 'MikeShift', 'MikeShift.Cli', 'WINWORD'), $PollMs)
 $cmdletLog = [System.Collections.Concurrent.ConcurrentDictionary[string, string]]::new()
 $cmdletStop = [hashtable]::Synchronized(@{ Stop = $false; Rounds = 0 })
 $cmdletJob = Start-ThreadJob -ArgumentList $cmdletLog, $cmdletStop -ScriptBlock {
   param($log, $ctl)
   while (-not $ctl.Stop) {
-    $ids = @(Get-Process -Name mikeshift, MikeShift, WINWORD -ErrorAction SilentlyContinue | ForEach-Object Id)
+    $ids = @(Get-Process -Name mikeshift, MikeShift, MikeShift.Cli, WINWORD -ErrorAction SilentlyContinue | ForEach-Object Id)
     if ($ids.Count) {
       foreach ($c in @(Get-NetTCPConnection -OwningProcess $ids -ErrorAction SilentlyContinue)) { [void]$log.TryAdd("TCP $($c.LocalAddress):$($c.LocalPort) -> $($c.RemoteAddress):$($c.RemotePort) $($c.State) pid $($c.OwningProcess)", '') }
       foreach ($u in @(Get-NetUDPEndpoint -OwningProcess $ids -ErrorAction SilentlyContinue)) { [void]$log.TryAdd("UDP $($u.LocalAddress):$($u.LocalPort) pid $($u.OwningProcess)", '') }
