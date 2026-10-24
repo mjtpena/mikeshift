@@ -51,6 +51,7 @@ public sealed partial class SettingsWindow : Window
             WordSwitch.IsEnabled = false;
             WordCard.Description = "Microsoft Word is not installed on this PC.";
         }
+        LoadConversions(prefs);
         foreach (RadioButton rb in ArmKeyChoice.Items)
             if (string.Equals((string)rb.Tag, prefs.ArmKey.ToString(), StringComparison.Ordinal))
                 ArmKeyChoice.SelectedItem = rb;
@@ -212,6 +213,141 @@ public sealed partial class SettingsWindow : Window
     private void OnWordToggled(object sender, RoutedEventArgs e)
     {
         if (!_loading) _services.Preferences.UseWord = WordSwitch.IsOn;
+    }
+
+    // ---- conversions (positioning P1-4) ----
+
+    private void LoadConversions(Preferences prefs)
+    {
+        QualitySlider.Value = prefs.Quality;
+        ShowQuality(prefs.Quality);
+        SelectByTag(CompressChoice, prefs.Compress.ToString());
+        ShowCompress(prefs.Compress);
+        SelectByTag(ResizeChoice, prefs.ResizePercent.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        ShowResize(prefs.ResizePercent);
+        SelectByTag(GifChoice, prefs.GifSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        OutputChoice.SelectedIndex = prefs.OutputFolder is null ? 0 : 1;
+        ShowOutput(prefs.OutputFolder);
+    }
+
+    private static void SelectByTag(ComboBox box, string tag)
+    {
+        foreach (ComboBoxItem item in box.Items)
+            if (string.Equals((string)item.Tag, tag, StringComparison.Ordinal))
+                box.SelectedItem = item;
+    }
+
+    private void ShowQuality(int quality)
+    {
+        QualityValue.Text = ConversionCopy.QualityValue(quality);
+        AutomationProperties.SetName(QualitySlider, $"Picture quality, {quality}");
+    }
+
+    private void OnQualityChanged(object sender, Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
+    {
+        if (_loading) return;
+        var quality = (int)Math.Round(e.NewValue);
+        _services.Preferences.Quality = quality;
+        ShowQuality(quality);
+    }
+
+    private void ShowCompress(CompressStrength strength)
+    {
+        CompressCard.Description = ConversionCopy.CompressDescription(strength);
+        AutomationProperties.SetName(CompressChoice, $"Compress strength, {strength}");
+    }
+
+    private void OnCompressChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loading || CompressChoice.SelectedItem is not ComboBoxItem item) return;
+        if (!Enum.TryParse<CompressStrength>((string)item.Tag, out var strength)) return;
+        _services.Preferences.Compress = strength;
+        ShowCompress(strength);
+    }
+
+    private void ShowResize(int percent)
+    {
+        ResizeCard.Description = ConversionCopy.ResizeDescription(percent);
+        AutomationProperties.SetName(ResizeChoice, $"Resize to, {percent}%");
+    }
+
+    private void OnResizeChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loading || ResizeChoice.SelectedItem is not ComboBoxItem item) return;
+        if (!int.TryParse((string)item.Tag, out var percent)) return;
+        _services.Preferences.ResizePercent = percent;
+        ShowResize(percent);
+    }
+
+    private void OnGifSecondsChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loading || GifChoice.SelectedItem is not ComboBoxItem item) return;
+        if (int.TryParse((string)item.Tag, out var seconds)) _services.Preferences.GifSeconds = seconds;
+    }
+
+    private void OnOutputChoiceChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loading || OutputChoice.SelectedItem is not RadioButton rb) return;
+        var prefs = _services.Preferences;
+        if (string.Equals((string)rb.Tag, "Beside", StringComparison.Ordinal))
+        {
+            prefs.OutputFolder = null;
+            ShowOutput(null);
+            return;
+        }
+
+        // "A folder I choose" needs a folder: ask right away, and go back to "Next to the original" if none is picked.
+        if (prefs.OutputFolder is null && !ChooseOutputFolder())
+        {
+            _loading = true;
+            OutputChoice.SelectedIndex = 0;
+            _loading = false;
+        }
+        ShowOutput(prefs.OutputFolder);
+    }
+
+    private void OnChooseOutputFolderClicked(object sender, RoutedEventArgs e)
+    {
+        ChooseOutputFolder();
+        ShowOutput(_services.Preferences.OutputFolder);
+    }
+
+    /// <summary>Shows the folder dialog; true when a folder was chosen and saved.</summary>
+    private bool ChooseOutputFolder()
+    {
+        var picked = Tray.FilePicker.PickFolder(WinRT.Interop.WindowNative.GetWindowHandle(this), _services.Preferences.OutputFolder);
+        if (picked is null) return false;
+        try
+        {
+            _services.Preferences.OutputFolder = picked;
+            return _services.Preferences.OutputFolder is not null;
+        }
+        catch (ArgumentException)
+        {
+            return false; // not a full path: cannot happen with the dialog, but nothing is saved either way
+        }
+    }
+
+    /// <summary>Everything that names where converted files go follows the setting: summary, folder row, hint, the reveal card, a warning.</summary>
+    private void ShowOutput(string? folder)
+    {
+        OutputSummary.Text = ConversionCopy.OutputSummary(folder);
+        OutputFolderRow.Visibility = folder is null ? Visibility.Collapsed : Visibility.Visible;
+        OutputFolderPath.Text = folder ?? string.Empty;
+        OutputHint.Text = ConversionCopy.OutputHint(folder);
+        RevealCard.Description = ConversionCopy.RevealDescription(folder);
+        AutomationProperties.SetName(OutputExpander, "Where converted files go, " + ConversionCopy.OutputSummary(folder));
+        OutputNote.IsOpen = false;
+        if (folder is null) return;
+        _ = ShowFolderProblemAsync(folder);
+    }
+
+    private async Task ShowFolderProblemAsync(string folder)
+    {
+        var problem = await Task.Run(() => ConversionCopy.FolderProblem(folder));
+        if (_services.Preferences.OutputFolder != folder) return; // changed while checking
+        OutputNote.Message = problem ?? string.Empty;
+        OutputNote.IsOpen = problem is not null;
     }
 
     // ---- the key that opens the wheel while dragging (positioning P1-2) ----
