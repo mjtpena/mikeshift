@@ -20,6 +20,7 @@ public partial class App : Application
     private readonly bool _smokeTest;
     private readonly UnhandledPolicy _unhandled = new();
     private DragCoordinator? _drag;
+    private Shell.ShellBridge? _shell; // X1
 
     public App()
     {
@@ -66,6 +67,7 @@ public partial class App : Application
         // W3 wiring: the input monitor + wheel thread, and the click-mode wheel for Convert Files….
         _drag = DragCoordinator.Start(Services, installHooks: !DevSwitches.NoHooks);
         if (_drag is not null) Tray.ConvertFilesRequested += _drag.ShowClickMode;
+        _shell = Shell.ShellBridge.Start(Services, Tray.RequestConvert); // X1: Explorer right-click entry (pipe from the -Embedding server)
         // Crop/Trim editors for interactive actions; dev flags `--crop <img>` / `--trim <media>` open them directly.
         Editors.EditorRegistration.Register(Services.Interaction);
         Editors.EditorRegistration.TryHandleDevArgs(DevSwitches.Args);
@@ -128,6 +130,8 @@ public partial class App : Application
     {
         _drag?.Dispose();
         _drag = null;
+        _shell?.Dispose(); // X1
+        _shell = null;
         Tray.Dispose();
         try { await Services.Jobs.ShutdownAsync(TimeSpan.FromSeconds(3)); }
         catch (Exception) { /* exit regardless */ }
