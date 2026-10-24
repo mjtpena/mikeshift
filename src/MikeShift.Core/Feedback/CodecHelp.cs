@@ -43,8 +43,8 @@ public sealed record CodecPrompt(CodecNeed Need, string Title, string Descriptio
 }
 
 /// <summary>
-/// The HEIC dead end (positioning P0-3): a HEIC/AVIF photo that Windows cannot decode because an extension is missing used to be "Zip only".
-/// This turns it into one actionable thing: the wheel offers a tile that opens the right Microsoft Store page, a pill says why, a failed
+/// The HEIC dead end: a HEIC/AVIF photo that Windows cannot decode because an extension is missing would otherwise offer "Zip only".
+/// Instead it gets one actionable thing: the wheel offers a tile that opens the right Microsoft Store page, a pill says why, a failed
 /// conversion says the same, and the welcome window offers the extensions up front. Pure functions of <see cref="Capabilities"/>.
 /// </summary>
 public static class CodecHelp

@@ -32,7 +32,7 @@ internal static partial class ExplorerScenarios
 
     private static void RegisterEntryPoints(Dictionary<string, Action> d)
     {
-        // ---- Ctrl arms the wheel (positioning P1-2)
+        // ---- Ctrl arms the wheel
         d["ctrl-mode"] = () => Case("ctrl-mode", "Ctrl mode: Ctrl-drag from Explorer opens the wheel, Shift -> Tools, a fresh Ctrl -> Formats, drop on PNG",
             dir => Jpgs(dir, "photo.jpg"), s =>
             {
@@ -85,7 +85,7 @@ internal static partial class ExplorerScenarios
                 s.Abort();
             }, env: X2Env("Shift"));
 
-        // ---- the hotkey for the current Explorer selection (positioning P1-1)
+        // ---- the hotkey for the current Explorer selection
         d["hotkey"] = () => Case("hotkey", "Hotkey: select 2 images in Explorer, press Ctrl+Alt+Shift+Space -> click-mode wheel with those 2 files -> Down, Enter -> outputs beside the originals",
             dir => { Jpgs(dir, "a.jpg", "b.jpg"); FileKit.MakeJpg(Path.Combine(dir, "c.png"), text: "c"); }, s =>
             {

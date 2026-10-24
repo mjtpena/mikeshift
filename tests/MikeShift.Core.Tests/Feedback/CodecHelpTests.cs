@@ -5,7 +5,7 @@ using MikeShift.Core.Interaction;
 namespace MikeShift.Core.Tests.Feedback;
 
 /// <summary>
-/// The HEIC dead end (positioning P0-3): a HEIC/AVIF photo Windows cannot open used to be "Zip only". With a missing extension the catalog now offers
+/// The HEIC dead end: a HEIC/AVIF photo Windows cannot open used to be "Zip only". With a missing extension the catalog now offers
 /// the one tile that fixes it, and the pill, the failure message and the welcome card say the same. Machines are faked with capability records.
 /// </summary>
 public class CodecHelpTests

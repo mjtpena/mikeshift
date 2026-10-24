@@ -16,7 +16,7 @@ public enum CompressStrength
 }
 
 /// <summary>
-/// The few conversion settings a user can change (positioning P1-4): picture quality, how hard Compress squeezes, the Resize percentage, how
+/// The few conversion settings a user can change: picture quality, how hard Compress squeezes, the Resize percentage, how
 /// long a video GIF may run and where converted files are put. Immutable and always valid: every property rejects a value outside its range
 /// (<see cref="ArgumentOutOfRangeException"/> / <see cref="ArgumentException"/>), so a converter never has to re-check. <see cref="Default"/> is
 /// exactly what MikeShift did before the settings existed, so nothing changes for anyone who never opens them.

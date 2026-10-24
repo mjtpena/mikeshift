@@ -2,7 +2,7 @@ using MikeShift.Core.Hotkeys;
 
 namespace MikeShift.Core.Tests.Hosting;
 
-/// <summary>The pure parts of the "convert the current File Explorer selection" hotkey (positioning P1-1): parsing, text, the conflict list, selection filtering.</summary>
+/// <summary>The pure parts of the "convert the current File Explorer selection" hotkey: parsing, text, the conflict list, selection filtering.</summary>
 public class HotkeyTests
 {
     // ------------------------------------------------------------------ parse and format

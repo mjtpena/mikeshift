@@ -9,7 +9,7 @@ using Windows.Win32;
 namespace MikeShift.App.Selection;
 
 /// <summary>
-/// "Convert what I have selected in File Explorer" from the keyboard (positioning P1-1): a global hotkey that opens the click-mode wheel on the
+/// "Convert what I have selected in File Explorer" from the keyboard: a global hotkey that opens the click-mode wheel on the
 /// files selected in the foreground Explorer window or on the desktop. It gives keyboard-only, touch and pen users a way in (the drag gesture needs
 /// a mouse and a held key). Nothing selected, or the foreground window is not Explorer: a toast says so and nothing else happens. The shortcut
 /// comes from the <c>hotkey</c> preference (default Ctrl+Alt+Shift+Space, "None" turns it off) and follows changes at once.

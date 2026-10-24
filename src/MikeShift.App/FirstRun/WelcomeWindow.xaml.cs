@@ -15,9 +15,8 @@ namespace MikeShift.App.FirstRun;
 
 /// <summary>
 /// The welcome window: shown on first launch and from the tray's "How it works". A picture of the wheel, the choice of
-/// the key that opens it while dragging (positioning P1-2), the three steps with keycaps, how to find the tray icon, the keyboard shortcut,
-/// "Try it with Convert files…", and, when this PC cannot open iPhone photos yet, an optional card that links to the free Store extensions
-/// (positioning P0-3).
+/// the key that opens it while dragging, the three steps with keycaps, how to find the tray icon, the keyboard shortcut,
+/// "Try it with Convert files…", and, when this PC cannot open iPhone photos yet, an optional card that links to the free Store extensions.
 /// </summary>
 public sealed partial class WelcomeWindow : Window
 {

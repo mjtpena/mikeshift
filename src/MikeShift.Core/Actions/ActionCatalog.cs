@@ -53,7 +53,7 @@ public static partial class ActionCatalog
         }
         else if (CodecHelp.ForSelection(paths, caps, kindOf) is { } missing)
         {
-            // HEIC/AVIF photos Windows cannot open yet: not "Zip only" but the one thing that fixes it (positioning P0-3).
+            // HEIC/AVIF photos Windows cannot open yet: not "Zip only" but the one thing that fixes it.
             result.Add(CodecHelp.TileFor(missing));
         }
         result.Add(ZipAction.Def);

@@ -19,7 +19,7 @@ internal static class EditorWindows
     /// <summary>
     /// Gives <paramref name="window"/> the shared chrome (Mica, icon, themed title bar with <paramref name="title"/>) and a client size
     /// in DIPs (content area below the title bar), centred on the monitor under the cursor. Editors are ordinary windows: they have a
-    /// taskbar button and appear in Alt+Tab while a task is in progress (E-02), and they can be minimised.
+    /// taskbar button and appear in Alt+Tab while a task is in progress, and they can be minimised.
     /// </summary>
     public static void Setup(Window window, string title, int clientWidthDip, int clientHeightDip, bool resizable = false, int minWidthDip = 0, int minHeightDip = 0)
     {

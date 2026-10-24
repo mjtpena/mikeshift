@@ -4,7 +4,7 @@ using MikeShift.Core.Actions;
 namespace MikeShift.Core.Feedback;
 
 /// <summary>
-/// The words MikeShift uses outside the wheel sentence case, gerunds for progress, "couldn't"
+/// The words MikeShift uses outside the wheel: sentence case, gerunds for progress, "couldn't"
 /// for failures. One place so the toast, dialogs and the tests agree.
 /// </summary>
 public static partial class FeedbackCopy
@@ -12,7 +12,7 @@ public static partial class FeedbackCopy
     /// <summary>The product name.</summary>
     public const string AppName = "MikeShift";
 
-    /// <summary>Tray tooltip (T-04).</summary>
+    /// <summary>Tray tooltip.</summary>
     public const string TrayTooltip = "MikeShift - Shift-drag files to convert";
 
     /// <summary>Tray tooltip for the chosen arming key: "MikeShift - Ctrl-drag files to convert".</summary>
@@ -30,16 +30,16 @@ public static partial class FeedbackCopy
     /// <summary>Toast: the files were all in the target format already.</summary>
     public const string AlreadyThatFormat = "These files are already in that format";
 
-    /// <summary>Click mode when no tile applies (D-04).</summary>
+    /// <summary>Click mode when no tile applies.</summary>
     public const string NothingAvailable = "MikeShift can't convert these files. You can still zip them.";
 
     /// <summary>The hint appended to a reason about a damaged file.</summary>
     public const string TryAnotherApp = "Try opening it in another app.";
 
-    /// <summary>Elevation warning title (D-03).</summary>
+    /// <summary>Elevation warning title.</summary>
     public const string ElevatedTitle = "MikeShift is running as administrator";
 
-    /// <summary>Elevation warning body (D-03).</summary>
+    /// <summary>Elevation warning body.</summary>
     public const string ElevatedBody =
         "Windows blocks drag and drop between normal and administrator apps, so the wheel won't appear. " +
         "Quit MikeShift and start it again without \"Run as administrator\".";

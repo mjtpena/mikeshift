@@ -3,7 +3,7 @@ using MikeShift.Core.Interaction;
 
 namespace MikeShift.Core.Tests.Interaction;
 
-/// <summary>Contrast (W-08, W-04), text scaling (W-05), the hint counter (W-04), and the wording of everything the wheel shows (W-10, W-15).</summary>
+/// <summary>Contrast, text scaling, the hint counter, and the wording of everything the wheel shows.</summary>
 public class WheelVisualsTests
 {
     // ------------------------------------------------------------------ contrast maths

@@ -6,7 +6,7 @@ namespace MikeShift.Core.Actions;
 /// <para>
 /// Metaphors: Resize 50 % is the inward-pointing arrows (it shrinks), Compress is an archive box (a different idea from
 /// shrinking the pixel size), Strip EXIF is the crossed-out eye (hide the metadata), never an X (which reads as "close").
-/// Format tiles carry the glyph of their output's category (W-06).
+/// Format tiles carry the glyph of their output's category.
 /// </para>
 /// </summary>
 public static class Glyphs

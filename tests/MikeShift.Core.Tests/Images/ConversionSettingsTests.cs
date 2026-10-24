@@ -8,7 +8,7 @@ using static MikeShift.Core.Tests.Images.ImageTestUtil;
 namespace MikeShift.Core.Tests.Images;
 
 /// <summary>
-/// The user-facing conversion settings (positioning P1-4) reaching the converters: quality, Compress strength, Resize percentage and where the
+/// The user-facing conversion settings reaching the converters: quality, Compress strength, Resize percentage and where the
 /// output goes. With the defaults every result is what it was before the settings existed.
 /// </summary>
 public class ConversionSettingsTests

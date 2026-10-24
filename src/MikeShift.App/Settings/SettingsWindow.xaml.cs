@@ -86,7 +86,7 @@ public sealed partial class SettingsWindow : Window
         _loading = false;
     }
 
-    // ---- format support (S-02) ----
+    // ---- format support ----
 
     private void BuildCodecList(Capabilities capabilities)
     {
@@ -215,7 +215,7 @@ public sealed partial class SettingsWindow : Window
         if (!_loading) _services.Preferences.UseWord = WordSwitch.IsOn;
     }
 
-    // ---- conversions (positioning P1-4) ----
+    // ---- conversions ----
 
     private void LoadConversions(Preferences prefs)
     {
@@ -350,7 +350,7 @@ public sealed partial class SettingsWindow : Window
         OutputNote.IsOpen = problem is not null;
     }
 
-    // ---- the key that opens the wheel while dragging (positioning P1-2) ----
+    // ---- the key that opens the wheel while dragging ----
 
     private void OnArmKeyChanged(object sender, SelectionChangedEventArgs e)
     {
@@ -407,7 +407,7 @@ public sealed partial class SettingsWindow : Window
         ToolsKeyNote.Text = $"A mouse-wheel tick switches the wheel in every mode. {ToolsKeys.Label(arm)} always goes back to formats.";
     }
 
-    // ---- the hotkey for the current Explorer selection (positioning P1-1) ----
+    // ---- the hotkey for the current Explorer selection ----
 
     private bool _capturingHotkey;
 

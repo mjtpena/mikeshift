@@ -3,7 +3,7 @@ using MikeShift.Core.Interaction;
 
 namespace MikeShift.Core.Tests.Interaction;
 
-/// <summary>The model's key hints (hub copy, W-10/W-04) and the single-tile state (W-09).</summary>
+/// <summary>The model's key hints (hub copy) and the single-tile state.</summary>
 public class WheelModelKeyHintTests
 {
     private static ActionDef Action(string title, WheelPage page) =>

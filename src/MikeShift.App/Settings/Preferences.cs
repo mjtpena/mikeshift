@@ -232,7 +232,7 @@ public sealed class Preferences
         }
     }
 
-    // ---- conversions (positioning P1-4): every value is validated on the way in and read leniently on the way out, so a settings file
+    // ---- conversions: every value is validated on the way in and read leniently on the way out, so a settings file
     // from an older version, or one edited by hand, only ever gives the defaults for what it does not say properly.
 
     /// <summary>JPEG, WebP and HEIC quality, 50 to 100. Default 90.</summary>

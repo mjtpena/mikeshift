@@ -1,8 +1,7 @@
 namespace MikeShift.Core;
 
 /// <summary>
-/// The kind of thing a selected path is. Decides which action list the wheel shows
-///.
+/// The kind of thing a selected path is. Decides which action list the wheel shows.
 /// </summary>
 public enum Category
 {

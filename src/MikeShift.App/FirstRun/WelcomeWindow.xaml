@@ -24,7 +24,7 @@
                     <HyperlinkButton Content="Show the tray icon in Taskbar settings" HorizontalAlignment="Center" Click="OnTaskbarSettingsClicked" />
                 </StackPanel>
 
-                <!-- The activation choice (positioning P1-2): two equal options. Saved as soon as it is picked. -->
+                <!-- The activation choice: two equal options. Saved as soon as it is picked. -->
                 <StackPanel Spacing="8">
                     <TextBlock Text="How do you want to open the wheel while dragging?" Style="{StaticResource BodyStrongTextBlockStyle}" TextWrapping="Wrap" />
                     <RadioButtons x:Name="ArmKeyChoice" MaxColumns="2" SelectionChanged="OnArmKeyChanged"
@@ -92,7 +92,7 @@
                     </Grid>
                 </StackPanel>
 
-                <!-- Optional codec check (positioning P0-3): shown only when this PC lacks a decoder, after the probe has finished. -->
+                <!-- Optional codec check: shown only when this PC lacks a decoder, after the probe has finished. -->
                 <Border x:Name="CodecCard" Visibility="Collapsed" Padding="16,14" CornerRadius="4"
                         Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
                     <StackPanel Spacing="8">

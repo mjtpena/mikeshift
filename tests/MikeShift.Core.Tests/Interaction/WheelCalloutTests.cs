@@ -160,7 +160,7 @@ public class WheelCalloutTests
     [Fact]
     public void PendingWheelHasNoPill() => Assert.Null(WheelCallout.ForDrag(Model(actions: []), false, HintEmphasis.Prominent));
 
-    // ------------------------------------------------------------------ virtual files (W-02) and the single tile (W-09)
+    // ------------------------------------------------------------------ virtual files and the single tile
 
     [Fact]
     public void VirtualFilesGetACautionPillWithTheInfoGlyph()
@@ -251,7 +251,7 @@ public class WheelCalloutTests
         Assert.Equal("Tools", c.KeyHints[0].Label);
     }
 
-    // ------------------------------------------------------------------ click mode (W-11)
+    // ------------------------------------------------------------------ click mode
 
     [Fact]
     public void ClickModeShowsTheSelectionAboveAndTheKeysBelow()

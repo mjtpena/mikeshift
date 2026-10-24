@@ -226,7 +226,7 @@ public sealed class TrayController : IDisposable
         void Post(Action action) => _services.Dispatcher.TryEnqueue(() => Guarded("menu item", action));
         var flyout = new MenuFlyout();
 
-        // T-02: the header teaches the gesture (instead of a greyed-out row) and names the product. A separator, because the
+        // The header teaches the gesture (instead of a greyed-out row) and names the product. A separator, because the
         // second-window host forces every real item to 32 px, and a separator is exempt (and not focusable or clickable).
         var header = new MenuFlyoutSeparator
         {

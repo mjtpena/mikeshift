@@ -4,7 +4,7 @@ using MikeShift.Core.Interaction;
 namespace MikeShift.Core.Tests.Interaction;
 
 /// <summary>
-/// The first-run activation choice (positioning P1-2): Shift (default) or Ctrl opens the wheel while dragging; the other of the two switches to
+/// The first-run activation choice: Shift (default) or Ctrl opens the wheel while dragging; the other of the two switches to
 /// Tools and the arming key goes back to Formats. Both modes keep the fresh-press rules of <see cref="ModifierTracker"/>.
 /// </summary>
 public class ArmKeyTests
