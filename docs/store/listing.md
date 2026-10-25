@@ -6,7 +6,7 @@ Fields in Partner Center change over time. Where a limit or a drop-down value be
 
 ## Before you submit (publisher checklist)
 
-1. **Reserve the name** "MikeShift: offline file converter" (or just "MikeShift") in Partner Center, and run a trademark search first (not done; names such as ShiftDrop and Shiftvert are close neighbours).
+1. **Reserve the name** "MikeShift: offline file converter" (or just "MikeShift") in Partner Center, and run a trademark search first (not done; names such as ShiftDrop are close neighbours).
 2. **Associate the app with the Store.** The package currently has `Publisher="CN=MikeShift Dev"` and `Version="0.1.0.0"`. The Store assigns its own identity (Name, Publisher) on association, and Store package versions need the last digit to be `0` (use `1.0.0.0` for this listing). Make those changes in `src/MikeShift.App/Package.appxmanifest` and `Directory.Build.props` ([releasing](../developer/releasing.md#versioning)).
 3. **Submit the "store" flavour** (about 23 MB per architecture; `./scripts/release.ps1 -Flavor store`, upload the `.msixbundle` or both `_store_` `.msix` files). The Store installs the Windows App Runtime dependency itself.
 4. **Host the privacy statement** ([privacy.md](../privacy.md), see [privacy-policy.md](privacy-policy.md)) at a public URL and paste the URL in Properties > Privacy policy. A public GitHub repository page or a GitHub Pages page works; the repository must be public first.
@@ -95,7 +95,7 @@ GOOD TO KNOW
 • Windows 11 may put the tray icon in the overflow area; the welcome window links to the taskbar setting.
 
 OPEN SOURCE
-Free, MIT licence, source code on GitHub. MikeShift is a Windows port of Shiftvert by roiegold (MIT).
+Free, MIT licence, source code on GitHub.
 ```
 
 ## Paste: what's new in this version (up to 1,500 characters)
@@ -128,7 +128,7 @@ Small and quiet: about 23 MB to download, about 17 MB of memory when idle, no bu
 Windows 11 look: WinUI 3, Mica, light, dark and high contrast themes, per-monitor scaling.
 A mikeshift command line tool for scripts, with the same engine as the wheel.
 Microsoft Word is optional and off by default; turn it on in Settings only if you want Word for legacy .doc files.
-Free and open source under the MIT licence. A Windows port of Shiftvert by roiegold.
+Free and open source under the MIT licence.
 ```
 
 (17 bullets; the limit is 20.)
@@ -193,7 +193,7 @@ Host [privacy.md](../privacy.md) (rendered) and paste its URL. Once the reposito
 | Support contact info (email or web page) | `https://github.com/mjtpena/mikeshift/issues` (or an email address) |
 | Website | `https://github.com/mjtpena/mikeshift` |
 | Copyright and trademark info | `© 2026 MikeShift contributors. MIT licence.` |
-| Additional license terms | `MIT licence: https://github.com/mjtpena/mikeshift/blob/main/LICENSE. Based on Shiftvert by roiegold (MIT).` |
+| Additional license terms | `MIT licence: https://github.com/mjtpena/mikeshift/blob/main/LICENSE.` |
 | Developer / publisher display name | `[AS REGISTERED IN PARTNER CENTER]` (the manifest says "Michael John Peña") |
 
 ## System requirements text

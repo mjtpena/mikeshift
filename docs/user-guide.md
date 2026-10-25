@@ -246,7 +246,7 @@ Shows what this PC can do: which Microsoft Store extensions are installed (HEIF,
 
 * The version, **Check for updates** and **View on GitHub** (both open your browser).
 * **Open the log folder**: opens the folder with MikeShift's log (start-up messages and errors, never file contents). Useful when asking for help.
-* **Licence and credits**: MikeShift is open source (MIT) and is a Windows port of Shiftvert by roiegold (MIT).
+* **Licence and credits**: MikeShift is open source (MIT); the link opens every third-party licence.
 
 ## Keyboard shortcuts
 

@@ -4,7 +4,7 @@ All notable changes to MikeShift are listed here. The format follows [Keep a Cha
 
 ## 1.0.0 (unreleased)
 
-The first release. MikeShift is a Windows port of [Shiftvert](https://github.com/roiegold/shiftvert) by roiegold.
+The first release.
 
 ### Ways to convert
 

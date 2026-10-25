@@ -9,11 +9,8 @@ public static class AppLinks
     /// <summary>Releases, for "Check for updates".</summary>
     public const string Releases = Project + "/releases";
 
-    /// <summary>The NOTICE file: every third-party licence and the credit to the original Shiftvert.</summary>
+    /// <summary>The NOTICE file: every third-party licence.</summary>
     public const string Notice = Project + "/blob/main/NOTICE";
-
-    /// <summary>The upstream macOS app MikeShift is a port of.</summary>
-    public const string Shiftvert = "https://github.com/roiegold/shiftvert";
 }
 
 /// <summary>Opens a Microsoft Store page (<c>ms-windows-store://pdp/?ProductId=...</c>) for a codec extension. UI thread; the launch is asynchronous and never throws.</summary>

@@ -3,14 +3,6 @@ MikeShift - third-party notices
 
 MikeShift itself is released under the MIT licence (see LICENSE).
 
-Original project
-----------------
-MikeShift is a Windows port of Shiftvert (https://github.com/roiegold/shiftvert) by roiegold (MIT).
-Shiftvert (macOS) by roiegold, MIT licence: https://github.com/roiegold/shiftvert
-This Windows version is a from-scratch reimplementation of its interaction model (Shift-drag a file, pick an output
-format or tool from a radial wheel) and its feature matrix. Thanks to roiegold for the idea and the specification of
-the behaviour.
-
 Components compiled into or shipped with the product
 ----------------------------------------------------
 Licences were read from each package's metadata (the same data nuget.org shows) for the exact versions pinned in

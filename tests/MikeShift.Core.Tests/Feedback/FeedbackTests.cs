@@ -206,7 +206,6 @@ public class FeedbackTests
     {
         Assert.Equal("MikeShift is running as administrator", FeedbackCopy.ElevatedTitle);
         Assert.Contains("Quit MikeShift", FeedbackCopy.ElevatedBody);
-        Assert.DoesNotContain("Shiftvert", FeedbackCopy.ElevatedBody + FeedbackCopy.TrayTooltip);
     }
 
     [Fact]

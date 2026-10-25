@@ -238,11 +238,10 @@
                 <Button Content="Open" Click="OnOpenLogsClicked" AutomationProperties.Name="Open the log folder" />
             </local:SettingsCard>
 
-            <local:SettingsCard Header="Licence and credits" Description="MikeShift is open source (MIT). It is a Windows port of Shiftvert by roiegold (MIT)."
+            <local:SettingsCard Header="Licence and credits" Description="MikeShift is open source (MIT)."
                                 HeaderIcon="&#xE8D7;">
                 <StackPanel Orientation="Horizontal" Spacing="8">
                     <HyperlinkButton Content="Licences" Click="OnNoticeClicked" AutomationProperties.Name="Licences and notices" />
-                    <HyperlinkButton Content="Shiftvert" Click="OnShiftvertClicked" AutomationProperties.Name="Shiftvert on GitHub" />
                 </StackPanel>
             </local:SettingsCard>
         </StackPanel>

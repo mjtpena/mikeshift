@@ -504,8 +504,6 @@ public sealed partial class SettingsWindow : Window
 
     private void OnNoticeClicked(object sender, RoutedEventArgs e) => Open(AppLinks.Notice);
 
-    private void OnShiftvertClicked(object sender, RoutedEventArgs e) => Open(AppLinks.Shiftvert);
-
     private void OnOpenLogsClicked(object sender, RoutedEventArgs e)
     {
         try

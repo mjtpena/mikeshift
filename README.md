@@ -4,7 +4,7 @@
 
 MikeShift turns iPhone photos into JPGs, WebP images into PNGs and loose PDFs into one PDF, and it turns video into MP4, GIF or MP3, without a website, an upload or a separate converter app. Right-click a file in File Explorer, pick a format, and a converted **copy** appears next to the original. The original is never changed.
 
-It is a free, open-source tray app for Windows 10 (version 1809 and later) and Windows 11, with no network code and no account. MikeShift is a Windows port of [Shiftvert](https://github.com/roiegold/shiftvert) by roiegold (MIT).
+It is a free, open-source tray app for Windows 10 (version 1809 and later) and Windows 11, with no network code and no account.
 
 | Right-click in File Explorer | Or drag a file and hold Shift (or Ctrl) |
 |:-:|:-:|
@@ -146,6 +146,4 @@ Or `dotnet build MikeShift.sln` and `dotnet test MikeShift.sln`. CI runs on `win
 
 ## Credits and licence
 
-MikeShift is a Windows port of [Shiftvert](https://github.com/roiegold/shiftvert) by **roiegold** (MIT), the macOS app whose drag-a-file-and-pick-a-format idea it follows. The Windows code, the right-click integration and the packaging are new.
-
-[MIT licence](LICENSE). [NOTICE](NOTICE) lists the credit to Shiftvert and every third-party licence.
+[MIT licence](LICENSE). [NOTICE](NOTICE) lists every third-party licence.
