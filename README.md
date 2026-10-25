@@ -62,7 +62,7 @@ To find out which you have, open Settings → System → About and read **System
 **There is no signed release yet.** Windows installs a package only if it trusts whoever signed it, and public signing (the Store, or a purchased or Azure Trusted Signing certificate) is not set up. Until it is, you build the package and sign it with a certificate you make yourself. This takes a few minutes, needs administrator rights once to trust that certificate, and changes your PC's certificate store, so do it only for software you built or reviewed. You need the build tools listed under [Build from source](#build-from-source).
 
 ```powershell
-./packaging/make-dev-cert.ps1 -Password (Read-Host -AsSecureString 'PFX password')   # makes the dev certificate (CN=MikeShift Dev)
+./packaging/make-dev-cert.ps1 -Password (Read-Host -AsSecureString 'PFX password')   # makes a self-signed certificate matching the manifest Publisher
 Import-Certificate -FilePath .\artifacts\dev-cert\MikeShiftDev.cer -CertStoreLocation Cert:\LocalMachine\TrustedPeople   # ELEVATED PowerShell, once
 ./scripts/release.ps1 -PfxPath .\artifacts\dev-cert\MikeShiftDev.pfx -PfxPassword (Read-Host -AsSecureString 'PFX password')
 Add-AppxPackage -Path .\artifacts\MikeShift_<version>_x64.msix                       # _arm64 on ARM PCs

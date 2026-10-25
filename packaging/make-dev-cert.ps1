@@ -3,7 +3,7 @@
   Creates a self-signed code-signing certificate for sideloading MikeShift, and exports it as .pfx + .cer.
 
 .DESCRIPTION
-  The certificate subject must equal the Publisher in src/MikeShift.App/Package.appxmanifest ("CN=MikeShift Dev"); an MSIX
+  The certificate subject must equal the Publisher in src/MikeShift.App/Package.appxmanifest (the Store publisher ID); an MSIX
   signed with any other subject is rejected at install time.
 
   What this script does:
@@ -18,7 +18,7 @@
 
 .PARAMETER Password  Password for the .pfx (SecureString). If omitted, the MIKESHIFT_PFX_PASSWORD environment variable is used.
 .PARAMETER OutDir    Where to write the .pfx and .cer. Default: <repo>\artifacts\dev-cert.
-.PARAMETER Subject   Certificate subject. Default "CN=MikeShift Dev" (must match the manifest Publisher).
+.PARAMETER Subject   Certificate subject. Default "CN=C81A4E31-21AC-4917-B3E7-F1C28300F48A" (must match the manifest Publisher).
 .PARAMETER Years     Validity in years. Default 3.
 .PARAMETER Name      File name stem for the exported files. Default MikeShiftDev.
 .PARAMETER KeepInStore  Leave the certificate in CurrentUser\My after exporting.
@@ -32,7 +32,7 @@
 param(
     [securestring] $Password,
     [string] $OutDir,
-    [string] $Subject = 'CN=MikeShift Dev',
+    [string] $Subject = 'CN=C81A4E31-21AC-4917-B3E7-F1C28300F48A',
     [ValidateRange(1, 20)] [int] $Years = 3,
     [string] $Name = 'MikeShiftDev',
     [switch] $KeepInStore

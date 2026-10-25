@@ -368,7 +368,7 @@ internal static class MenuScenarios
             }
             catch (Exception) when (attempt == 0)
             {
-                var family = Environment.GetEnvironmentVariable("HARNESS_PFN") ?? "MikeShift_zatzfr9kzh5xt";
+                var family = Environment.GetEnvironmentVariable("HARNESS_PFN") ?? "2259MichaelJohnTimpocPea.MikeShift_d9hbagebczkjp";
                 Process.Start(new ProcessStartInfo("explorer.exe", $"shell:AppsFolder\\{family}!App") { UseShellExecute = true });
             }
         }

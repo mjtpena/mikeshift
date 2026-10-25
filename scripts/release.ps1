@@ -28,7 +28,7 @@
   Then SHA256SUMS.txt.
 
   Unsigned bundles cannot be installed; they are what CI uploads. Sign with the dev cert (packaging\make-dev-cert.ps1) or your
-  release certificate. The signing certificate subject must equal the manifest Publisher (CN=MikeShift Dev for the dev cert).
+  release certificate. The signing certificate subject must equal the manifest Publisher (packaging\make-dev-cert.ps1 uses it as the dev certificate subject).
 
   makeappx.exe / signtool.exe are located in this order: -MakeAppx / -SignTool, the newest Windows 10 SDK under
   "%ProgramFiles(x86)%\Windows Kits\10\bin" (10.0.26100.* preferred), the Microsoft.Windows.SDK.BuildTools NuGet package in the

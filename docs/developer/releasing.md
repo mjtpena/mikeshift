@@ -49,16 +49,16 @@ CI (`.github/workflows/ci.yml`) runs `release.ps1 -Flavor all` unsigned on every
 
 Windows installs an MSIX only if it trusts the certificate that signed it, and the certificate's subject must equal the manifest's `Publisher`.
 
-* **Development and testing (a certificate you make yourself).** The manifest's `Publisher` is `CN=MikeShift Dev`.
+* **Development and testing (a certificate you make yourself).** The manifest's `Publisher` is the Store publisher ID (`CN=C81A4E31-21AC-4917-B3E7-F1C28300F48A`); `make-dev-cert.ps1` makes a self-signed certificate with that subject.
   ```powershell
   ./packaging/make-dev-cert.ps1 -Password (Read-Host -AsSecureString 'PFX password')   # artifacts\dev-cert\MikeShiftDev.pfx and .cer; nothing is installed machine-wide
   Import-Certificate -FilePath .\artifacts\dev-cert\MikeShiftDev.cer -CertStoreLocation Cert:\LocalMachine\TrustedPeople   # ELEVATED, once
   ./scripts/release.ps1 -PfxPath .\artifacts\dev-cert\MikeShiftDev.pfx -PfxPassword (Read-Host -AsSecureString 'PFX password')
   Add-AppxPackage -Path .\artifacts\MikeShift_<version>_x64.msix
   ```
-  The `.pfx` is a private key: keep it out of git (the repository ignores `*.pfx` and `*.cer`). To remove the trust again: `Get-ChildItem Cert:\LocalMachine\TrustedPeople | Where-Object Subject -eq 'CN=MikeShift Dev' | Remove-Item`.
+  The `.pfx` is a private key: keep it out of git (the repository ignores `*.pfx` and `*.cer`). To remove the trust again: `Get-ChildItem Cert:\LocalMachine\TrustedPeople | Where-Object FriendlyName -like 'MikeShift Dev*' | Remove-Item`.
 * **A public release outside the Store** needs a certificate Windows already trusts (a purchased code-signing certificate, or Azure Trusted Signing) and a manifest `Publisher` that matches it. Change `Publisher` first, rebuild, then sign with `-PfxPath` (and `-TimestampUrl`, so the signature outlives the certificate).
-* **The Microsoft Store** signs the package itself. Associating the app with the Store changes the package identity (`Name` and `Publisher`) to the values Partner Center assigns.
+* **The Microsoft Store** signs the package itself. The manifest already carries the Store identity from Partner Center (Product management → Product identity): `Name` `2259MichaelJohnTimpocPea.MikeShift`, Store ID `9PNZ1C9NRD8Z`.
 
 ## Before tagging a release
 
@@ -74,7 +74,7 @@ Windows installs an MSIX only if it trusts the certificate that signed it, and t
 All the text to paste is in [docs/store/](../store/listing.md); this is the order to do it in.
 
 1. **Reserve the name** in Partner Center ("MikeShift: offline file converter", or "MikeShift"); run a trademark search first.
-2. **Associate the app with the Store** (Visual Studio's *Associate App with the Store*, or edit `Identity` by hand to the values Partner Center shows) and set the package version to `x.y.z.0`.
+2. **Associate the app with the Store.** Done: `Identity` and `PublisherDisplayName` in the manifest are the Partner Center values. Keep the package version at `x.y.z.0`.
 3. **Build the Store flavour:** `./scripts/release.ps1 -Flavor store`, and upload the `_store.msixbundle` (or both `_store_` `.msix` files). Do not sign it: the Store does.
 4. **Host the privacy statement** at a public URL, [docs/privacy.md](../privacy.md) rendered (the repository page or GitHub Pages), and paste the URL under Properties → Privacy policy. [docs/store/privacy-policy.md](../store/privacy-policy.md) says the same.
 5. **Fill in the listing** from [listing.md](../store/listing.md): name, short and long description, what's new, features, search terms, category, the age-rating answers, the system requirements and the notes for certification. Fields in Partner Center change over time; the form is authoritative.

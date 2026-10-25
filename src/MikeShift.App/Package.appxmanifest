@@ -5,7 +5,8 @@
     "Cli"  - the console CLI (MikeShift.Cli.exe), hidden from the Start menu, owner of the `mikeshift.exe` execution alias.
   The CLI sits next to MikeShift.exe and runs on the same bundled .NET runtime (see "Packaging" in MikeShift.App.csproj). It is called
   MikeShift.Cli.exe, not mikeshift.exe, because Windows file names are case-insensitive; the alias name is independent of the file name.
-  Publisher must match the signing certificate: packaging\make-dev-cert.ps1 creates "CN=MikeShift Dev".
+  Identity and PublisherDisplayName are the Microsoft Store values from Partner Center (Product identity). For a sideloaded build,
+  Publisher must also be the signing certificate subject: packaging\make-dev-cert.ps1 creates a self-signed certificate with it.
 -->
 <Package
   xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
@@ -19,13 +20,13 @@
   IgnorableNamespaces="uap uap5 desktop desktop4 desktop5 com rescap">
 
   <Identity
-    Name="MikeShift"
-    Publisher="CN=MikeShift Dev"
+    Name="2259MichaelJohnTimpocPea.MikeShift"
+    Publisher="CN=C81A4E31-21AC-4917-B3E7-F1C28300F48A"
     Version="1.0.0.0" />
 
   <Properties>
     <DisplayName>MikeShift</DisplayName>
-    <PublisherDisplayName>Michael John Peña</PublisherDisplayName>
+    <PublisherDisplayName>mjtpena</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
 

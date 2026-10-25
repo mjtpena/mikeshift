@@ -337,14 +337,14 @@ Word then runs invisibly in the background on a private copy of the file and is 
 
 * **Windows 11:** Settings → Apps → Installed apps → MikeShift → Uninstall.
 * **Windows 10:** Settings → Apps → Apps & features → MikeShift → Uninstall.
-* **PowerShell:** `Get-AppxPackage MikeShift | Remove-AppxPackage`.
+* **PowerShell:** `Get-AppxPackage *MikeShift | Remove-AppxPackage`.
 
 Uninstalling removes the app, the right-click entry, the `mikeshift` command, MikeShift's settings and its logs. Your files and the converted copies are not touched.
 
 If you installed a package signed with a certificate you made yourself, you can also remove that trust. In an elevated PowerShell:
 
 ```powershell
-Get-ChildItem Cert:\LocalMachine\TrustedPeople | Where-Object Subject -eq 'CN=MikeShift Dev' | Remove-Item
+Get-ChildItem Cert:\LocalMachine\TrustedPeople | Where-Object FriendlyName -like 'MikeShift Dev*' | Remove-Item
 ```
 
 ## Troubleshooting and FAQ

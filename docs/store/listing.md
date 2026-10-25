@@ -7,7 +7,7 @@ Fields in Partner Center change over time. Where a limit or a drop-down value be
 ## Before you submit (publisher checklist)
 
 1. **Reserve the name** "MikeShift: offline file converter" (or just "MikeShift") in Partner Center, and run a trademark search first (not done; names such as ShiftDrop are close neighbours).
-2. **Associate the app with the Store.** The package currently has `Publisher="CN=MikeShift Dev"` and `Version="1.0.0.0"`. The Store assigns its own identity (Name, Publisher) on association; make that change in `src/MikeShift.App/Package.appxmanifest`. Store package versions need the last digit to be `0`, which `1.0.0.0` already has ([releasing](../developer/releasing.md#versioning)).
+2. **Associate the app with the Store.** Done: the name "MikeShift" is reserved (Store ID `9PNZ1C9NRD8Z`) and `src/MikeShift.App/Package.appxmanifest` carries its Partner Center identity at version `1.0.0.0` (Store package versions need the last digit to be `0`) ([releasing](../developer/releasing.md#versioning)).
 3. **Submit the "store" flavour** (about 23 MB per architecture; `./scripts/release.ps1 -Flavor store`, upload the `.msixbundle` or both `_store_` `.msix` files). The Store installs the Windows App Runtime dependency itself.
 4. **Host the privacy statement** ([privacy.md](../privacy.md), see [privacy-policy.md](privacy-policy.md)) at a public URL and paste the URL in Properties > Privacy policy. A public GitHub repository page or a GitHub Pages page works; the repository must be public first.
 5. **Fill in the support contact and website** (suggested values below; use an email address if you prefer one).
