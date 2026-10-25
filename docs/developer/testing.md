@@ -90,7 +90,7 @@ Run both before a release and attach the result to the release notes.
 
 Do these on the packages you intend to ship ([releasing](releasing.md)):
 
-* `makeappx` validates the manifest, including the `Cli` application and its `desktop4:Subsystem="console"` alias.
+* `makeappx` validates the manifest, including the `mikeshift.exe` alias to `MikeShift.Cli.exe` and its `desktop4:Subsystem="console"`.
 * Package contents: the self-contained runtime is present (`coreclr.dll`), `MikeShift.Cli.exe` and `MikeShift.exe` sit side by side in the package root, and there is no `onnxruntime.dll`, `DirectML.dll` or other Windows AI payload.
 * From an unpacked package: `MikeShift.Cli.exe --list`, `--run JPG`, `--run "Resize 50%"`, `--run Zip` and `--bogus` give exit codes 0 and 2; `MikeShift.exe --smoke-test` exits 0; the CLI suites pass against the trimmed executable (`MIKESHIFT_CLI_EXE`); a release build ignores `MIKESHIFT_LOG` without `--dev` and honours it with it.
 * The signature's subject equals the manifest's `Publisher`, and the SHA-256 of each file matches `SHA256SUMS.txt`.

@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Two Application entries in one package:
-    "App"  - the tray app (MikeShift.exe, GUI subsystem): Open at Login startup task.
-    "Cli"  - the console CLI (MikeShift.Cli.exe), hidden from the Start menu, owner of the `mikeshift.exe` execution alias.
+  One Application entry, "App": the tray app (MikeShift.exe, GUI subsystem), with the Open at Login startup task, and the
+  `mikeshift.exe` execution alias, which starts the console CLI (MikeShift.Cli.exe). The CLI is not an Application of its own: the
+  Microsoft Store rejects an Application with AppListEntry="none" (a "headless app") without a waiver, and a visible one would put a
+  console tile in the Start menu.
   The CLI sits next to MikeShift.exe and runs on the same bundled .NET runtime (see "Packaging" in MikeShift.App.csproj). It is called
   MikeShift.Cli.exe, not mikeshift.exe, because Windows file names are case-insensitive; the alias name is independent of the file name.
   Identity and PublisherDisplayName are the Microsoft Store values from Partner Center (Product identity). For a sideloaded build,
@@ -39,7 +40,8 @@
   </Resources>
 
   <Applications>
-    <Application Id="App" Executable="$targetnametoken$.exe" EntryPoint="$targetentrypoint$">
+    <!-- SupportsMultipleInstances is required by the console alias below; the tray app stays single-instance itself (Program.cs). -->
+    <Application Id="App" Executable="$targetnametoken$.exe" EntryPoint="$targetentrypoint$" desktop4:SupportsMultipleInstances="true">
       <uap:VisualElements
         DisplayName="MikeShift"
         Description="Convert files from File Explorer: right-click, or Shift-drag. Nothing leaves your PC."
@@ -56,6 +58,14 @@
         <desktop:Extension Category="windows.startupTask" Executable="MikeShift.exe" EntryPoint="Windows.FullTrustApplication">
           <desktop:StartupTask TaskId="MikeShiftStartup" Enabled="false" DisplayName="MikeShift" />
         </desktop:Extension>
+
+        <!-- `mikeshift.exe` on PATH (%LOCALAPPDATA%\Microsoft\WindowsApps). The alias runs MikeShift.Cli.exe, not the app's MikeShift.exe,
+             with the console subsystem so stdout/stderr/exit code reach the terminal. -->
+        <uap5:Extension Category="windows.appExecutionAlias" Executable="MikeShift.Cli.exe" EntryPoint="Windows.FullTrustApplication">
+          <uap5:AppExecutionAlias desktop4:Subsystem="console">
+            <uap5:ExecutionAlias Alias="mikeshift.exe" />
+          </uap5:AppExecutionAlias>
+        </uap5:Extension>
 
         <!-- Explorer right-click entry "Convert with MikeShift" (src\MikeShift.App\Shell, docs/developer/architecture.md "Explorer right-click").
              The COM server is OUT of process: Windows starts `MikeShift.exe -Embedding` (Program.Main hands it to ShellExtensionServer, which
@@ -79,25 +89,6 @@
             </desktop5:ItemType>
           </desktop4:FileExplorerContextMenus>
         </desktop4:Extension>
-      </Extensions>
-    </Application>
-
-    <Application Id="Cli" Executable="MikeShift.Cli.exe" EntryPoint="Windows.FullTrustApplication" desktop4:Subsystem="console" desktop4:SupportsMultipleInstances="true">
-      <uap:VisualElements
-        DisplayName="MikeShift command line"
-        Description="Convert files from a terminal: mikeshift --list / --run."
-        BackgroundColor="transparent"
-        Square150x150Logo="Assets\Square150x150Logo.png"
-        Square44x44Logo="Assets\Square44x44Logo.png"
-        AppListEntry="none" />
-
-      <Extensions>
-        <!-- `mikeshift.exe` on PATH (%LOCALAPPDATA%\Microsoft\WindowsApps), console subsystem so stdout/stderr/exit code reach the terminal. -->
-        <uap5:Extension Category="windows.appExecutionAlias" Executable="MikeShift.Cli.exe" EntryPoint="Windows.FullTrustApplication">
-          <uap5:AppExecutionAlias desktop4:Subsystem="console">
-            <uap5:ExecutionAlias Alias="mikeshift.exe" />
-          </uap5:AppExecutionAlias>
-        </uap5:Extension>
       </Extensions>
     </Application>
   </Applications>
