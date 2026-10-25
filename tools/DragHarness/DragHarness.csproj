@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Dev harness for the drag wheel. NOT part of the shipped package.
+    It starts the real MikeShift.exe, begins an OLE drag with a shell data object from its own window and drives the pointer and keyboard with
+    SendInput (press, move past the threshold, Shift, onto a tile, release), then asserts on the output files and on the app's log.
+    Run: dotnet run, project tools/DragHarness. The scenario option takes copy, tools, shiftfirst, multi, esc, nodrop, text, virtual or all.
+    The explorer option runs named scenarios with the real File Explorer as the drag source (see docs/developer/testing.md); it drives the real mouse and keyboard.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>DragHarness</AssemblyName>
+    <RootNamespace>DragHarness</RootNamespace>
+    <UseWindowsForms>true</UseWindowsForms>
+    <UseWPF>true</UseWPF>
+    <ApplicationHighDPIMode>PerMonitorV2</ApplicationHighDPIMode>
+    <Platforms>AnyCPU;x64</Platforms>
+    <IsPackable>false</IsPackable>
+    <NoWarn>$(NoWarn);SYSLIB1054;CA1416</NoWarn>
+  </PropertyGroup>
+
+</Project>

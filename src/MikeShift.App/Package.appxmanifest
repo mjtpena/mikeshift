@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Two Application entries in one package:
+    "App"  - the tray app (MikeShift.exe, GUI subsystem): Open at Login startup task.
+    "Cli"  - the console CLI (MikeShift.Cli.exe), hidden from the Start menu, owner of the `mikeshift.exe` execution alias.
+  The CLI sits next to MikeShift.exe and runs on the same bundled .NET runtime (see "Packaging" in MikeShift.App.csproj). It is called
+  MikeShift.Cli.exe, not mikeshift.exe, because Windows file names are case-insensitive; the alias name is independent of the file name.
+  Publisher must match the signing certificate: packaging\make-dev-cert.ps1 creates "CN=MikeShift Dev".
+-->
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:uap5="http://schemas.microsoft.com/appx/manifest/uap/windows10/5"
+  xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
+  xmlns:desktop4="http://schemas.microsoft.com/appx/manifest/desktop/windows10/4"
+  xmlns:desktop5="http://schemas.microsoft.com/appx/manifest/desktop/windows10/5"
+  xmlns:com="http://schemas.microsoft.com/appx/manifest/com/windows10"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  IgnorableNamespaces="uap uap5 desktop desktop4 desktop5 com rescap">
+
+  <Identity
+    Name="MikeShift"
+    Publisher="CN=MikeShift Dev"
+    Version="0.1.0.0" />
+
+  <Properties>
+    <DisplayName>MikeShift</DisplayName>
+    <PublisherDisplayName>Michael John Peña</PublisherDisplayName>
+    <Logo>Assets\StoreLogo.png</Logo>
+  </Properties>
+
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.26100.0" />
+  </Dependencies>
+
+  <Resources>
+    <Resource Language="x-generate" />
+  </Resources>
+
+  <Applications>
+    <Application Id="App" Executable="$targetnametoken$.exe" EntryPoint="$targetentrypoint$">
+      <uap:VisualElements
+        DisplayName="MikeShift"
+        Description="Convert files from File Explorer: right-click, or Shift-drag. Nothing leaves your PC."
+        BackgroundColor="transparent"
+        Square150x150Logo="Assets\Square150x150Logo.png"
+        Square44x44Logo="Assets\Square44x44Logo.png">
+        <!-- Logos are generated from assets\brand\mikeshift.svg by scripts\make-icons.ps1 (scale-100..400, targetsize-16..256 and unplated variants). -->
+        <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png" />
+        <uap:SplashScreen Image="Assets\SplashScreen.png" />
+      </uap:VisualElements>
+
+      <Extensions>
+        <!-- Open at Login (StartupService, TaskId must match). Disabled until the user turns it on. -->
+        <desktop:Extension Category="windows.startupTask" Executable="MikeShift.exe" EntryPoint="Windows.FullTrustApplication">
+          <desktop:StartupTask TaskId="MikeShiftStartup" Enabled="false" DisplayName="MikeShift" />
+        </desktop:Extension>
+
+        <!-- Explorer right-click entry "Convert with MikeShift" (src\MikeShift.App\Shell, docs/developer/architecture.md "Explorer right-click").
+             The COM server is OUT of process: Windows starts `MikeShift.exe -Embedding` (Program.Main hands it to ShellExtensionServer, which
+             never starts WinUI) the first time the menu is built, so no MikeShift or .NET code is loaded into explorer.exe.
+             One class: the IExplorerCommand for the Windows 11 modern menu (and the one menu of Windows 10). Keep the CLSID in step with
+             ShellNames. Whether "Show more options" also lists it depends on the Windows build; see docs/limitations.md. -->
+        <com:Extension Category="windows.comServer">
+          <com:ComServer>
+            <com:ExeServer Executable="MikeShift.exe" Arguments="-Embedding" DisplayName="MikeShift Explorer integration">
+              <com:Class Id="02dcb673-3099-4372-86cb-c7f4fad75db8" DisplayName="MikeShift Convert command" />
+            </com:ExeServer>
+          </com:ComServer>
+        </com:Extension>
+        <desktop4:Extension Category="windows.fileExplorerContextMenus">
+          <desktop4:FileExplorerContextMenus>
+            <desktop5:ItemType Type="*">
+              <desktop5:Verb Id="ConvertWithMikeShift" Clsid="02dcb673-3099-4372-86cb-c7f4fad75db8" />
+            </desktop5:ItemType>
+            <desktop5:ItemType Type="Directory">
+              <desktop5:Verb Id="ConvertFolderWithMikeShift" Clsid="02dcb673-3099-4372-86cb-c7f4fad75db8" />
+            </desktop5:ItemType>
+          </desktop4:FileExplorerContextMenus>
+        </desktop4:Extension>
+      </Extensions>
+    </Application>
+
+    <Application Id="Cli" Executable="MikeShift.Cli.exe" EntryPoint="Windows.FullTrustApplication" desktop4:Subsystem="console" desktop4:SupportsMultipleInstances="true">
+      <uap:VisualElements
+        DisplayName="MikeShift command line"
+        Description="Convert files from a terminal: mikeshift --list / --run."
+        BackgroundColor="transparent"
+        Square150x150Logo="Assets\Square150x150Logo.png"
+        Square44x44Logo="Assets\Square44x44Logo.png"
+        AppListEntry="none" />
+
+      <Extensions>
+        <!-- `mikeshift.exe` on PATH (%LOCALAPPDATA%\Microsoft\WindowsApps), console subsystem so stdout/stderr/exit code reach the terminal. -->
+        <uap5:Extension Category="windows.appExecutionAlias" Executable="MikeShift.Cli.exe" EntryPoint="Windows.FullTrustApplication">
+          <uap5:AppExecutionAlias desktop4:Subsystem="console">
+            <uap5:ExecutionAlias Alias="mikeshift.exe" />
+          </uap5:AppExecutionAlias>
+        </uap5:Extension>
+      </Extensions>
+    </Application>
+  </Applications>
+
+  <Capabilities>
+    <rescap:Capability Name="runFullTrust" />
+  </Capabilities>
+</Package>

@@ -1,0 +1,32 @@
+namespace MikeShift.App.Settings;
+
+/// <summary>Where the About card and the tray menu send the browser. The app itself never goes online.</summary>
+public static class AppLinks
+{
+    /// <summary>The project page.</summary>
+    public const string Project = "https://github.com/mjtpena/mikeshift";
+
+    /// <summary>Releases, for "Check for updates".</summary>
+    public const string Releases = Project + "/releases";
+
+    /// <summary>The NOTICE file: every third-party licence.</summary>
+    public const string Notice = Project + "/blob/main/NOTICE";
+}
+
+/// <summary>Opens a Microsoft Store page (<c>ms-windows-store://pdp/?ProductId=...</c>) for a codec extension. UI thread; the launch is asynchronous and never throws.</summary>
+public static class StoreLauncher
+{
+    /// <summary>Launches <paramref name="uri"/> (a Store link). Returns false if it is not a valid URI.</summary>
+    public static bool Open(string uri)
+    {
+        if (!Uri.TryCreate(uri, UriKind.Absolute, out var parsed)) return false;
+        _ = LaunchAsync(parsed);
+        return true;
+    }
+
+    private static async Task LaunchAsync(Uri uri)
+    {
+        try { await Windows.System.Launcher.LaunchUriAsync(uri); }
+        catch (Exception ex) { Wheel.WheelLog.Error("opening the Store failed", ex); }
+    }
+}

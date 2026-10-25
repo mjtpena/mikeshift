@@ -1,0 +1,318 @@
+using MikeShift.Core;
+using MikeShift.Core.Hotkeys;
+using MikeShift.Core.Interaction;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+
+namespace MikeShift.App.Settings;
+
+/// <summary>Where preference values live. Values are plain strings so both back ends agree.</summary>
+public interface IPreferenceStore
+{
+    /// <summary>The stored value, or null if absent.</summary>
+    string? Get(string key);
+
+    /// <summary>Stores a value. Returns false if it could only be kept in memory (read-only profile, full disk): the next run will not see it.</summary>
+    bool Set(string key, string value);
+}
+
+/// <summary>Packaged: <c>ApplicationData.Current.LocalSettings</c>.</summary>
+internal sealed class LocalSettingsStore : IPreferenceStore
+{
+    public string? Get(string key) =>
+        Windows.Storage.ApplicationData.Current.LocalSettings.Values.TryGetValue(key, out var v) ? v as string : null;
+
+    public bool Set(string key, string value)
+    {
+        try
+        {
+            Windows.Storage.ApplicationData.Current.LocalSettings.Values[key] = value;
+            return true;
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+    }
+}
+
+/// <summary>Source-generated serializer for <c>settings.json</c> (a flat string map): no reflection, so it survives IL trimming.</summary>
+[JsonSerializable(typeof(Dictionary<string, string>))]
+internal sealed partial class SettingsJsonContext : JsonSerializerContext;
+
+/// <summary>Unpackaged: <c>settings.json</c> in <see cref="AppData.Folder"/> (flat string map); the dev switch <c>MIKESHIFT_SETTINGS_PATH</c> points dev/test runs at another file.</summary>
+internal sealed class JsonFileStore : IPreferenceStore
+{
+    private readonly string _path;
+    private readonly object _gate = new();
+    private Dictionary<string, string>? _cache;
+
+    public JsonFileStore(string? path = null) =>
+        _path = path ?? DevSwitches.SettingsPath ?? AppData.FilePath("settings.json");
+
+    public string? Get(string key)
+    {
+        lock (_gate) return Load().TryGetValue(key, out var v) ? v : null;
+    }
+
+    public bool Set(string key, string value)
+    {
+        lock (_gate)
+        {
+            // Merge into what is on disk now, not into what this process read at start-up: another instance (a dev scene next to the real
+            // app, a second launch that has not redirected yet) may have saved other keys since, and a blind rewrite would undo them.
+            var map = new Dictionary<string, string>(Load());
+            if (ReadFile() is { } onDisk)
+                foreach (var (k, v) in onDisk) map[k] = v;
+            map[key] = value;
+            _cache = map; // the value is kept for this run even if it cannot be saved
+            try
+            {
+                Directory.CreateDirectory(System.IO.Path.GetDirectoryName(_path)!);
+                var tmp = _path + ".tmp";
+                File.WriteAllText(tmp, JsonSerializer.Serialize(map, SettingsJsonContext.Default.DictionaryStringString));
+                File.Move(tmp, _path, overwrite: true);
+                return true;
+            }
+            catch (IOException) { return false; } // a preference that cannot be saved is not worth crashing for
+            catch (UnauthorizedAccessException) { return false; }
+        }
+    }
+
+    /// <summary>The file's current content: empty if there is no file, null if it cannot be read or is damaged.</summary>
+    private Dictionary<string, string>? ReadFile()
+    {
+        try
+        {
+            return File.Exists(_path) ? JsonSerializer.Deserialize(File.ReadAllText(_path), SettingsJsonContext.Default.DictionaryStringString) ?? [] : [];
+        }
+        catch (Exception ex) when (ex is IOException or JsonException or UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
+
+    private Dictionary<string, string> Load() => _cache ??= ReadFile() ?? [];
+}
+
+/// <summary>
+/// The user's preferences: <c>chime</c>, <c>showsToast</c>, <c>toolsKey</c>, <c>showInFolderAfter</c>, <c>useWord</c>, <c>launched</c>, and the conversion settings (<c>convQuality</c>, <c>convCompress</c>, <c>convResize</c>, <c>convGifSeconds</c>, <c>convOutputFolder</c>; see <see cref="Conversions"/>).
+/// Packaged apps use <c>ApplicationData.LocalSettings</c>; unpackaged runs use a JSON file under
+/// <c>%LOCALAPPDATA%\MikeShift</c>. Open at Login is NOT stored here: it lives in the OS (<see cref="StartupService"/>).
+/// Thread-safe for reads and writes; <see cref="Changed"/> may fire on any thread.
+/// </summary>
+public sealed class Preferences
+{
+    /// <summary>Key: play a sound when a job succeeds (bool, default false: Windows apps stay quiet unless asked).</summary>
+    public const string ChimeKey = "chime";
+
+    /// <summary>Key: show the HUD toast (bool, default true).</summary>
+    public const string ShowsToastKey = "showsToast";
+
+    /// <summary>Key: tools toggle (<see cref="ToolsKey"/> name, default "Ctrl").</summary>
+    public const string ToolsKeyKey = "toolsKey";
+
+    /// <summary>Key: the key held while dragging to open the wheel (<see cref="ArmKey"/> name, default "Shift").</summary>
+    public const string ArmKeyKey = "armKey";
+
+    /// <summary>Key: the global hotkey that opens the wheel for the selection in File Explorer (text like "Ctrl+Alt+Shift+Space", or "None"; default Ctrl+Alt+Shift+Space).</summary>
+    public const string HotkeyKey = "hotkey";
+
+    /// <summary>Key: open Explorer on the result after a conversion (bool, default false).</summary>
+    public const string ShowInFolderAfterKey = "showInFolderAfter";
+
+    /// <summary>Key: let MikeShift use Microsoft Word for Word documents (bool, default false: MikeShift stays fully local).</summary>
+    public const string UseWordKey = "useWord";
+
+    /// <summary>Key: the welcome window has been shown once (bool, default false).</summary>
+    public const string LaunchedKey = "launched";
+
+    /// <summary>Key: JPEG/WebP/HEIC quality (whole number 50 to 100, default 90).</summary>
+    public const string QualityKey = "convQuality";
+
+    /// <summary>Key: Compress strength (<see cref="CompressStrength"/> name, default "Medium").</summary>
+    public const string CompressKey = "convCompress";
+
+    /// <summary>Key: the Resize percentage (25, 50 or 75, default 50).</summary>
+    public const string ResizeKey = "convResize";
+
+    /// <summary>Key: the longest GIF made from a video, in seconds (5, 10, 15 or 30, default 15).</summary>
+    public const string GifSecondsKey = "convGifSeconds";
+
+    /// <summary>Key: the folder converted files go to (a full path; absent or empty = next to the original).</summary>
+    public const string OutputFolderKey = "convOutputFolder";
+
+    /// <summary>True for the keys behind <see cref="Conversions"/>.</summary>
+    public static bool IsConversionKey(string key) =>
+        key is QualityKey or CompressKey or ResizeKey or GifSecondsKey or OutputFolderKey;
+
+    private readonly IPreferenceStore _store;
+
+    /// <summary>Uses the packaged or unpackaged store automatically.</summary>
+    public Preferences() : this(PackageInfo.IsPackaged ? new LocalSettingsStore() : new JsonFileStore()) { }
+
+    /// <summary>Uses <paramref name="store"/> (tests, tools).</summary>
+    public Preferences(IPreferenceStore store) => _store = store;
+
+    /// <summary>Raised after any value changed; the argument is the key.</summary>
+    public event Action<string>? Changed;
+
+    /// <summary>Play a short sound when a job succeeds. Default false.</summary>
+    public bool Chime
+    {
+        get => GetBool(ChimeKey, false);
+        set => SetBool(ChimeKey, value);
+    }
+
+    /// <summary>Show the HUD toast. Default true.</summary>
+    public bool ShowsToast
+    {
+        get => GetBool(ShowsToastKey, true);
+        set => SetBool(ShowsToastKey, value);
+    }
+
+    /// <summary>Open Explorer with the result selected after every successful conversion. Default false.</summary>
+    public bool ShowInFolderAfter
+    {
+        get => GetBool(ShowInFolderAfterKey, false);
+        set => SetBool(ShowInFolderAfterKey, value);
+    }
+
+    /// <summary>
+    /// Use Microsoft Word (if installed) for legacy .doc files and better-looking PDFs from Word files. Default false: Word connects to
+    /// Microsoft on its own, so MikeShift only starts it when the user asked for it.
+    /// </summary>
+    public bool UseWord
+    {
+        get => GetBool(UseWordKey, Capabilities.WordAllowedByDefault);
+        set => SetBool(UseWordKey, value);
+    }
+
+    /// <summary>
+    /// The key that switches the wheel to tools. Default <see cref="ToolsKey.Ctrl"/> (Shift when Ctrl arms the wheel: the arming key is never
+    /// also the tools key, see <see cref="ToolsKeys.Normalize"/>).
+    /// </summary>
+    public ToolsKey ToolsKey
+    {
+        get => ToolsKeys.Normalize(ArmKey, Enum.TryParse<ToolsKey>(_store.Get(ToolsKeyKey), ignoreCase: true, out var k) && Enum.IsDefined(k) ? k : ToolsKey.Ctrl);
+        set
+        {
+            _store.Set(ToolsKeyKey, ToolsKeys.Normalize(ArmKey, value).ToString());
+            Changed?.Invoke(ToolsKeyKey);
+        }
+    }
+
+    /// <summary>The key that opens the wheel while dragging (first-run choice, Settings). Default <see cref="ArmKey.Shift"/>.</summary>
+    public ArmKey ArmKey
+    {
+        get => Enum.TryParse<ArmKey>(_store.Get(ArmKeyKey), ignoreCase: true, out var k) && Enum.IsDefined(k) ? k : ArmKey.Shift;
+        set
+        {
+            var before = ToolsKey;
+            _store.Set(ArmKeyKey, value.ToString());
+            // The arming key cannot also be the tools key: keep the pair valid (Ctrl arming means Shift for tools, and back).
+            var tools = ToolsKeys.Normalize(value, before);
+            if (tools != before) _store.Set(ToolsKeyKey, tools.ToString());
+            Changed?.Invoke(ArmKeyKey);
+            if (tools != before) Changed?.Invoke(ToolsKeyKey);
+        }
+    }
+
+    /// <summary>
+    /// The global hotkey for "convert the selection in File Explorer", or null for none. Default Ctrl+Alt+Shift+Space (see <see cref="HotkeyConflicts"/>).
+    /// An unreadable stored value counts as the default.
+    /// </summary>
+    public HotkeySpec? Hotkey
+    {
+        get => HotkeySpec.FromSetting(_store.Get(HotkeyKey));
+        set
+        {
+            _store.Set(HotkeyKey, HotkeySpec.ToSetting(value));
+            Changed?.Invoke(HotkeyKey);
+        }
+    }
+
+    // ---- conversions: every value is validated on the way in and read leniently on the way out, so a settings file
+    // from an older version, or one edited by hand, only ever gives the defaults for what it does not say properly.
+
+    /// <summary>JPEG, WebP and HEIC quality, 50 to 100. Default 90.</summary>
+    public int Quality
+    {
+        get => ConversionOptions.TryParseQuality(_store.Get(QualityKey), out var q) ? q : ConversionOptions.DefaultQuality;
+        set => SetConversion(QualityKey, new ConversionOptions { Quality = value }.Quality.ToString(System.Globalization.CultureInfo.InvariantCulture));
+    }
+
+    /// <summary>How hard Compress squeezes a picture. Default <see cref="CompressStrength.Medium"/>.</summary>
+    public CompressStrength Compress
+    {
+        get => ConversionOptions.TryParseCompress(_store.Get(CompressKey), out var c) ? c : CompressStrength.Medium;
+        set => SetConversion(CompressKey, new ConversionOptions { Compress = value }.Compress.ToString());
+    }
+
+    /// <summary>The Resize percentage: 25, 50 or 75. Default 50.</summary>
+    public int ResizePercent
+    {
+        get => ConversionOptions.TryParseResizePercent(_store.Get(ResizeKey), out var p) ? p : ConversionOptions.DefaultResizePercent;
+        set => SetConversion(ResizeKey, new ConversionOptions { ResizePercent = value }.ResizePercent.ToString(System.Globalization.CultureInfo.InvariantCulture));
+    }
+
+    /// <summary>The longest GIF made from a video, in seconds: 5, 10, 15 or 30. Default 15.</summary>
+    public int GifSeconds
+    {
+        get => ConversionOptions.TryParseGifSeconds(_store.Get(GifSecondsKey), out var s) ? s : ConversionOptions.DefaultGifSeconds;
+        set => SetConversion(GifSecondsKey, new ConversionOptions { GifSeconds = value }.GifSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture));
+    }
+
+    /// <summary>The folder converted files go to (a full path), or null for "next to the original" (the default).</summary>
+    public string? OutputFolder
+    {
+        get => ConversionOptions.FromStored(null, null, null, null, _store.Get(OutputFolderKey)).OutputFolder;
+        set => SetConversion(OutputFolderKey, new ConversionOptions { OutputFolder = value }.OutputFolder ?? "");
+    }
+
+    /// <summary>All conversion settings as one immutable <see cref="ConversionOptions"/>: what a job is run with.</summary>
+    public ConversionOptions Conversions => ConversionOptions.FromStored(
+        _store.Get(QualityKey), _store.Get(CompressKey), _store.Get(ResizeKey), _store.Get(GifSecondsKey), _store.Get(OutputFolderKey));
+
+    private void SetConversion(string key, string value)
+    {
+        _store.Set(key, value);
+        Changed?.Invoke(key);
+    }
+
+    /// <summary>True once the welcome window was shown. Default false.</summary>
+    public bool Launched
+    {
+        get => GetBool(LaunchedKey, false);
+        set => SetBool(LaunchedKey, value);
+    }
+
+    /// <summary>Records that the welcome window was shown. False if that could not be saved (the next start would show it again).</summary>
+    public bool TryMarkLaunched()
+    {
+        var saved = _store.Set(LaunchedKey, "true");
+        Changed?.Invoke(LaunchedKey);
+        return saved;
+    }
+
+    /// <summary>A remembered editor window size (client DIPs), or null.</summary>
+    public (int Width, int Height)? GetWindowSize(string name)
+    {
+        var parts = _store.Get("window." + name)?.Split('x');
+        return parts is { Length: 2 } && int.TryParse(parts[0], out var w) && int.TryParse(parts[1], out var h) && w is > 100 and < 10000 && h is > 100 and < 10000
+            ? (w, h)
+            : null;
+    }
+
+    /// <summary>Remembers an editor window size (client DIPs).</summary>
+    public void SetWindowSize(string name, int width, int height) => _store.Set("window." + name, $"{width}x{height}");
+
+    private bool GetBool(string key, bool fallback) =>
+        bool.TryParse(_store.Get(key), out var b) ? b : fallback;
+
+    private void SetBool(string key, bool value)
+    {
+        _store.Set(key, value ? "true" : "false");
+        Changed?.Invoke(key);
+    }
+}

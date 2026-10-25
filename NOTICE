@@ -1,0 +1,64 @@
+MikeShift - third-party notices
+=========================================
+
+MikeShift itself is released under the MIT licence (see LICENSE).
+
+Components compiled into or shipped with the product
+----------------------------------------------------
+Licences were read from each package's metadata (the same data nuget.org shows) for the exact versions pinned in
+Directory.Packages.props; the Win2D, PDFsharp and Windows App SDK pages on nuget.org were checked directly.
+
+Direct dependencies (src/*)
+
+  PDFsharp 6.2.4                      MIT        PDF writing/splitting/merging/compression, PDF text layout.
+                                                 NOTE: pinned to 6.2.4 on purpose. Version 6.5.0 and later are not
+                                                 offered under the MIT licence (AGPL); do not bump without
+                                                 re-checking the licence.
+  PdfPig 0.1.16                       Apache-2.0 PDF text extraction.
+  DocumentFormat.OpenXml 3.5.1        MIT        DOCX reading/writing (Open XML SDK).
+  SkiaSharp 4.153.1                   MIT        WebP encoding, image-decode fallback.
+  SkiaSharp.NativeAssets.Win32 4.153.1 MIT       Native Skia library for the above.
+  Microsoft.WindowsAppSDK.Base 2.0.4, .Foundation 2.3.12, .InteractiveExperiences 2.1.9, .WinUI 2.3.9
+                                      Microsoft Software License Terms (license.txt in the package; redistributable
+                                                 with applications). The Windows App SDK 2.5.1 components MikeShift
+                                                 uses (WinUI 3, windowing/input, app lifecycle, self-contained
+                                                 deployment), plus the Microsoft.Windows.SDK.NET projection, which
+                                                 ship inside the package. The Microsoft.WindowsAppSDK metapackage and its
+                                                 AI, ML, Search, Widgets and DWrite components are restored but
+                                                 excluded (nothing from them is shipped).
+  Microsoft.Graphics.Win2D 1.4.0      The package metadata links Microsoft's Win2D licence page
+                                                 (eula_win2d_10012014.htm); the Win2D source repository
+                                                 (github.com/microsoft/Win2D) is MIT. Used for the wheel renderer.
+  H.NotifyIcon.WinUI 2.4.1            MIT        Tray icon (and H.NotifyIcon, H.GeneratedIcons.System.Drawing 2.4.1).
+  WinUIEx 2.9.3                       MIT        WinUI window helpers.
+  CommunityToolkit.Mvvm 8.4.2         MIT        MVVM helpers.
+  System.Security.Cryptography.Pkcs 10.0.13   MIT   Security-advisory pin for a PDFsharp dependency.
+
+Transitive packages that end up in the MSIX
+
+  Microsoft.Web.WebView2 1.0.3719.77  BSD-style licence (LICENSE.txt in the package)   via the Windows App SDK.
+  Microsoft.Extensions.DependencyInjection.Abstractions 8.0.2,
+  Microsoft.Extensions.Logging.Abstractions 8.0.3,
+  Microsoft.Win32.SystemEvents 10.0.0, System.Drawing.Common 10.0.0,
+  System.IO.Packaging 10.0.2, System.Numerics.Tensors 9.0.0       MIT
+  The .NET 10 runtime (self-contained, bundled in the package): MIT, (c) .NET Foundation and contributors.
+
+Build-time only (nothing of these is distributed)
+
+  Microsoft.Windows.CsWin32 0.3.367   MIT        P/Invoke source generator (+ Microsoft.Windows.SDK.Win32Metadata,
+                                                 Microsoft.Windows.WDK.Win32Metadata, Microsoft.Windows.SDK.Win32Docs:
+                                                 Microsoft SDK licence).
+  Microsoft.Windows.SDK.BuildTools 10.0.28000.2705 and Microsoft.Windows.SDK.BuildTools.MSIX 1.7.251221100
+                                      Microsoft SDK licence. MSIX packaging tools.
+
+Tests only
+
+  xunit 2.9.3                         Apache-2.0
+  xunit.runner.visualstudio 3.1.5     Apache-2.0
+  Microsoft.NET.Test.Sdk 18.11.0      MIT
+
+Operating-system components used through public APIs (not redistributed): Windows Imaging Component, Media
+Foundation / Windows.Media.Transcoding, Windows.Data.Pdf, the Win32 shell and OLE.
+
+If you add a dependency, add it here with its licence, and prefer MIT/BSD/Apache-2.0. The product contains no
+network code and no bundled third-party executables.

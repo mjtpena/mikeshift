@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Trim warnings of the linker run that are not ours to fix, each attached to the framework member or assembly that raises it (ILLink
+     link-attributes option, wired up in Trimming.props). Nothing here is a project-wide NoWarn: an IL2026, IL2104 or any other trim warning that
+     originates in MikeShift.* (or in any other assembly) still fails the trimmed build.
+
+     1. IL2026 "Built-in COM support is not trim compatible": raised inside System.Private.CoreLib, by ComActivator.GetClassFactoryForTypeInternal
+        calling GetClassFactoryForTypeImpl. It is the framework's own notice for BuiltInComInteropSupport=true, which the [ComImport] interop
+        needs (see Trimming.props).
+     2. IL2104 "assembly X produced trim warnings", for the two Windows SDK projection assemblies (Microsoft.Windows.SDK.NET and WinRT.Runtime;
+        with -p:TrimmerSingleWarn=false they show 70 x IL2081, all in the ABI.* generic-collection fallbacks of the WinRT marshalling, for generic
+        instantiations nothing in this app uses). -->
+<linker>
+  <assembly fullname="System.Private.CoreLib">
+    <type fullname="Internal.Runtime.InteropServices.ComActivator">
+      <method name="GetClassFactoryForTypeInternal">
+        <attribute fullname="System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessageAttribute">
+          <argument>Trimming</argument>
+          <argument>IL2026</argument>
+          <property name="Justification">Built-in COM interop is switched on on purpose (BuiltInComInteropSupport in Trimming.props); the interfaces it marshals are kept whole by the build.</property>
+        </attribute>
+      </method>
+    </type>
+  </assembly>
+  <assembly fullname="Microsoft.Windows.SDK.NET">
+    <attribute fullname="System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessageAttribute">
+      <argument>Trimming</argument>
+      <argument>IL2081</argument>
+      <property name="Scope">module</property>
+      <property name="Justification">Only the unused ABI.* generic-collection fallbacks of the CsWinRT marshalling warn (IL2081).</property>
+    </attribute>
+  </assembly>
+  <assembly fullname="WinRT.Runtime">
+    <attribute fullname="System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessageAttribute">
+      <argument>Trimming</argument>
+      <argument>IL2081</argument>
+      <property name="Scope">module</property>
+      <property name="Justification">Only the unused ABI.* generic-collection fallbacks of the CsWinRT marshalling warn (IL2081).</property>
+    </attribute>
+  </assembly>
+</linker>

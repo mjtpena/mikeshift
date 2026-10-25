@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <!-- Not "mikeshift": in the MSIX this exe, its dll and its runtimeconfig/deps files sit in the same folder as the tray app's MikeShift.exe,
+         and Windows file names are case-insensitive. The `mikeshift.exe` command on PATH is an execution alias (Package.appxmanifest), so its
+         name does not depend on the file name. -->
+    <AssemblyName>MikeShift.Cli</AssemblyName>
+    <RootNamespace>MikeShift.Cli</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>../MikeShift.App/Assets/MikeShift.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MikeShift.Core\MikeShift.Core.csproj" />
+  </ItemGroup>
+
+  <!-- Packaging -->
+  <PropertyGroup>
+    <!-- MikeShift.App publishes this project self-contained for the MSIX and takes only its four own files (MikeShift.Cli.exe, .dll,
+         .runtimeconfig.json, .deps.json) into the package root, where they use the tray app's runtime; plain builds stay framework-dependent. -->
+    <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
+  </PropertyGroup>
+
+  <!-- PublishTrimmed etc. when MikeShift.App publishes this project self-contained for a package (see Trimming.props). -->
+  <Import Project="..\..\Trimming.props" />
+
+</Project>

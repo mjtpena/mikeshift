@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <RootNamespace>MikeShift.Core.Tests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="coverlet.collector">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\MikeShift.Core\MikeShift.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- UI-free files of the tray app, compiled into the tests (the WinUI app project is not referenced): the settings store and the dev-switch gate. -->
+    <Compile Include="..\..\src\MikeShift.App\Settings\Preferences.cs" Link="AppSources\Preferences.cs" />
+    <Compile Include="..\..\src\MikeShift.App\Settings\PackageInfo.cs" Link="AppSources\PackageInfo.cs" />
+    <Compile Include="..\..\src\MikeShift.App\Settings\AppData.cs" Link="AppSources\AppData.cs" />
+    <Compile Include="..\..\src\MikeShift.App\DevSwitches.cs" Link="AppSources\DevSwitches.cs" />
+    <!-- The command-line tests reuse the integrity suite's independent readers (tests/MikeShift.Core.Tests/Integrity). -->
+    <InternalsVisibleTo Include="MikeShift.Cli.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+    <Using Include="MikeShift.Core.Tests.Infrastructure" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>MikeShift.Core</RootNamespace>
+    <AssemblyName>MikeShift.Core</AssemblyName>
+    <!-- The shipped apps are IL-trimmed (Trimming.props): this makes the trim analyzers run on Core's own code. -->
+    <IsTrimmable>true</IsTrimmable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Packages used by the converters. -->
+    <PackageReference Include="PDFsharp" />
+    <PackageReference Include="PdfPig" />
+    <PackageReference Include="DocumentFormat.OpenXml" />
+    <PackageReference Include="SkiaSharp" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Win32" />
+    <PackageReference Include="Microsoft.Windows.CsWin32" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- CsWin32: every NativeMethods.txt anywhere in the project is an AdditionalFile. -->
+    <AdditionalFiles Include="**/NativeMethods.txt" Exclude="bin/**;obj/**" />
+    <AdditionalFiles Include="NativeMethods.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="MikeShift.Core.Tests" />
+    <InternalsVisibleTo Include="MikeShift.Cli.Tests" />
+  </ItemGroup>
+
+</Project>

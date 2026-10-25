@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="MikeShift.App.FirstRun.WelcomeWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:MikeShift.App.FirstRun"
+    Title="Welcome to MikeShift">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <ScrollViewer VerticalScrollBarVisibility="Auto" IsTabStop="False">
+            <StackPanel Padding="40,4,40,20" Spacing="12" HorizontalAlignment="Center" MaxWidth="520">
+
+                <Viewbox Width="160" Height="160" HorizontalAlignment="Center"><local:WheelIllustration /></Viewbox>
+
+                <StackPanel Spacing="6" HorizontalAlignment="Center">
+                    <TextBlock Text="Welcome to MikeShift" Style="{StaticResource TitleTextBlockStyle}" HorizontalTextAlignment="Center" />
+                    <TextBlock TextWrapping="Wrap" HorizontalTextAlignment="Center" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                               Text="MikeShift runs in the taskbar's notification area. If you can't see its icon, select &quot;Show hidden icons&quot; and drag it onto the taskbar." />
+                    <HyperlinkButton Content="Show the tray icon in Taskbar settings" HorizontalAlignment="Center" Click="OnTaskbarSettingsClicked" />
+                </StackPanel>
+
+                <!-- The activation choice: two equal options. Saved as soon as it is picked. -->
+                <StackPanel Spacing="8">
+                    <TextBlock Text="How do you want to open the wheel while dragging?" Style="{StaticResource BodyStrongTextBlockStyle}" TextWrapping="Wrap" />
+                    <RadioButtons x:Name="ArmKeyChoice" MaxColumns="2" SelectionChanged="OnArmKeyChanged"
+                                  AutomationProperties.Name="How do you want to open the wheel while dragging?">
+                        <RadioButton Tag="Shift" MinWidth="0" AutomationProperties.Name="Hold Shift while dragging">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="Hold" VerticalAlignment="Center" />
+                                <Border Style="{StaticResource KeycapBorderStyle}"><TextBlock Text="Shift" FontSize="12" FontWeight="SemiBold" /></Border>
+                            </StackPanel>
+                        </RadioButton>
+                        <RadioButton Tag="Ctrl" MinWidth="0" AutomationProperties.Name="Hold Ctrl while dragging">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <TextBlock Text="Hold" VerticalAlignment="Center" />
+                                <Border Style="{StaticResource KeycapBorderStyle}"><TextBlock Text="Ctrl" FontSize="12" FontWeight="SemiBold" /></Border>
+                            </StackPanel>
+                        </RadioButton>
+                    </RadioButtons>
+                    <TextBlock x:Name="ArmKeyReassurance" TextWrapping="Wrap" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                </StackPanel>
+
+                <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+
+                <!-- The three steps, with keycaps. -->
+                <StackPanel Spacing="14">
+                    <Grid ColumnSpacing="14">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="28" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                        <Border Width="28" Height="28" CornerRadius="14" VerticalAlignment="Top" Background="{ThemeResource AccentFillColorDefaultBrush}">
+                            <TextBlock Text="1" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="SemiBold"
+                                       Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}" />
+                        </Border>
+                        <StackPanel Grid.Column="1" Spacing="2">
+                            <TextBlock Text="Drag a file in File Explorer" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                            <TextBlock TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                       Text="Start dragging one or more files or folders." />
+                        </StackPanel>
+                    </Grid>
+
+                    <Grid ColumnSpacing="14">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="28" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                        <Border Width="28" Height="28" CornerRadius="14" VerticalAlignment="Top" Background="{ThemeResource AccentFillColorDefaultBrush}">
+                            <TextBlock Text="2" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="SemiBold"
+                                       Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}" />
+                        </Border>
+                        <StackPanel Grid.Column="1" Spacing="2">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <TextBlock Text="Hold" Style="{StaticResource BodyStrongTextBlockStyle}" VerticalAlignment="Center" />
+                                <Border Style="{StaticResource KeycapBorderStyle}"><TextBlock x:Name="ArmKeycap" Text="Shift" FontSize="12" FontWeight="SemiBold" /></Border>
+                            </StackPanel>
+                            <TextBlock TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                       Text="A wheel of formats appears under your pointer." />
+                        </StackPanel>
+                    </Grid>
+
+                    <Grid ColumnSpacing="14">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="28" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                        <Border Width="28" Height="28" CornerRadius="14" VerticalAlignment="Top" Background="{ThemeResource AccentFillColorDefaultBrush}">
+                            <TextBlock Text="3" HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="SemiBold"
+                                       Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}" />
+                        </Border>
+                        <StackPanel Grid.Column="1" Spacing="2">
+                            <TextBlock Text="Drop it on a format" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                            <TextBlock TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                       Text="A converted copy appears next to the original." />
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+
+                <!-- Optional codec check: shown only when this PC lacks a decoder, after the probe has finished. -->
+                <Border x:Name="CodecCard" Visibility="Collapsed" Padding="16,14" CornerRadius="4"
+                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                    <StackPanel Spacing="8">
+                        <TextBlock x:Name="CodecTitle" Style="{StaticResource BodyStrongTextBlockStyle}" TextWrapping="Wrap" />
+                        <TextBlock x:Name="CodecBody" TextWrapping="Wrap" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        <StackPanel x:Name="CodecButtons" Orientation="Horizontal" Spacing="8" />
+                    </StackPanel>
+                </Border>
+
+                <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
+
+                <StackPanel Spacing="14">
+                    <StackPanel Spacing="2">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock x:Name="ToolsVerb" Text="Press" Style="{StaticResource BodyStrongTextBlockStyle}" VerticalAlignment="Center" />
+                            <Border Style="{StaticResource KeycapBorderStyle}"><TextBlock x:Name="ToolsKeycap" Text="Ctrl" FontSize="12" FontWeight="SemiBold" /></Border>
+                            <TextBlock Text="for tools" Style="{StaticResource BodyStrongTextBlockStyle}" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <TextBlock x:Name="ToolsDescription" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    </StackPanel>
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="Prefer clicking, or the keyboard?" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                        <TextBlock TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                   Text="Select the tray icon to pick files from a dialog." />
+                        <TextBlock x:Name="HotkeyText" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    </StackPanel>
+                </StackPanel>
+
+                <TextBlock TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" FontSize="12"
+                           Text="Your original files are never changed, and MikeShift never goes online." />
+
+                <CheckBox x:Name="OpenAtLoginBox" Content="Open at login" />
+            </StackPanel>
+        </ScrollViewer>
+
+        <Border Grid.Row="1" Background="{ThemeResource LayerOnMicaBaseAltFillColorDefaultBrush}"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="0,1,0,0" Padding="40,14">
+            <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                <Button x:Name="StartButton" Content="Get started" Click="OnStartClicked" />
+                <Button x:Name="TryButton" Content="Try it with Convert files…" Style="{StaticResource AccentButtonStyle}" Click="OnTryClicked" />
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>

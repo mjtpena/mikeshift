@@ -1,0 +1,82 @@
+<Project>
+  <!-- IL trimming of the shipped (self-contained) apps. Imported by MikeShift.App and MikeShift.Cli, after they have set SelfContained.
+
+       * Trimming runs when a package is produced (-p:GenerateAppxPackageOnBuild=true, which scripts/release.ps1 and scripts/build.ps1 -Msix
+         pass) and not in a plain `dotnet build`, where it would only slow the inner loop down. The trim ANALYZERS (IL2xxx/IL3xxx, below) run
+         on every compile, so a trim problem in our own code is a build error (TreatWarningsAsErrors) everywhere.
+       * Opt out for an untrimmed package (to compare sizes or bisect a trimming problem): -p:MikeShiftTrim=false. -->
+  <PropertyGroup>
+    <MikeShiftTrim Condition="'$(MikeShiftTrim)' == ''">true</MikeShiftTrim>
+    <!-- Always on (even for a plain framework-dependent build of the CLI): the trim analyzer, and with it the ILLink package, are then part
+         of every restore, including the one the app runs for the CLI before it publishes it. -->
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(MikeShiftTrim)' == 'true' and '$(SelfContained)' == 'true' and '$(GenerateAppxPackageOnBuild)' == 'true'">
+    <PublishTrimmed>true</PublishTrimmed>
+  </PropertyGroup>
+
+  <!-- Keyed on PublishTrimmed itself, because MikeShift.App publishes the CLI with PublishTrimmed passed in as a global property. -->
+  <PropertyGroup Condition="'$(PublishTrimmed)' == 'true'">
+    <TrimMode>full</TrimMode>
+    <!-- Win32/COM interop is classic [ComImport] marshalling (CsWin32 allowMarshaling, the OLE drop target, UI Automation provider, Media
+         Foundation, shell dialogs). Trimming turns the runtime's built-in COM support off unless it is asked for explicitly. -->
+    <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+    <!-- The WinRT projections (Microsoft.WinUI.dll...) implement the interfaces native XAML calls back into (IContentControlOverrides, the
+         IXxxProtected/IXxxOverrides families) on classes the app derives from, such as SettingsCard : ContentControl. Nothing in managed code
+         refers to those interfaces, so the trimmer's "remove unused interfaces" optimisation removes them, the COM callable wrapper of the derived
+         class then lacks them, and XAML fails to load ("Failed to assign to property ContentControl.Content"). -->
+    <_TrimmerUnusedInterfaces>false</_TrimmerUnusedInterfaces>
+  </PropertyGroup>
+
+  <!-- COM interfaces keep every method. A [ComImport] interface is called through its vtable, in declaration order, so a trimmer that removes the
+       methods nothing calls shifts every slot after the removed one and the next call lands in the wrong function. That crashed the wheel the
+       first time a file was dragged over it: System.Runtime.InteropServices.ComTypes.IDataObject (BCL) had 5 of its 9 methods removed, and
+       QueryGetData, which is called, moved from vtable slot 5 to slot 2 (access violation). The same applies to the 165 [ComImport] interfaces
+       of WinUIEx and the ones of System.Private.Windows.Core. ILLink does not protect these. Our own assemblies are trim roots
+       (MikeShift.App.csproj), but the framework's and the libraries' are not, so tools/ComInterfaceScan.cs lists every [ComImport] interface in
+       the linker's inputs in a root descriptor with preserve="all" and required="false" (kept whole when it is used at all, not kept when nothing
+       refers to it), and after the linker has run it compares every one that survived with its input and fails the build if one lost a method. -->
+  <PropertyGroup>
+    <_MikeShiftDotnet Condition="'$(DOTNET_HOST_PATH)' != ''">$(DOTNET_HOST_PATH)</_MikeShiftDotnet>
+    <_MikeShiftDotnet Condition="'$(_MikeShiftDotnet)' == ''">dotnet</_MikeShiftDotnet>
+    <_ComScanTool>$(MSBuildThisFileDirectory)tools\ComInterfaceScan.cs</_ComScanTool>
+  </PropertyGroup>
+
+  <Target Name="MikeShiftRootComInterfaces" AfterTargets="PrepareForILLink" Condition="'$(PublishTrimmed)' == 'true'">
+    <PropertyGroup>
+      <_ComScanList>$(MSBuildProjectDirectory)\$(IntermediateOutputPath)MikeShift.ComScan.txt</_ComScanList>
+      <_ComScanDescriptor>$(MSBuildProjectDirectory)\$(IntermediateOutputPath)MikeShift.ComInterfaces.xml</_ComScanDescriptor>
+    </PropertyGroup>
+    <WriteLinesToFile File="$(_ComScanList)" Lines="@(ManagedAssemblyToLink->'%(FullPath)')" Overwrite="true" />
+    <Exec Command="&quot;$(_MikeShiftDotnet)&quot; run --file &quot;$(_ComScanTool)&quot; -- --list &quot;$(_ComScanList)&quot; --descriptor &quot;$(_ComScanDescriptor)&quot;" />
+    <ItemGroup>
+      <TrimmerRootDescriptor Include="$(_ComScanDescriptor)" />
+    </ItemGroup>
+  </Target>
+
+  <Target Name="MikeShiftVerifyComInterfaces" AfterTargets="ILLink" Condition="'$(PublishTrimmed)' == 'true'">
+    <PropertyGroup>
+      <_ComScanLinkedDir>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)\$(IntermediateLinkDir)'))</_ComScanLinkedDir>
+    </PropertyGroup>
+    <Exec Command="&quot;$(_MikeShiftDotnet)&quot; run --file &quot;$(_ComScanTool)&quot; -- --list &quot;$(_ComScanList)&quot; --linked &quot;$(_ComScanLinkedDir)&quot;" />
+  </Target>
+
+  <!-- Trim warnings of the linker run that are not ours to fix, suppressed one by one where the framework raises them and NOT with a NoWarn
+       (which would hide the same code from our own assemblies): tools/ILLink.FrameworkSuppressions.xml, passed to ILLink as link-attributes, attaches
+       an UnconditionalSuppressMessage to System.Private.CoreLib's ComActivator.GetClassFactoryForTypeInternal (IL2026, "Built-in COM support is
+       not trim compatible", the framework's notice for BuiltInComInteropSupport=true above) and to the assemblies Microsoft.Windows.SDK.NET and
+       WinRT.Runtime (IL2104, 70 x IL2081 in the unused ABI.* generic-collection fallbacks of the WinRT marshalling). MikeShift.* assemblies
+       are linked with TrimmerSingleWarn=false (the SDK's default for the app and its project references; the CLI is set explicitly in
+       MikeShift.App.csproj), so every warning in them is reported in full, as an error (TreatWarningsAsErrors). Anything else the linker
+       reports, in any assembly, fails the build. Edit the XML, then rebuild the app project (the linker step re-runs when this file changes
+       or the project is rebuilt clean, as release.ps1 does). -->
+  <PropertyGroup>
+    <_MikeShiftLinkSuppressions>$(MSBuildThisFileDirectory)tools\ILLink.FrameworkSuppressions.xml</_MikeShiftLinkSuppressions>
+  </PropertyGroup>
+  <Target Name="MikeShiftILLinkKnownWarnings" BeforeTargets="_RunILLink" Condition="'$(PublishTrimmed)' == 'true'">
+    <PropertyGroup>
+      <_ExtraTrimmerArgs>$(_ExtraTrimmerArgs) --link-attributes "$(_MikeShiftLinkSuppressions)"</_ExtraTrimmerArgs>
+    </PropertyGroup>
+  </Target>
+</Project>

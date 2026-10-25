@@ -1,0 +1,271 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <AssemblyName>MikeShift</AssemblyName>
+    <RootNamespace>MikeShift.App</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets/MikeShift.ico</ApplicationIcon>
+
+    <!-- WinUI 3 / Windows App SDK, packaged as MSIX, framework bundled (self-contained). -->
+    <UseWinUI>true</UseWinUI>
+    <EnableMsixTooling>true</EnableMsixTooling>
+    <WindowsPackageType>MSIX</WindowsPackageType>
+    <WindowsAppSDKSelfContained Condition="'$(WindowsAppSDKSelfContained)' == ''">true</WindowsAppSDKSelfContained>
+    <Platforms>x64;ARM64</Platforms>
+    <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
+    <DefaultLanguage>en-US</DefaultLanguage>
+    <!-- Program.cs provides Main (single-instance redirection happens before XAML starts). -->
+    <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Windows App SDK: only the components MikeShift uses (WinUI, windowing/input, app lifecycle, resources, self-contained deployment).
+         H.NotifyIcon.WinUI depends on the Microsoft.WindowsAppSDK metapackage, and the 2.5.1 metapackage also depends on the AI, ML
+         (ONNX Runtime + DirectML), Search, Widgets and DWrite components. They cannot be removed from the graph, so the metapackage
+         and those components are referenced with every asset excluded: restored, but nothing from them reaches the output or the MSIX. -->
+    <PackageReference Include="Microsoft.WindowsAppSDK" ExcludeAssets="all" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.AI" ExcludeAssets="all" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.ML" ExcludeAssets="all" />
+    <PackageReference Include="Microsoft.Windows.AI.MachineLearning" ExcludeAssets="all" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.Search" ExcludeAssets="all" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.Widgets" ExcludeAssets="all" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.DWrite" ExcludeAssets="all" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.Base" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.Foundation" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.InteractiveExperiences" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.WinUI" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" />
+    <PackageReference Include="Microsoft.Graphics.Win2D" />
+    <PackageReference Include="H.NotifyIcon.WinUI" />
+    <PackageReference Include="WinUIEx" />
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+    <PackageReference Include="Microsoft.Windows.CsWin32" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MikeShift.Core\MikeShift.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Also copied beside the exe so unpackaged dev runs find the tray icon and chime (packaged: same folder in the install dir). -->
+    <Content Include="Assets\**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Manifest Include="$(ApplicationManifest)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- CsWin32: every NativeMethods.txt anywhere in this project is an AdditionalFile (App/Input, App/Wheel, ...). -->
+    <AdditionalFiles Include="**/NativeMethods.txt" Exclude="bin/**;obj/**" />
+    <AdditionalFiles Include="NativeMethods.json" />
+  </ItemGroup>
+
+  <!-- Packaging -->
+  <PropertyGroup>
+    <!-- One architecture per package, with the .NET runtime bundled: an MSIX cannot depend on a machine-wide .NET install.
+         Output stays in bin\<Platform>\<Config>\<tfm>\ (no win-x64 subfolder) so existing dev scripts keep working. -->
+    <RuntimeIdentifier Condition="'$(Platform)' == 'x64'">win-x64</RuntimeIdentifier>
+    <RuntimeIdentifier Condition="'$(Platform)' == 'ARM64'">win-arm64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+    <AppxSymbolPackageEnabled>false</AppxSymbolPackageEnabled>
+    <BundleCli Condition="'$(BundleCli)' == ''">true</BundleCli>
+  </PropertyGroup>
+
+  <!-- PublishTrimmed etc. (after SelfContained, which it depends on). -->
+  <Import Project="..\..\Trimming.props" />
+
+  <ItemGroup>
+    <!-- Our two assemblies are trim roots (everything in them is kept; what they reference is trimmed as usual). They hold the COM
+         interface declarations (hand-written ones and CsWin32's) that classic COM marshalling is done against: trimming a member out of
+         a [ComImport] interface shifts the vtable and breaks the call. This is also what makes the IL2050 suppressions in
+         TrimSuppressions.cs (here and in Core) true. -->
+    <TrimmerRootAssembly Include="MikeShift" />
+    <TrimmerRootAssembly Include="MikeShift.Core" />
+  </ItemGroup>
+
+
+  <!-- The console CLI ships in the package root next to the tray app and runs on the tray app's bundled .NET runtime (a second copy of the
+       runtime cost about 51 MB per architecture). It is published self-contained, which produces the four files that make an exe a
+       self-contained app (MikeShift.Cli.exe, .dll, .runtimeconfig.json, .deps.json). The assembly is MikeShift.Cli, not mikeshift:
+       MikeShift.exe/.dll and mikeshift.exe/.dll would be the same file names on Windows. Package.appxmanifest points the `mikeshift.exe`
+       execution alias at MikeShift.Cli.exe.
+         * Untrimmed (dev builds): only those four files are taken, because every other file of the publish is byte-for-byte what this
+           project already ships (VerifyBundledCliSharesRuntime checks that on every build).
+         * Trimmed (a package build, PublishTrimmed): the CLI is not trimmed on its own, because two separately trimmed copies of Core, the
+           BCL and the Windows SDK projection would differ and could not share one set of files. Its UNTRIMMED MikeShift.Cli.dll is added as an
+           extra input and root of this project's ILLink run instead (AddBundledCliToTrimInputs), so the one trimmed set of assemblies in the
+           package keeps everything the CLI uses as well as everything the tray app uses. The CLI's own publish is still used for the exe, the
+           runtimeconfig; its deps.json is derived from this project's (WriteBundledCliDepsFile). -->
+  <Target Name="BundleMikeShiftCli" BeforeTargets="AssignTargetPaths" Condition="'$(BundleCli)' == 'true' and '$(RuntimeIdentifier)' != ''">
+    <PropertyGroup>
+      <_CliTrim>false</_CliTrim>
+      <_CliTrim Condition="'$(PublishTrimmed)' == 'true' and '$(GenerateAppxPackageOnBuild)' == 'true'">true</_CliTrim>
+      <!-- Not the same folder for both modes: publishing copies "newest wins", so a trimmed publish over an untrimmed one would keep stale files. -->
+      <_CliPublishDir>$(MSBuildProjectDirectory)\$(IntermediateOutputPath)cli-trimmed-$(_CliTrim)\</_CliPublishDir>
+      <_CliAssets>$(MSBuildProjectDirectory)\..\MikeShift.Cli\obj\project.assets.json</_CliAssets>
+      <_CliNeedsRestore Condition="!Exists('$(_CliAssets)')">true</_CliNeedsRestore>
+      <_CliNeedsRestore Condition="'$(_CliNeedsRestore)' == '' and !$([System.IO.File]::ReadAllText('$(_CliAssets)').Contains('/$(RuntimeIdentifier)&quot;'))">true</_CliNeedsRestore>
+    </PropertyGroup>
+    <!-- The CLI is not a project reference of the app (that would add its framework-dependent output to the package), so a bare
+         `dotnet build src/MikeShift.App` on a fresh checkout has never restored it. Restore it here, in its own evaluation, but only
+         when its assets are missing or lack this RID: rewriting project.assets.json during a parallel solution build would race. -->
+    <MSBuild Condition="'$(_CliNeedsRestore)' == 'true'" Projects="..\MikeShift.Cli\MikeShift.Cli.csproj" Targets="Restore"
+             Properties="Configuration=$(Configuration);Platform=$(Platform);RuntimeIdentifier=$(RuntimeIdentifier);SelfContained=true;MSBuildRestoreSessionId=$([System.Guid]::NewGuid())" />
+    <MSBuild Projects="..\MikeShift.Cli\MikeShift.Cli.csproj" Targets="Publish"
+             Properties="Configuration=$(Configuration);Platform=$(Platform);RuntimeIdentifier=$(RuntimeIdentifier);SelfContained=true;PublishTrimmed=$(_CliTrim);PublishDir=$(_CliPublishDir)" />
+    <!-- The CLI's untrimmed assembly (built by the publish above), for AddBundledCliToTrimInputs. -->
+    <MSBuild Projects="..\MikeShift.Cli\MikeShift.Cli.csproj" Targets="GetTargetPath"
+             Properties="Configuration=$(Configuration);Platform=$(Platform);RuntimeIdentifier=$(RuntimeIdentifier);SelfContained=true;PublishTrimmed=$(_CliTrim)">
+      <Output TaskParameter="TargetOutputs" ItemName="_CliBuiltAssembly" />
+    </MSBuild>
+    <ItemGroup>
+      <_CliOwnFile Include="$(_CliPublishDir)MikeShift.Cli.exe;$(_CliPublishDir)MikeShift.Cli.dll;$(_CliPublishDir)MikeShift.Cli.runtimeconfig.json;$(_CliPublishDir)MikeShift.Cli.deps.json" />
+      <!-- Trimmed: MikeShift.Cli.dll comes out of this project's ILLink run, not from the CLI's publish; and MikeShift.Cli.deps.json is derived
+           from this project's deps.json (WriteBundledCliDepsFile), because the one the CLI's own publish wrote lists the files of the CLI's own
+           (smaller, different) trim result, which is not the set of files in the package. -->
+      <_CliContent Include="@(_CliOwnFile)" />
+      <_CliContent Remove="$(_CliPublishDir)MikeShift.Cli.dll;$(_CliPublishDir)MikeShift.Cli.deps.json" Condition="'$(_CliTrim)' == 'true'" />
+      <Content Include="@(_CliContent)" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
+  </Target>
+
+  <!-- Trimmed packages: the CLI joins this project's ILLink run as an input and an entry-point root (runs once the inputs are known,
+       before the linker starts). The linked MikeShift.Cli.dll then flows into the package like every other published file. -->
+  <Target Name="AddBundledCliToTrimInputs" AfterTargets="_ComputeAssembliesToPostprocessOnPublish"
+          Condition="'$(PublishTrimmed)' == 'true' and '$(_CliTrim)' == 'true'">
+    <Error Condition="'@(_CliBuiltAssembly)' == ''" Text="The command-line tool's assembly was not built; it cannot be added to the trim inputs." />
+    <ItemGroup>
+      <ResolvedFileToPublish Include="@(_CliBuiltAssembly)">
+        <RelativePath>MikeShift.Cli.dll</RelativePath>
+        <DestinationSubPath>MikeShift.Cli.dll</DestinationSubPath>
+        <AssetType>runtime</AssetType>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+        <PostprocessAssembly>true</PostprocessAssembly>
+        <IsTrimmable>true</IsTrimmable>
+        <TrimmerSingleWarn>false</TrimmerSingleWarn>
+      </ResolvedFileToPublish>
+      <TrimmerRootAssembly Include="MikeShift.Cli" RootMode="EntryPoint" />
+    </ItemGroup>
+  </Target>
+
+  <!-- Trimmed packages: MikeShift.Cli.deps.json. A self-contained exe is only run as self-contained if its deps.json exists, and the file has to
+       list exactly the assemblies that are in the package. That is this project's deps.json (written after ILLink, so it lists what trimming left
+       in the package), with the entry for the app itself renamed to the CLI: the CLI uses the same runtime, Core and packages. -->
+  <UsingTask TaskName="MikeShiftWriteCliDepsFile" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <AppDepsFile ParameterType="System.String" Required="true" />
+      <CliDepsFile ParameterType="System.String" Required="true" />
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System.IO" />
+      <Code Type="Fragment" Language="cs"><![CDATA[
+        var text = File.ReadAllText(AppDepsFile);
+        // The project entry appears twice ("targets" and "libraries") as "MikeShift/<version>", and its one runtime asset is "MikeShift.dll".
+        var renamed = text.Replace("\"MikeShift/", "\"MikeShift.Cli/").Replace("\"MikeShift.dll\"", "\"MikeShift.Cli.dll\"");
+        int entries = (text.Length - text.Replace("\"MikeShift/", "").Length) / "\"MikeShift/".Length;
+        int assets = (text.Length - text.Replace("\"MikeShift.dll\"", "").Length) / "\"MikeShift.dll\"".Length;
+        if (entries != 2 || assets != 1)
+        {
+            Log.LogError("Unexpected layout of " + AppDepsFile + ": " + entries + " project entries (expected 2) and " + assets + " MikeShift.dll assets (expected 1).");
+            return false;
+        }
+        File.WriteAllText(CliDepsFile, renamed);
+      ]]></Code>
+    </Task>
+  </UsingTask>
+
+  <Target Name="WriteBundledCliDepsFile" AfterTargets="GeneratePublishDependencyFile" DependsOnTargets="_ComputeIntermediateDepsFilePath"
+          Condition="'$(PublishTrimmed)' == 'true' and '$(_CliTrim)' == 'true'">
+    <PropertyGroup>
+      <_CliDepsFileOut>$(MSBuildProjectDirectory)\$(IntermediateOutputPath)MikeShift.Cli.deps.json</_CliDepsFileOut>
+    </PropertyGroup>
+    <MikeShiftWriteCliDepsFile AppDepsFile="$(IntermediateDepsFilePath)" CliDepsFile="$(_CliDepsFileOut)" />
+    <ItemGroup>
+      <ResolvedFileToPublish Include="$(_CliDepsFileOut)">
+        <RelativePath>MikeShift.Cli.deps.json</RelativePath>
+        <DestinationSubPath>MikeShift.Cli.deps.json</DestinationSubPath>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+        <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+      </ResolvedFileToPublish>
+    </ItemGroup>
+  </Target>
+
+  <!-- Trimmed: what the CLI relies on being in the package.
+         1. Every file the CLI's own (trimmed) publish contains is part of this project's published files (by name: the contents of the
+            assemblies are this project's trim result, which kept everything the CLI uses because MikeShift.Cli is one of its roots).
+         2. The CLI runs with the same runtime switches as the app: every configProperties entry of its runtimeconfig.json is also in this
+            project's (the app has a few more, for its own packages). A switch the app lacks would make the shared, trimmed code behave
+            differently from the code the CLI was published against. -->
+  <Target Name="VerifyBundledCliTrimmedSharesRuntime" AfterTargets="WriteBundledCliDepsFile"
+          Condition="'$(PublishTrimmed)' == 'true' and '$(_CliTrim)' == 'true'">
+    <ItemGroup>
+      <_CliPublished Include="$(_CliPublishDir)**\*" Exclude="$(_CliPublishDir)**\*.pdb;@(_CliOwnFile)" />
+      <_CliPublishedRel Include="@(_CliPublished)">
+        <Rel>$([MSBuild]::MakeRelative('$(_CliPublishDir)', '%(FullPath)'))</Rel>
+      </_CliPublishedRel>
+      <_CliPublishedName Include="@(_CliPublishedRel->'%(Rel)')" />
+      <_PackagedName Include="@(ResolvedFileToPublish->'%(RelativePath)')" />
+      <_CliMissingFromPackage Include="@(_CliPublishedName)" Exclude="@(_PackagedName)" />
+    </ItemGroup>
+    <Message Importance="normal" Text="The bundled CLI's publish has @(_CliPublishedName->Count()) files, all in the package." />
+    <Error Condition="'@(_CliMissingFromPackage)' != ''"
+           Text="The command-line tool's own publish contains files that are not in the package: @(_CliMissingFromPackage, ', ')" />
+    <MikeShiftVerifyCliRuntimeConfig CliConfigFile="$(_CliPublishDir)MikeShift.Cli.runtimeconfig.json" AppConfigFile="$(ProjectRuntimeConfigFilePath)" />
+  </Target>
+
+  <UsingTask TaskName="MikeShiftVerifyCliRuntimeConfig" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <CliConfigFile ParameterType="System.String" Required="true" />
+      <AppConfigFile ParameterType="System.String" Required="true" />
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System.IO" />
+      <Using Namespace="System.Linq" />
+      <Code Type="Fragment" Language="cs"><![CDATA[
+        // runtimeconfig.json is written one setting per line ("name": value,), so lines are compared with the trailing comma removed.
+        Func<string, string[]> lines = f => File.ReadAllLines(f).Select(l => l.Trim().TrimEnd(',')).Where(l => l.Length > 0).ToArray();
+        var app = new System.Collections.Generic.HashSet<string>(lines(AppConfigFile));
+        var missing = lines(CliConfigFile).Where(l => !app.Contains(l)).ToArray();
+        if (missing.Length > 0)
+        {
+            Log.LogError("The command-line tool's runtimeconfig.json has settings that the app's does not (" + string.Join("; ", missing) + "). They run on the same trimmed runtime files, so they must agree.");
+            return false;
+        }
+      ]]></Code>
+    </Task>
+  </UsingTask>
+
+  <!-- Untrimmed: the CLI uses this project's runtime and libraries, so every other file of its self-contained publish must be identical to
+       the one this project outputs under the same name (same runtime pack, same Core, same dependencies). If a dependency ever differs (a
+       different version of a shared package, say), the CLI would load the wrong assembly in the package: fail the build instead of shipping that. -->
+  <Target Name="VerifyBundledCliSharesRuntime" AfterTargets="CopyFilesToOutputDirectory"
+          Condition="'$(BundleCli)' == 'true' and '$(RuntimeIdentifier)' != '' and '$(_CliTrim)' != 'true'">
+    <ItemGroup>
+      <_CliPublished Include="$(_CliPublishDir)**\*" Exclude="$(_CliPublishDir)**\*.pdb;@(_CliOwnFile)" />
+      <_CliSharedFile Include="@(_CliPublished)">
+        <Rel>$([MSBuild]::MakeRelative('$(_CliPublishDir)', '%(FullPath)'))</Rel>
+      </_CliSharedFile>
+      <_AppSideFile Include="$(OutDir)%(_CliSharedFile.Rel)" Condition="Exists('$(OutDir)%(_CliSharedFile.Rel)')">
+        <Rel>%(_CliSharedFile.Rel)</Rel>
+      </_AppSideFile>
+    </ItemGroup>
+    <GetFileHash Files="@(_CliSharedFile)" Algorithm="SHA256">
+      <Output TaskParameter="Items" ItemName="_CliSharedHashed" />
+    </GetFileHash>
+    <GetFileHash Files="@(_AppSideFile)" Algorithm="SHA256">
+      <Output TaskParameter="Items" ItemName="_AppSideHashed" />
+    </GetFileHash>
+    <ItemGroup>
+      <_CliKey Include="@(_CliSharedHashed->'%(Rel)|%(FileHash)')" />
+      <_AppKey Include="@(_AppSideHashed->'%(Rel)|%(FileHash)')" />
+      <_CliUnshared Include="@(_CliKey)" Exclude="@(_AppKey)" />
+    </ItemGroup>
+    <Message Importance="normal" Text="The bundled CLI shares @(_CliKey->Count()) files with the app (checked by hash)." />
+    <Error Condition="'@(_CliUnshared)' != ''"
+           Text="The bundled command-line tool must run on this app's own runtime files, but these files of its publish differ from the app's or are missing from the app output: @(_CliUnshared->'%(Identity)', ', ')" />
+  </Target>
+
+</Project>

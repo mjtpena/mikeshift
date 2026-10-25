@@ -1,0 +1,92 @@
+name: CI
+
+on:
+  push:
+    branches: [main, 'feature/**']
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      # Same commands as scripts/build.ps1 -Configuration Release -Test
+      - name: Restore
+        run: dotnet restore MikeShift.sln
+
+      - name: Build (Release)
+        run: dotnet build MikeShift.sln -c Release --no-restore
+
+      # Tests that need a codec this runner lacks (HEIC/HEVC encoders, ...) skip themselves via [SkipIfNoCapability].
+      - name: Test (Release)
+        run: dotnet test MikeShift.sln -c Release --no-build --logger "trx;LogFileName=test-results.trx"
+
+      # Second pass of the same suites under coverlet (scripts/coverage.ps1: merged HTML, Summary.txt and Cobertura in artifacts/coverage).
+      # Informational: no threshold is enforced.
+      - name: Coverage
+        continue-on-error: true
+        shell: pwsh
+        run: ./scripts/coverage.ps1 -Configuration Release -NoBuild
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: |
+            artifacts/coverage/
+            !artifacts/coverage/raw/**
+          if-no-files-found: ignore
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: '**/TestResults/*.trx'
+          if-no-files-found: ignore
+
+  msix:
+    # Separate job so a packaging problem never hides a converter regression.
+    # scripts/release.ps1 -Flavor all builds both flavours (sideload: Windows App SDK bundled; store: shared Windows App Runtime) for x64 and
+    # ARM64, each a clean IL-trimmed build with the CLI bundled, writes the per-architecture .msix files, bundles them with makeappx and writes
+    # SHA256SUMS.txt. No certificate is available here, so the packages are UNSIGNED: they cannot be installed, it proves that packaging works.
+    runs-on: windows-latest
+    timeout-minutes: 90
+    needs: build-and-test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Build unsigned packages (both flavours)
+        shell: pwsh
+        run: ./scripts/release.ps1 -Flavor all
+
+      - name: Upload packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: mikeshift-msix-unsigned
+          path: |
+            artifacts/*.msix
+            artifacts/*.msixbundle
+            artifacts/SHA256SUMS.txt
+          if-no-files-found: error
+          # The packages (about 270 MB for both flavours) are already compressed.
+          compression-level: 0
+          retention-days: 14
