@@ -21,7 +21,7 @@
   <Identity
     Name="MikeShift"
     Publisher="CN=MikeShift Dev"
-    Version="0.1.0.0" />
+    Version="1.0.0.0" />
 
   <Properties>
     <DisplayName>MikeShift</DisplayName>
