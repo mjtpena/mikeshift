@@ -4,6 +4,8 @@ Ready to paste into Partner Center (Product > Store listing, English). Everythin
 
 Fields in Partner Center change over time. Where a limit or a drop-down value below may be out of date, it says so; the form is authoritative.
 
+The paste blocks below avoid semicolons and the word "select". Partner Center's web firewall rejects a listing save with a bare "Access Denied" (the page only says "We are unable to save listing") when the text looks like a command or a query: a semicolon before a word such as "split" or "zip", or "select" followed later by "from". Keep that in mind when editing them.
+
 ## Before you submit (publisher checklist)
 
 1. **Reserve the name** "MikeShift: offline file converter" (or just "MikeShift") in Partner Center, and run a trademark search first (not done; names such as ShiftDrop are close neighbours).
@@ -28,7 +30,7 @@ MikeShift: offline file converter
 Recommended (90 characters):
 
 ```
-Convert HEIC, WebP, PDF, video and audio from File Explorer. Offline; nothing is uploaded.
+Convert HEIC, WebP, PDF, video and audio from File Explorer. Offline, nothing is uploaded.
 ```
 
 Alternatives (89, 89 and 60 characters):
@@ -64,9 +66,9 @@ WHAT PEOPLE USE IT FOR
 • Anything: Zip files and folders
 
 THREE WAYS TO USE IT
-1. Right-click (start here). Select files or folders in File Explorer, right-click, and choose Convert with MikeShift. It is in Windows 11's main right-click menu. The submenu offers the most likely conversions for what you selected; "More options" opens the full wheel.
+1. Right-click (start here). Pick files or folders in File Explorer, right-click, and choose Convert with MikeShift. It is in Windows 11's main right-click menu. The submenu offers the most likely conversions for what you picked, and "More options" opens the full wheel.
 2. The wheel. Start dragging a file, then hold Shift or Ctrl (you choose when you first run it). A wheel of formats appears under the pointer. Drop the file on a tile. Press the other key to switch to tools: Compress, Resize, Crop, Trim, Zip. Letting go elsewhere or pressing Esc cancels.
-3. The keyboard. Select files in File Explorer and press Ctrl+Alt+Shift+Space to open the wheel for them. Change or turn off the shortcut in Settings. There is also a command line tool, mikeshift, for scripts.
+3. The keyboard. Pick files in File Explorer and press Ctrl+Alt+Shift+Space to open the wheel for them. Change or turn off the shortcut in Settings. There is also a command line tool, mikeshift, for scripts.
 
 PRIVATE BY DESIGN
 • Nothing is uploaded. The app has no network code, no account and no telemetry. In a 19-minute measurement that ran every action on every kind of file, no MikeShift process opened a network connection.
@@ -85,14 +87,14 @@ WHAT IT CONVERTS (41 actions)
 • Audio: M4A, WAV, AIFF, FLAC, MP3. Tools: Compress, Trim.
 • Documents: PDF, DOCX, RTF, TXT, HTML, ODT.
 • Any file or folder: Zip.
-MikeShift shows only the actions that work for your selection on your PC.
+MikeShift shows only the actions that work for the files you picked on your PC.
 
 GOOD TO KNOW
 • HEIC (iPhone) photos need Microsoft's free HEIF Image Extensions and HEVC Video Extensions from the Microsoft Store. If they are missing, MikeShift tells you and offers a "Get HEIF" button that opens the Store page. Install them, then restart MikeShift.
 • MikeShift focuses on the common conversions. It does not do OCR, PDF editing or MOV and AVIF output, GIFs are limited to 30 seconds (15 by default), and documents become PDFs with MikeShift's own plain layout (not Word's exact pagination). Password-protected PDFs are refused. The full list is in the project's documentation.
 • Windows 11 is where it was built and tested. The package also installs on Windows 10 (1809 or later), but MikeShift has not yet been tested there, including the right-click entry.
 • Windows hides programs it cannot see: Explorer windows running as administrator are not supported, and files that are not real files on disk (an Outlook attachment, an image dragged from a browser) need saving first.
-• Windows 11 may put the tray icon in the overflow area; the welcome window links to the taskbar setting.
+• Windows 11 may put the tray icon in the overflow area. The welcome window links to the taskbar setting.
 
 OPEN SOURCE
 Free, MIT licence, source code on GitHub.
@@ -112,22 +114,22 @@ First release.
 ## Paste: product features (up to 20 bullets, up to 200 characters each)
 
 ```
-Right-click any file or folder in File Explorer and choose Convert with MikeShift; the converted copy appears next to the original.
+Right-click any file or folder in File Explorer and choose Convert with MikeShift. The converted copy appears next to the original.
 Nothing is uploaded: no network code, no account and no telemetry. Conversion happens on your PC.
 Turn iPhone HEIC photos into JPG or PNG (needs Microsoft's free HEIF and HEVC extensions).
 Convert WebP and other web images to PNG or JPG, one file or many at once.
-Merge several images or PDFs into one PDF; split a PDF; save PDF pages as PNG or JPG; extract PDF text.
+Merge several images or PDFs into one PDF, split a PDF, save PDF pages as PNG or JPG, or extract PDF text.
 Turn video into MP4, M4V, WMV or a short GIF, or extract the audio as MP3 or M4A.
-Shrink photos for email with Compress or Resize 50%; Crop and Strip EXIF built in.
+Shrink photos for email with Compress or Resize 50%, with Crop and Strip EXIF built in.
 Trim video and audio with a small editor that opens only when you ask.
-Hold Shift or Ctrl while dragging a file to open a wheel of formats under the pointer; drop to convert.
+Hold Shift or Ctrl while dragging a file to open a wheel of formats under the pointer, then drop to convert.
 Keyboard shortcut Ctrl+Alt+Shift+Space opens the wheel for the files selected in File Explorer.
-Convert documents between DOCX, RTF, ODT, HTML, TXT and PDF; Zip any file or folder.
+Convert documents between DOCX, RTF, ODT, HTML, TXT and PDF, and Zip any file or folder.
 Originals are never moved or changed: every result is a new file, written safely so a failure leaves nothing half-written.
 Small and quiet: about 23 MB to download, about 17 MB of memory when idle, no bundled third-party programs.
 Windows 11 look: WinUI 3, Mica, light, dark and high contrast themes, per-monitor scaling.
 A mikeshift command line tool for scripts, with the same engine as the wheel.
-Microsoft Word is optional and off by default; turn it on in Settings only if you want Word for legacy .doc files.
+Microsoft Word is optional and off by default. Turn it on in Settings only if you want Word for legacy .doc files.
 Free and open source under the MIT licence.
 ```
 
@@ -223,9 +225,9 @@ MikeShift is a Windows 11 / 10 tray app that converts files from File Explorer. 
 How to test:
 1. Install and launch MikeShift. A welcome window appears and an icon is added to the notification area (it may be in the overflow).
 2. In File Explorer, right-click any .jpg or .png file, choose "Convert with MikeShift" (in the main Windows 11 menu), then "Convert to PNG" or "Convert to JPG". A converted copy appears next to the original and a message says so. The original is not changed.
-3. Optional: start dragging a file in File Explorer and hold Shift (or Ctrl, as chosen in the welcome window). A wheel of formats appears under the pointer; drop the file on a tile. Esc cancels.
-4. Optional: select files in File Explorer and press Ctrl+Alt+Shift+Space to open the same wheel from the keyboard.
-5. HEIC files need Microsoft's HEIF and HEVC Store extensions; without them the wheel shows a "Get HEIF" tile that opens the Store page.
+3. Optional: start dragging a file in File Explorer and hold Shift (or Ctrl, as chosen in the welcome window). A wheel of formats appears under the pointer. Drop the file on a tile. Esc cancels.
+4. Optional: pick files in File Explorer and press Ctrl+Alt+Shift+Space to open the same wheel from the keyboard.
+5. HEIC files need Microsoft's HEIF and HEVC Store extensions. Without them the wheel shows a "Get HEIF" tile that opens the Store page.
 
 Why the runFullTrust capability is declared: MikeShift is a desktop (Win32 / WinUI 3) application. It needs full trust to detect a Shift/Ctrl+drag with a low-level mouse and keyboard hook (it reads only mouse movement, the left button, the scroll wheel and the Shift, Ctrl, Alt and Esc keys, to run the gesture, and stores nothing), to provide the File Explorer context-menu command through an out-of-process COM server, to read and write files the user chooses, and to use Windows Media Foundation and the Windows PDF renderer. The package declares no internet capability.
 The "Open at login" startup task is off by default. The app adds a "mikeshift" command line alias.
