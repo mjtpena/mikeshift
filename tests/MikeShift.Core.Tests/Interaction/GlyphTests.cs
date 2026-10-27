@@ -8,7 +8,7 @@ public class GlyphTests
 {
     private static readonly string[] AllFormatTitles =
     [
-        "PNG", "JPG", "TIFF", "GIF", "BMP", "HEIC", "WebP", "PDF", "TXT", "DOCX", "RTF", "HTML", "ODT",
+        "PNG", "JPG", "TIFF", "GIF", "BMP", "HEIC", "WebP", "ICO", "PDF", "TXT", "DOCX", "RTF", "HTML", "ODT",
         "M4A", "WAV", "AIFF", "FLAC", "MP3", "MP4", "M4V", "WMV",
     ];
 

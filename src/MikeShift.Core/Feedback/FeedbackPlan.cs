@@ -104,6 +104,11 @@ public sealed record FeedbackPlan(ToastContent? Toast, DialogContent? Dialog, bo
 
         if (result.Outputs.Count > 0 && result.AlreadyInFormat > 0)
             details.Add($"{result.AlreadyInFormat} already {result.AlreadyLabel ?? "converted"}");
+        if (result.Outputs.Count > 0 && result.Notes.Count > 0)
+        {
+            details.AddRange(result.Notes);
+            if (kind == ToastKind.Success) kind = ToastKind.Warning;
+        }
         if (result.Outputs.Count > 0 && result.AnyDownloadsFallback && kind == ToastKind.Success) kind = ToastKind.Warning;
         if (othersRunning > 0) details.Add(FeedbackCopy.MoreInProgress(othersRunning));
 

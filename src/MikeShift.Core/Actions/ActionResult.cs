@@ -34,10 +34,13 @@ public sealed record ActionResult
     /// <summary>Label used for the "already" note, e.g. "PNG".</summary>
     public string? AlreadyLabel { get; init; }
 
+    /// <summary>Short cautions about outputs that were written anyway (the toast shows them, the command line prints them as "note:").</summary>
+    public IReadOnlyList<string> Notes { get; init; } = [];
+
     /// <summary>The user cancelled (or the token fired); earlier outputs were kept and later inputs were not attempted.</summary>
     public bool Cancelled { get; init; }
 
-    /// <summary>What the run did beyond writing files ("Blurred 3 faces"), shown under the toast; null for most actions.</summary>
+    /// <summary>What the whole run did, as a plain statement rather than a caution ("Blurred 3 faces"): shown in the toast detail and printed by the command line as "note:". Unlike <see cref="Notes"/> it does not turn the toast into a warning. Null for most actions.</summary>
     public string? Summary { get; init; }
 
     /// <summary>

@@ -119,7 +119,7 @@ The wheel and the right-click menu show only what fits your selection and works 
 
 | You select | Formats (convert to) | Tools |
 |---|---|---|
-| **Pictures** (PNG, JPG, HEIC, TIFF, GIF, WebP, BMP, AVIF …) | PNG, JPG, TIFF, GIF, BMP, WebP, HEIC, PDF, TXT (the text in the picture) | Compress, Resize, Crop, Strip EXIF, Blur faces, Merge PDF (two or more pictures) |
+| **Pictures** (PNG, JPG, HEIC, TIFF, GIF, WebP, BMP, AVIF …) | PNG, JPG, TIFF, GIF, BMP, WebP, HEIC, ICO, PDF, TXT (the text in the picture) | Compress, Resize, Crop, Strip EXIF, Blur faces, Merge PDF (two or more pictures) |
 | **PDF** | PNG or JPG (one image per page), TXT (including scanned pages) | Compress, Split, Merge (two or more PDFs) |
 | **Video** (MP4, MOV, MKV, AVI, WMV, WebM …) | MP4, M4V, WMV, GIF, M4A (audio only), MP3 (audio only) | Compress, Fit 10 MB, Fit 25 MB, Trim |
 | **Audio** (MP3, WAV, M4A, FLAC, AIFF, WMA …) | M4A, WAV, AIFF, FLAC, MP3 | Compress, Trim |
@@ -127,6 +127,10 @@ The wheel and the right-click menu show only what fits your selection and works 
 | **Anything, including folders and mixed selections** | none | Zip |
 
 Select many files of one kind and every one is converted (a batch). A mixed selection, such as a picture and a PDF, offers only **Zip**.
+
+### Icons from pictures
+
+**ICO** on a picture, such as a logo, writes a Windows icon next to it: `logo.png` becomes `logo.ico`, holding 16, 24, 32, 48, 64, 128 and 256 pixel images, which covers the desktop, the taskbar and a website favicon. A picture that is not square is centred on a transparent square instead of being stretched, and transparency is kept. For a sharp result start from a picture at least 256 pixels wide and tall; a smaller one still converts, and the toast says the larger sizes will look soft. Also `mikeshift --run ICO logo.png`. The tile is not shown for a file that is already an `.ico`.
 
 ### Text from pictures and scans
 

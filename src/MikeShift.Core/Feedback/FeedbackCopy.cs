@@ -12,6 +12,9 @@ public static partial class FeedbackCopy
     /// <summary>The product name.</summary>
     public const string AppName = "MikeShift";
 
+    /// <summary>Caution on an ICO made from a picture under 256 px: the big sizes are enlarged.</summary>
+    public const string IconSourceSmall = "The picture is under 256 px, so the larger icon sizes will look soft";
+
     /// <summary>Tray tooltip.</summary>
     public const string TrayTooltip = "MikeShift - Shift-drag files to convert";
 

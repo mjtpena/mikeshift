@@ -140,6 +140,8 @@ public static class CliRunner
             stderr.WriteLine($"note: {result.Summary}");
         if (result.AlreadyInFormat > 0)
             stderr.WriteLine($"note: {result.AlreadyInFormat} already {result.AlreadyLabel ?? action.Title}");
+        foreach (var note in result.Notes)
+            stderr.WriteLine($"note: {note}");
         if (result.AnyDownloadsFallback)
             stderr.WriteLine(options.OutputFolder is { } chosen
                 ? $"note: saved in Downloads ({chosen} is not writable)"
