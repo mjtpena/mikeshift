@@ -29,5 +29,9 @@ public static class PdfActions
             (paths, _, ct) => PdfConverter.MergeAsync(paths, ct),
             glyph: Glyphs.Merge,
             appliesTo: ActionDef.AtLeast(2)),
+        ActionDef.PerFile("Searchable PDF", WheelPage.Tool,
+            (input, _, ct) => PdfConverter.MakeSearchableAsync(input, ct),
+            glyph: Glyphs.Searchable,
+            requires: c => c.Ocr),
     ];
 }

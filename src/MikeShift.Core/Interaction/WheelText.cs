@@ -55,6 +55,8 @@ public static class WheelText
             "Split" => "Save each page as its own PDF",
             "Merge" => "Combine the files into one PDF",
             "Merge PDF" => "Combine the pictures into one PDF",
+            "Merge searchable PDF" => "Combine the pictures into one PDF you can search",
+            "Searchable PDF" => "Save a copy with text you can select and search",
             "Zip" => "Put the files in a zip archive",
             _ => action.Title,
         };

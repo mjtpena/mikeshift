@@ -72,7 +72,8 @@ public static partial class FeedbackCopy
         "Strip EXIF" => withObject ? "Removing EXIF data" : "Cleaning",
         "Trim" => "Trimming",
         "Split" => "Splitting",
-        "Merge" or "Merge PDF" => "Merging",
+        "Merge" or "Merge PDF" or "Merge searchable PDF" => "Merging",
+        "Searchable PDF" => withObject ? "Making searchable" : "Reading",
         "Zip" => "Zipping",
         _ => title,
     };

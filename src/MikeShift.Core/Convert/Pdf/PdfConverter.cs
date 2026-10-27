@@ -37,7 +37,64 @@ public static class PdfConverter
     public static async Task<string> ImageToPdfAsync(string input, CancellationToken ct)
     {
         var spec = Naming.Plan(input, ".pdf");
-        var result = await Naming.CommitAsync(spec, (temp, token) => WriteImagePdfAsync([input], temp, token), ct).ConfigureAwait(false);
+        var result = await Naming.CommitAsync(spec, (temp, token) => WriteImagePdfAsync([input], temp, searchable: false, token), ct).ConfigureAwait(false);
+        return result.Path;
+    }
+
+    /// <summary>
+    /// Image to PDF with the text in it read by text recognition and laid over the picture, invisibly (<see cref="PdfSearchable"/>); output
+    /// <c>name searchable.pdf</c>. A picture in which nothing readable was found is refused and writes no file.
+    /// </summary>
+    public static async Task<string> ImageToSearchablePdfAsync(string input, CancellationToken ct)
+    {
+        var spec = Naming.Plan(input, ".pdf", " searchable");
+        var result = await Naming.CommitAsync(spec, (temp, token) => WriteImagePdfAsync([input], temp, searchable: true, token), ct).ConfigureAwait(false);
+        return result.Path;
+    }
+
+    /// <summary>As <see cref="MergeImagesAsync"/> (same order and page sizes), with every page searchable: <c>Merged searchable.pdf</c> beside the first image.</summary>
+    public static async Task<string> MergeImagesSearchableAsync(IReadOnlyList<string> inputs, CancellationToken ct)
+    {
+        RequireInputs(inputs);
+        var spec = Naming.PlanNamed(inputs[0], "Merged searchable", ".pdf");
+        var result = await Naming.CommitAsync(spec, (temp, token) => WriteImagePdfAsync(inputs, temp, searchable: true, token), ct).ConfigureAwait(false);
+        return result.Path;
+    }
+
+    /// <summary>
+    /// Adds a text layer to the pages of a scanned PDF (<c>name searchable.pdf</c>): the pages without text are rendered, read by text
+    /// recognition, and the words are laid over the original page, which is kept as it is. Pages that already have text are left alone. A PDF
+    /// with text on every page, or one in which nothing readable is found, is refused. Encrypted PDFs are refused.
+    /// </summary>
+    public static async Task<string> MakeSearchableAsync(string input, CancellationToken ct)
+    {
+        var bytes = PdfGuard.ReadBytes(input);
+        PdfGuard.RequireNotEncrypted(bytes);
+        var pages = await Task.Run(() => PdfText.ExtractPages(bytes, ct), ct).ConfigureAwait(false);
+        var scanned = Enumerable.Range(0, pages.Count).Where(i => pages[i].Length == 0).ToList();
+        if (scanned.Count == 0) throw new ConversionException(OcrCopy.AlreadySearchable);
+
+        var read = await PdfOcr.ReadPagesAsync(bytes, scanned, ct).ConfigureAwait(false);
+        if (read.Values.All(r => r.Lines.Count == 0)) throw new ConversionException(OcrCopy.NoTextInPdf);
+
+        var spec = Naming.Plan(input, ".pdf", " searchable");
+        var result = await Naming.CommitAsync(spec, (temp, token) => Task.Run(() =>
+        {
+            using var doc = PdfGuard.OpenModify(bytes);
+            var added = 0;
+            foreach (var (index, text) in read)
+            {
+                token.ThrowIfCancellationRequested();
+                var page = doc.Pages[index];
+                var rotation = ((page.Rotate % 360) + 360) % 360;
+                var visible = PdfSearchable.VisibleRegion(page);
+                var sideways = rotation is 90 or 270;
+                var area = new XRect(0, 0, sideways ? visible.Height : visible.Width, sideways ? visible.Width : visible.Height);
+                added += PdfSearchable.AddInvisibleText(page, text, area, rotation, visible);
+            }
+            if (added == 0) throw new ConversionException(OcrCopy.NoTextInPdf);
+            doc.Save(temp);
+        }, token), ct).ConfigureAwait(false);
         return result.Path;
     }
 
@@ -46,17 +103,18 @@ public static class PdfConverter
     {
         RequireInputs(inputs);
         var spec = MergedSpec(inputs[0]);
-        var result = await Naming.CommitAsync(spec, (temp, token) => WriteImagePdfAsync(inputs, temp, token), ct).ConfigureAwait(false);
+        var result = await Naming.CommitAsync(spec, (temp, token) => WriteImagePdfAsync(inputs, temp, searchable: false, token), ct).ConfigureAwait(false);
         return result.Path;
     }
 
-    private static async Task WriteImagePdfAsync(IReadOnlyList<string> inputs, string tempPath, CancellationToken ct)
+    private static async Task WriteImagePdfAsync(IReadOnlyList<string> inputs, string tempPath, bool searchable, CancellationToken ct)
     {
         var portrait = DefaultPageSize();
         using var doc = new PdfDocument();
         doc.Info.Creator = "MikeShift";
 
         var sources = new List<MemoryStream>();
+        var words = 0;
         try
         {
             foreach (var input in inputs)
@@ -80,13 +138,23 @@ public static class PdfConverter
 
                     var ms = new MemoryStream(img.Jpeg, writable: false);
                     sources.Add(ms);
-                    using var gfx = XGraphics.FromPdfPage(page);
-                    using var xi = XImage.FromStream(ms);
-                    gfx.DrawImage(xi, (pageW - w) / 2, (pageH - h) / 2, w, h);
+                    var area = new XRect((pageW - w) / 2, (pageH - h) / 2, w, h);
+                    using (var gfx = XGraphics.FromPdfPage(page))
+                    using (var xi = XImage.FromStream(ms))
+                        gfx.DrawImage(xi, area.X, area.Y, area.Width, area.Height);
+
+                    if (searchable)
+                    {
+                        // Read the very pixels that were placed, so the word boxes map onto the picture's rectangle.
+                        var decoded = await PdfPixels.DecodeBytesAsync(img.Jpeg, channels: 4, maxLongSide: 0, colorManage: false).ConfigureAwait(false);
+                        var text = await TextRecognition.RecognizeAsync(new Raster(decoded.Width, decoded.Height, decoded.Data), ct).ConfigureAwait(false);
+                        words += PdfSearchable.AddInvisibleText(page, text, area);
+                    }
                 }
             }
 
             if (doc.PageCount == 0) throw new ConversionException("There were no images to put into a PDF.");
+            if (searchable && words == 0) throw new ConversionException(inputs.Count == 1 ? OcrCopy.NoTextInPicture : OcrCopy.NoTextInPictures);
             doc.Save(tempPath);
         }
         finally

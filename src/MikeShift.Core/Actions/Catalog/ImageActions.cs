@@ -29,6 +29,9 @@ public static class ImageActions
         Format("WebP", ImageFormat.Webp, requires: c => c.WebpEncode, hideFor: ["webp"]),
         ActionDef.PerFile("PDF", WheelPage.Format,
             (input, _, ct) => PdfConverter.ImageToPdfAsync(input, ct)),
+        ActionDef.PerFile("Searchable PDF", WheelPage.Format,
+            (input, _, ct) => PdfConverter.ImageToSearchablePdfAsync(input, ct),
+            requires: c => c.Ocr) with { Description = "Convert to searchable PDF" },
         ActionDef.PerFile("TXT", WheelPage.Format,
             (input, _, ct) => ImageText.ToTextAsync(input, ct),
             requires: c => c.Ocr),
@@ -54,6 +57,11 @@ public static class ImageActions
         ActionDef.SingleOutput("Merge PDF", WheelPage.Tool,
             (paths, _, ct) => PdfConverter.MergeImagesAsync(paths, ct),
             glyph: Glyphs.MergePdf,
+            appliesTo: ActionDef.AtLeast(2)),
+        ActionDef.SingleOutput("Merge searchable PDF", WheelPage.Tool,
+            (paths, _, ct) => PdfConverter.MergeImagesSearchableAsync(paths, ct),
+            glyph: Glyphs.MergePdf,
+            requires: c => c.Ocr,
             appliesTo: ActionDef.AtLeast(2)),
     ];
 
