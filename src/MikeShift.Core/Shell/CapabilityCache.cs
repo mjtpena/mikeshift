@@ -14,7 +14,7 @@ public static class CapabilityCache
     public static string Serialize(Capabilities c) => string.Join('\n',
         $"HeifEncode={c.HeifEncode}", $"HeifDecode={c.HeifDecode}", $"WebpEncode={c.WebpEncode}", $"AvifDecode={c.AvifDecode}",
         $"Mp3Encode={c.Mp3Encode}", $"FlacEncode={c.FlacEncode}", $"H264Encode={c.H264Encode}", $"AacEncode={c.AacEncode}",
-        $"HevcDecode={c.HevcDecode}", $"Vp9Decode={c.Vp9Decode}", $"Av1Decode={c.Av1Decode}", $"WebmOpen={c.WebmOpen}",
+        $"HevcDecode={c.HevcDecode}", $"Vp9Decode={c.Vp9Decode}", $"Av1Decode={c.Av1Decode}", $"WebmOpen={c.WebmOpen}", $"Ocr={c.Ocr}",
         $"WordInstalled={c.WordInstalled}", $"WordCom={c.WordCom}") + "\n";
 
     /// <summary>Parses a file written by <see cref="Serialize"/>. Never throws.</summary>
@@ -41,6 +41,7 @@ public static class CapabilityCache
                 nameof(Capabilities.Vp9Decode) => caps with { Vp9Decode = on },
                 nameof(Capabilities.Av1Decode) => caps with { Av1Decode = on },
                 nameof(Capabilities.WebmOpen) => caps with { WebmOpen = on },
+                nameof(Capabilities.Ocr) => caps with { Ocr = on },
                 nameof(Capabilities.WordInstalled) => caps with { WordInstalled = on },
                 nameof(Capabilities.WordCom) => caps with { WordCom = on },
                 _ => caps,

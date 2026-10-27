@@ -16,7 +16,7 @@ public static class PdfActions
         ActionDef.PerFile("JPG", WheelPage.Format,
             (input, ctx, ct) => PdfConverter.ToImagesAsync(input, PdfPageFormat.Jpg, ctx.Options, ct)),
         ActionDef.PerFile("TXT", WheelPage.Format,
-            (input, _, ct) => PdfConverter.ToTextAsync(input, ct)),
+            (input, ctx, ct) => PdfConverter.ToTextAsync(input, ctx.Capabilities.Ocr, ct)),
 
         // ---- Tool page
         ActionDef.PerFile("Compress", WheelPage.Tool,

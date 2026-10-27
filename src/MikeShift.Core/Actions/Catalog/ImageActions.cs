@@ -29,6 +29,9 @@ public static class ImageActions
         Format("WebP", ImageFormat.Webp, requires: c => c.WebpEncode, hideFor: ["webp"]),
         ActionDef.PerFile("PDF", WheelPage.Format,
             (input, _, ct) => PdfConverter.ImageToPdfAsync(input, ct)),
+        ActionDef.PerFile("TXT", WheelPage.Format,
+            (input, _, ct) => ImageText.ToTextAsync(input, ct),
+            requires: c => c.Ocr),
 
         // ---- Tool page
         ActionDef.PerFile("Compress", WheelPage.Tool,

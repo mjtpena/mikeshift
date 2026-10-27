@@ -50,6 +50,12 @@ public sealed record Capabilities
     /// <summary>Media Foundation can open <c>.webm</c> files.</summary>
     public bool WebmOpen { get; init; }
 
+    /// <summary>
+    /// Windows text recognition (<c>Windows.Media.Ocr</c>) has a language for this user (OCR comes with the language packs). Gates the picture
+    /// TXT tile; without it PDF TXT still reads text layers but refuses scans.
+    /// </summary>
+    public bool Ocr { get; init; }
+
     /// <summary>Microsoft Word is installed (<c>HKCR\Word.Application</c>). Informational: MikeShift only drives Word when <see cref="WordCom"/> is true.</summary>
     public bool WordInstalled { get; init; }
 
@@ -75,7 +81,7 @@ public sealed record Capabilities
     {
         HeifEncode = true, HeifDecode = true, WebpEncode = true, AvifDecode = true,
         Mp3Encode = true, FlacEncode = true, H264Encode = true, AacEncode = true,
-        HevcDecode = true, Vp9Decode = true, Av1Decode = true, WebmOpen = true,
+        HevcDecode = true, Vp9Decode = true, Av1Decode = true, WebmOpen = true, Ocr = true,
         WordInstalled = true, WordCom = true,
     };
 

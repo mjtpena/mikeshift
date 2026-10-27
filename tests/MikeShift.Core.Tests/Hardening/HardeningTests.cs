@@ -33,6 +33,8 @@ public class HardeningTests
             new("good.png", Fixtures.PngRgb(48, 32)),
             new("good.jpg", Fixtures.QuadrantJpeg(64, 48)),
             new("good.pdf", Fixtures.PdfText(2)),
+            new("good-scan.pdf", Fixtures.PdfScanOfText(Fixtures.OcrLines)), // TXT reads it with text recognition
+            new("good-text.png", Fixtures.TextPicture(Fixtures.OcrLines)),
             new("good.docx", Fixtures.DocxSample()),
             new("good.wav", Fixtures.SineWav(0.3)),
         };

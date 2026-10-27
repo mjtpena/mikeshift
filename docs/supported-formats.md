@@ -1,6 +1,6 @@
 # Supported formats
 
-MikeShift offers 41 actions across six kinds of file. The wheel and the right-click menu show only the actions that fit your selection and that your PC can do, so you never see a tile that cannot work. This page lists what can go in, what can come out, and what depends on optional Microsoft extensions.
+MikeShift offers 44 actions across six kinds of file. The wheel and the right-click menu show only the actions that fit your selection and that your PC can do, so you never see a tile that cannot work. This page lists what can go in, what can come out, and what depends on optional Microsoft extensions.
 
 How a file is recognised: by its content and its extension. A PDF is recognised by its `%PDF` header even if it is misnamed. Video and audio files are recognised only when Windows can actually open them. A selection of mixed kinds offers **Zip** only.
 
@@ -8,7 +8,7 @@ How a file is recognised: by its content and its extension. A PDF is recognised 
 
 | You have | Convert to | Tools |
 |---|---|---|
-| **Pictures**: PNG, JPG, HEIC, TIFF, GIF, WebP, BMP, AVIF, ICO, JPEG XR | PNG, JPG, TIFF, GIF, BMP, WebP, HEIC, PDF | Compress, Resize, Crop, Strip EXIF, Merge PDF |
+| **Pictures**: PNG, JPG, HEIC, TIFF, GIF, WebP, BMP, AVIF, ICO, JPEG XR | PNG, JPG, TIFF, GIF, BMP, WebP, HEIC, PDF, TXT (the text in the picture) | Compress, Resize, Crop, Strip EXIF, Merge PDF |
 | **PDF** | Page images (PNG or JPG), TXT | Compress, Split, Merge |
 | **Video**: MP4, M4V, MOV, AVI, WMV, MKV, WebM, MPEG, 3GP, TS and others | MP4, M4V, WMV, GIF, or just the audio (M4A, MP3) | Compress, Fit 10 MB, Fit 25 MB, Trim |
 | **Audio**: MP3, WAV, M4A, AAC, FLAC, AIFF, WMA, ALAC | M4A, WAV, AIFF, FLAC, MP3 | Compress, Trim |
@@ -25,17 +25,19 @@ A format is not offered for a file that is already in it (a PNG has no "PNG" til
 
 | Input extensions | `png` `jpg` `jpeg` `jpe` `jfif` `heic` `heif` `tif` `tiff` `gif` `webp` `bmp` `dib` `avif` `ico` `jxr` `wdp` |
 |---|---|
-| Output formats | PNG, JPG, TIFF, GIF, BMP, WebP, HEIC, and PDF (one picture per PDF) |
+| Output formats | PNG, JPG, TIFF, GIF, BMP, WebP, HEIC, PDF (one picture per PDF), and TXT (the text in the picture) |
 | Tools | **Compress** keeps the format and saves a smaller copy, only when it saves at least 5 percent. **Resize** halves (or quarters, or takes three quarters of) both sides. **Crop** opens the [crop editor](user-guide.md#crop-and-trim). **Strip EXIF** removes the camera, location and other metadata but keeps the picture upright. **Merge PDF** puts two or more pictures into one PDF. |
 
 Pictures are converted upright: the camera's rotation is applied, so the result is not sideways. Compress, Resize and Crop refuse animated pictures and multi-page files (such as a multi-page TIFF) instead of silently dropping frames.
+
+**TXT** reads the text in a picture (a screenshot, a photo of a document) with Windows' own text recognition (OCR), on your PC, and writes it to `<name>.txt`: UTF-8 plain text, one line per recognised line. It reads the languages Windows has text recognition for, which come with the language packs of your Windows languages; the tile is hidden on a PC that has none (see [What depends on your PC](#what-depends-on-your-pc)). It reads printed text, not handwriting, and does not rebuild columns or tables. A multi-page TIFF is refused: convert it to PDF first, then use TXT on the PDF.
 
 ### PDF
 
 | Output | What you get |
 |---|---|
 | PNG or JPG | One image per page, in a new folder named `<name> pages`, at up to twice the page size and no more than 8,000 pixels on the long side, on a white background. |
-| TXT | The text of the PDF (no OCR: a scanned PDF has no text to extract). |
+| TXT | The text of the PDF, UTF-8, with a blank line between pages. Pages without text (scans) are read with Windows text recognition when your PC has a language for it; otherwise a scanned PDF is refused. |
 | Compress | A copy with the pictures inside recompressed, only if it comes out smaller. |
 | Split | One PDF per page, in a new folder named `<name> split`. |
 | Merge | `Merged.pdf`, from two or more PDFs, in the order they are listed. |
@@ -84,6 +86,7 @@ MikeShift checks at start-up what Windows on this PC can do, and hides tiles tha
 | Open **WebM** video | **Web Media Extensions** (free) | `.webm` files are not recognised as video (only Zip is offered). |
 | Open HEVC, VP9 or AV1 video | The matching Windows video extension | The video is not recognised, or fails with "Windows can't decode the video in this file." |
 | Make **MP3**, **FLAC**, **MP4/M4V** or **M4A** | Windows' built-in encoders (present on current Windows 10 and 11; FLAC needs Windows 10 version 1703 or later) | The matching tiles are hidden. |
+| Read the **text in pictures and scanned PDFs** | A Windows language with **Optical character recognition**, installed with most language packs (Settings > Time & language > Language & region) | No TXT tile for pictures, and PDF to TXT refuses scanned PDFs. |
 | Convert old **.doc** files, or get Word's own PDF layout from DOCX | **Microsoft Word**, turned on in Settings | `.doc` files get only Zip. See [Word](user-guide.md#microsoft-word). |
 
 **Settings → Format support** shows what is installed on your PC, with a **Get from Microsoft Store** link for each missing extension.
@@ -91,7 +94,8 @@ MikeShift checks at start-up what Windows on this PC can do, and hides tiles tha
 ## What is not supported
 
 * **MOV and AVIF output.** Windows has no QuickTime or AVIF writer. MOV files can be read; they convert to MP4, M4V, WMV, GIF, M4A or MP3. AVIF files can be read when the AV1 extension is installed.
-* **OCR, PDF editing and PDF forms.** MikeShift converts, merges, splits and compresses PDFs; it does not edit them or read scanned text.
+* **PDF editing, PDF forms and searchable PDFs.** MikeShift converts, merges, splits and compresses PDFs; it does not edit them. Text read from a scan comes out as a TXT file, not as a PDF you can search.
+* **Handwriting, layout and a choice of OCR language.** Text recognition reads printed text in the languages of your Windows profile, one line after another; columns and tables are not rebuilt.
 * **Presets, custom sizes and per-format options.** Settings has [five conversion choices](user-guide.md#conversions); there is no custom percentage, pixel size, bitrate or naming template. Video Fit offers 10 MB and 25 MB; other sizes are for the command line only (`--max-size`).
 * **Size targets for audio.** Fit is for video; audio has Compress.
 * **Lossless video trim.** Video Trim always re-encodes, so the cut is exact to the frame.

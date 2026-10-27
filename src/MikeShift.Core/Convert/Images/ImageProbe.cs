@@ -23,8 +23,9 @@ public static class ImageProbe
 
     /// <summary>
     /// Sets <see cref="Capabilities.HeifEncode"/> (a WIC HEIF encoder can really encode a tiny picture: needs the Store
-    /// "HEIF Image Extensions" and "HEVC Video Extensions"), <see cref="Capabilities.WebpEncode"/> (SkiaSharp loads and encodes)
-    /// and <see cref="Capabilities.AvifDecode"/> (a WIC decoder claims <c>.avif</c>).
+    /// "HEIF Image Extensions" and "HEVC Video Extensions"), <see cref="Capabilities.WebpEncode"/> (SkiaSharp loads and encodes),
+    /// <see cref="Capabilities.AvifDecode"/> (a WIC decoder claims <c>.avif</c>) and <see cref="Capabilities.Ocr"/> (Windows can create a text
+    /// recognizer for one of the user's languages).
     /// </summary>
     public static Capabilities ProbeCapabilities(Capabilities caps) => caps with
     {
@@ -32,5 +33,6 @@ public static class ImageProbe
         HeifDecode = ImageCodec.CanDecodeHeif(),
         WebpEncode = ImageCodec.CanEncodeWebp(),
         AvifDecode = ImageCodec.CanDecodeAvif(),
+        Ocr = TextRecognition.IsAvailable(),
     };
 }

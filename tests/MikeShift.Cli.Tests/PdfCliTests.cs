@@ -1,3 +1,5 @@
+using MikeShift.Core;
+
 namespace MikeShift.Cli.Tests;
 
 /// <summary>PDF actions end to end through the real executable.</summary>
@@ -72,16 +74,18 @@ public class PdfCliTests
     }
 
     [Fact]
-    public void Run_TXT_on_a_scan_exits_1_with_the_scan_message()
+    public void Run_TXT_on_a_scan_without_readable_text_exits_1_with_a_message()
     {
         using var tmp = new TempDir();
         var pdf = tmp.WriteFile("scan.pdf", Fixtures.PdfScan());
 
         var r = CliProcess.Run("--run", "TXT", pdf);
 
+        // With a text recognition language the photo-like page is read and has no text; without one the scan is refused as such.
         Assert.Equal(1, r.ExitCode);
         Assert.Equal("", r.Stdout);
-        Assert.Contains("probably a scan", r.Stderr);
+        Assert.Contains(Capabilities.Current.Ocr ? "Couldn't find any text in this PDF" : "probably a scan", r.Stderr);
+        Assert.Equal(["scan.pdf"], Directory.GetFiles(tmp.Path).Select(p => Path.GetFileName(p)!).ToArray());
     }
 
     [Fact]

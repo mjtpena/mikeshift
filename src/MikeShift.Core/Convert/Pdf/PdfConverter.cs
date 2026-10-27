@@ -1,5 +1,7 @@
 using System.Globalization;
 using System.Text;
+using MikeShift.Core.Feedback;
+using MikeShift.Core.Images;
 using PdfSharp.Drawing;
 using PdfSharp.Pdf;
 
@@ -144,14 +146,30 @@ public static class PdfConverter
 
     // ------------------------------------------------------------------ PDF -> text
 
-    /// <summary>Extracts text to <c>name.txt</c> (refuses scans and reversed Hebrew).</summary>
-    public static async Task<string> ToTextAsync(string input, CancellationToken ct)
+    /// <summary>Extracts text to <c>name.txt</c>, reading scanned pages when this PC has a text recognition language.</summary>
+    public static Task<string> ToTextAsync(string input, CancellationToken ct) =>
+        ToTextAsync(input, TextRecognition.IsAvailable(), ct);
+
+    /// <summary>
+    /// Extracts text to <c>name.txt</c>. Pages with a text layer are read by PdfPig; when <paramref name="readScans"/> (<see cref="Capabilities.Ocr"/>),
+    /// pages without one are rendered and read by text recognition instead of being left out. Refuses a PDF with no text at all (no empty file
+    /// is written) and reversed Hebrew.
+    /// </summary>
+    public static async Task<string> ToTextAsync(string input, bool readScans, CancellationToken ct)
     {
         var bytes = PdfGuard.ReadBytes(input);
         PdfGuard.RequireNotEncrypted(bytes);
-        var text = await Task.Run(() => PdfText.Extract(bytes, ct), ct).ConfigureAwait(false);
+        var pages = await Task.Run(() => PdfText.ExtractPages(bytes, ct), ct).ConfigureAwait(false);
 
-        if (string.IsNullOrWhiteSpace(text)) throw new ConversionException(PdfText.ScanMessage);
+        var scanned = Enumerable.Range(0, pages.Count).Where(i => pages[i].Length == 0).ToList();
+        if (readScans && scanned.Count > 0)
+        {
+            var read = await PdfOcr.ReadPagesAsync(bytes, scanned, ct).ConfigureAwait(false);
+            foreach (var (index, recognized) in read) pages[index] = recognized.PlainText.Trim();
+        }
+
+        var text = PdfText.Join(pages);
+        if (string.IsNullOrWhiteSpace(text)) throw new ConversionException(readScans ? OcrCopy.NoTextInPdf : OcrCopy.ScanWithoutOcr);
         if (PdfText.LooksReversedHebrew(text)) throw new ConversionException(PdfText.ReversedMessage);
 
         var spec = Naming.Plan(input, ".txt");

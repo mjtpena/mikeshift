@@ -87,18 +87,18 @@ The full walkthrough is the [user guide](docs/user-guide.md): every action by fi
 
 ## Supported formats
 
-43 actions in all; the wheel and the right-click menu show only the ones that fit your selection and your PC.
+44 actions in all; the wheel and the right-click menu show only the ones that fit your selection and your PC.
 
 | You have | Convert to | Tools |
 |---|---|---|
-| **Pictures**: PNG, JPG, HEIC, TIFF, GIF, WebP, BMP, AVIF | PNG, JPG, TIFF, GIF, BMP, WebP, HEIC, PDF | Compress, Resize, Crop, Strip EXIF, Merge PDF |
-| **PDF** | PNG or JPG (pages), TXT | Compress, Split, Merge |
+| **Pictures**: PNG, JPG, HEIC, TIFF, GIF, WebP, BMP, AVIF | PNG, JPG, TIFF, GIF, BMP, WebP, HEIC, PDF, TXT (text in the picture) | Compress, Resize, Crop, Strip EXIF, Merge PDF |
+| **PDF** | PNG or JPG (pages), TXT (scans too) | Compress, Split, Merge |
 | **Video**: MP4, MOV, MKV, AVI, WMV, WebM and others | MP4, M4V, WMV, GIF, or audio only (M4A, MP3) | Compress, Fit 10 MB, Fit 25 MB, Trim |
 | **Audio**: MP3, WAV, M4A, FLAC, AIFF, WMA, AAC | M4A, WAV, AIFF, FLAC, MP3 | Compress, Trim |
 | **Documents**: DOCX, RTF, ODT, HTML, TXT, Markdown, DOC (needs Word) | PDF, DOCX, RTF, TXT, HTML, ODT | none |
 | **Anything, including folders** | Zip | none |
 
-HEIC, AVIF and WebP reading, MP3, FLAC and H.264 encoding, and some video codecs rely on Windows features or optional Microsoft extensions; MikeShift hides tiles that cannot work. Not offered: MOV and AVIF output, dithered GIFs (GIFs are up to 30 s, 480 px), lossless video trim, OCR. Documents become PDF with MikeShift's own plain layout, so they will not match Word's pagination. The full tables are in [supported formats](docs/supported-formats.md).
+HEIC, AVIF and WebP reading, MP3, FLAC and H.264 encoding, and some video codecs rely on Windows features or optional Microsoft extensions; MikeShift hides tiles that cannot work. Not offered: MOV and AVIF output, dithered GIFs (GIFs are up to 30 s, 480 px), lossless video trim, searchable PDFs. Text from pictures and scans needs a Windows language with text recognition. Documents become PDF with MikeShift's own plain layout, so they will not match Word's pagination. The full tables are in [supported formats](docs/supported-formats.md).
 
 **Limits worth knowing first:** the Windows 10 right-click entry follows Microsoft's documentation but has not been seen on a Windows 10 PC; elevated (administrator) File Explorer windows are invisible to MikeShift; files that are not real files on disk (browser images, Outlook attachments) need saving first; encrypted PDFs are refused. Everything else is in [known limitations](docs/limitations.md).
 

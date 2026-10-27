@@ -119,14 +119,18 @@ The wheel and the right-click menu show only what fits your selection and works 
 
 | You select | Formats (convert to) | Tools |
 |---|---|---|
-| **Pictures** (PNG, JPG, HEIC, TIFF, GIF, WebP, BMP, AVIF …) | PNG, JPG, TIFF, GIF, BMP, WebP, HEIC, PDF | Compress, Resize, Crop, Strip EXIF, Merge PDF (two or more pictures) |
-| **PDF** | PNG or JPG (one image per page), TXT | Compress, Split, Merge (two or more PDFs) |
+| **Pictures** (PNG, JPG, HEIC, TIFF, GIF, WebP, BMP, AVIF …) | PNG, JPG, TIFF, GIF, BMP, WebP, HEIC, PDF, TXT (the text in the picture) | Compress, Resize, Crop, Strip EXIF, Merge PDF (two or more pictures) |
+| **PDF** | PNG or JPG (one image per page), TXT (including scanned pages) | Compress, Split, Merge (two or more PDFs) |
 | **Video** (MP4, MOV, MKV, AVI, WMV, WebM …) | MP4, M4V, WMV, GIF, M4A (audio only), MP3 (audio only) | Compress, Fit 10 MB, Fit 25 MB, Trim |
 | **Audio** (MP3, WAV, M4A, FLAC, AIFF, WMA …) | M4A, WAV, AIFF, FLAC, MP3 | Compress, Trim |
 | **Documents** (DOCX, RTF, ODT, HTML, TXT, Markdown, DOC) | PDF, DOCX, RTF, TXT, HTML, ODT | none |
 | **Anything, including folders and mixed selections** | none | Zip |
 
 Select many files of one kind and every one is converted (a batch). A mixed selection, such as a picture and a PDF, offers only **Zip**.
+
+### Text from pictures and scans
+
+**TXT** on a picture, such as a screenshot or a photo of a page, writes the text in it to `photo.txt` next to it. **TXT** on a PDF reads the PDF's text, and reads scanned pages too. Both use Windows' own text recognition (OCR) on your PC; nothing is uploaded. Windows reads the languages you have installed (Settings > Time & language > Language & region; a language's options must include **Optical character recognition**, which most include). On a PC with none, the picture TXT tile is hidden, PDF TXT refuses scans, and Settings → Format support says so. Text recognition reads printed text line by line; it does not read handwriting or rebuild columns and tables.
 
 ### HEIC photos from an iPhone
 
@@ -241,7 +245,7 @@ Open Settings from the tray menu. The window is organised in cards, like Windows
 
 ### Format support
 
-Shows what this PC can do: which Microsoft Store extensions are installed (HEIF, HEVC, AV1, WebP, Web Media) and a **Get from Microsoft Store** link for each missing one. If you install an extension while MikeShift is running, a **Restart MikeShift** button appears.
+Shows what this PC can do: which Microsoft Store extensions are installed (HEIF, HEVC, AV1, WebP, Web Media) and a **Get from Microsoft Store** link for each missing one, and whether Windows has a language for reading text in pictures and scanned PDFs, with how to add one. If you install an extension while MikeShift is running, a **Restart MikeShift** button appears.
 
 ### About
 
@@ -283,6 +287,7 @@ mikeshift --list photo.heic                    # what can be done with this file
 mikeshift --run PNG photo.heic                 # prints the output path, exit code 0
 mikeshift --run "Resize 50%" a.jpg b.jpg
 mikeshift --run Merge a.pdf b.pdf              # Merged.pdf next to a.pdf
+mikeshift --run TXT screenshot.png scan.pdf    # the text in a picture and in a scanned PDF
 mikeshift --run Trim --range 0:05-0:12.5 clip.mp4
 mikeshift --run "Fit 10 MB" clip.mov            # an MP4 of at most 10 MB
 mikeshift --run Crop --crop 100,50,800,600@400x300 photo.jpg

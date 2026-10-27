@@ -8,11 +8,20 @@ namespace MikeShift.Core.Pdf;
 /// <summary>PDF text extraction (PdfPig) and the Hebrew reversed-text heuristic.</summary>
 internal static class PdfText
 {
-    public const string ScanMessage = "No text found — this PDF is probably a scan.";
     public const string ReversedMessage = "The text in this PDF is stored in reverse (Hebrew), so it can't be extracted reliably.";
 
     /// <summary>Extracts the text of every page in reading order (lines top to bottom, words left to right); pages are separated by a blank line.</summary>
-    public static string Extract(byte[] pdf, CancellationToken ct)
+    public static string Extract(byte[] pdf, CancellationToken ct) => Join(ExtractPages(pdf, ct));
+
+    /// <summary>The pages' text with a blank line between pages; pages without text are left out.</summary>
+    public static string Join(IEnumerable<string> pages) =>
+        string.Join(Environment.NewLine + Environment.NewLine, pages.Where(p => p.Length > 0));
+
+    /// <summary>
+    /// The text of each page, in page order (the list has one entry per page): reading order as in <see cref="Extract"/>, and "" for a page
+    /// with no text layer (a scanned page, or a blank one).
+    /// </summary>
+    public static List<string> ExtractPages(byte[] pdf, CancellationToken ct)
     {
         try
         {
@@ -21,10 +30,9 @@ internal static class PdfText
             foreach (var page in doc.GetPages())
             {
                 ct.ThrowIfCancellationRequested();
-                var text = ExtractPage(page);
-                if (text.Length > 0) pages.Add(text);
+                pages.Add(ExtractPage(page));
             }
-            return string.Join(Environment.NewLine + Environment.NewLine, pages);
+            return pages;
         }
         catch (PdfDocumentEncryptedException ex)
         {

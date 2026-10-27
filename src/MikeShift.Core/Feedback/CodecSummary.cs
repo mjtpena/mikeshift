@@ -35,6 +35,7 @@ public static class CodecSummary
         new("HEIC / HEIF output", c.HeifEncode, "Install \"HEIF Image Extensions\" and \"HEVC Video Extensions\" from the Microsoft Store.", CodecHelp.HeifProductId),
         new("WebP output", c.WebpEncode, "Install \"WebP Image Extensions\" from the Microsoft Store.", CodecHelp.WebpProductId),
         new("AVIF input", c.AvifDecode, "Install \"AV1 Video Extension\" from the Microsoft Store.", CodecHelp.Av1ProductId),
+        new(OcrCopy.FormatSupportName, c.Ocr, OcrCopy.FormatSupportHint),
         new("H.264 video output", c.H264Encode, "Not available on this edition of Windows."),
         new("HEVC (H.265) video input", c.HevcDecode, "Install \"HEVC Video Extensions\" from the Microsoft Store.", CodecHelp.HevcProductId),
         new("VP9 video input", c.Vp9Decode, "Install \"VP9 Video Extensions\" from the Microsoft Store.", "9N4D0MSMP0PT"),
