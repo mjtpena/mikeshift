@@ -14,6 +14,7 @@
     <PackageReference Include="DocumentFormat.OpenXml" />
     <PackageReference Include="SkiaSharp" />
     <PackageReference Include="SkiaSharp.NativeAssets.Win32" />
+    <PackageReference Include="ZXing.Net" />
     <PackageReference Include="Microsoft.Windows.CsWin32" PrivateAssets="all" />
   </ItemGroup>
 

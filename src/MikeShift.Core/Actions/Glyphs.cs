@@ -16,13 +16,17 @@ public static class Glyphs
     public const string Resize = "";     // BackToWindow (arrows pointing inward)
     public const string Crop = "";       // Crop
     public const string StripExif = "";  // Hide (an eye with a slash)
-    public const string Trim = "";       // Cut
+    public const string BlurFaces = ""; // Contact (a person)
+    public const string Trim ="";       // Cut
     public const string Split = "";      // Split page
     public const string Merge = "";      // Combine
     public const string Zip = "";        // ZipFolder
     public const string MergePdf = Merge;
     public const string Searchable = ""; // Search
     public const string Fit = "";       // Attach (a paper clip: small enough to attach)
+
+    public const string QrCode = "\uE71B";     // Link (a chain: the code holds the link itself)
+    public const string ReadQrCode = "\uE721"; // Search (look for a code in the picture)
 
     // Format categories
     public const string Image = "";      // Photo2
@@ -35,7 +39,7 @@ public static class Glyphs
     public const string Info = "";
 
     /// <summary>Every tool glyph, for tests.</summary>
-    public static IReadOnlyList<string> All { get; } = [Compress, Resize, Crop, StripExif, Trim, Split, Merge, Zip, Fit, Searchable];
+    public static IReadOnlyList<string> All { get; } = [Compress, Resize, Crop, StripExif, BlurFaces, Trim, Split, Merge, Zip, Fit, QrCode, ReadQrCode, Searchable];
 
     /// <summary>Every glyph the wheel can draw (tool, category and info glyphs), for the font-coverage test.</summary>
     public static IReadOnlyList<string> Everything { get; } = [.. All, Image, Document, Pdf, Video, Audio, Info];

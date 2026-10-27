@@ -25,7 +25,8 @@ public static class FileTypeFilters
         var video = Kind.VideoExtensions.Order(StringComparer.Ordinal).ToList();
         var audio = Kind.AudioExtensions.Order(StringComparer.Ordinal).ToList();
         var documents = Kind.DocumentExtensions.Order(StringComparer.Ordinal).ToList();
-        var everything = images.Concat([Kind.PdfExtension]).Concat(video).Concat(audio).Concat(documents);
+        var links = new List<string> { Kind.LinkExtension };
+        var everything = images.Concat([Kind.PdfExtension]).Concat(video).Concat(audio).Concat(documents).Concat(links);
 
         return
         [
@@ -34,6 +35,7 @@ public static class FileTypeFilters
             new("Videos", Spec(video)),
             new("Audio", Spec(audio)),
             new("PDF and documents", Spec(new[] { Kind.PdfExtension }.Concat(documents))),
+            new("Internet shortcuts", Spec(links)),
             new("All files", "*.*"),
         ];
     }

@@ -4,7 +4,11 @@ namespace MikeShift.Core.Actions;
 /// <param name="Input">The input path this output came from (for batch actions such as Merge/Zip: the first input).</param>
 /// <param name="Path">The output path (a folder for " pages" / " split" outputs).</param>
 /// <param name="UsedDownloadsFallback">The output directory differs from the input's directory because it was not writable.</param>
-public sealed record ActionOutput(string Input, string Path, bool UsedDownloadsFallback);
+public sealed record ActionOutput(string Input, string Path, bool UsedDownloadsFallback)
+{
+    /// <summary>A short piece of what was written that the toast shows next to the file name (the first QR code read), or null.</summary>
+    public string? Preview { get; init; }
+}
 
 /// <summary>One input that could not be converted.</summary>
 /// <param name="Input">The input path.</param>
@@ -39,6 +43,9 @@ public sealed record ActionResult
 
     /// <summary>The user cancelled (or the token fired); earlier outputs were kept and later inputs were not attempted.</summary>
     public bool Cancelled { get; init; }
+
+    /// <summary>What the whole run did, as a plain statement rather than a caution ("Blurred 3 faces"): shown in the toast detail and printed by the command line as "note:". Unlike <see cref="Notes"/> it does not turn the toast into a warning. Null for most actions.</summary>
+    public string? Summary { get; init; }
 
     /// <summary>
     /// The "A folder I choose" setting that was in effect for this run (<see cref="ConversionOptions.OutputFolder"/>), or null when outputs go

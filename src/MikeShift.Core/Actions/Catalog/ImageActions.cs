@@ -56,6 +56,7 @@ public static class ImageActions
         ActionDef.PerFile("Strip EXIF", WheelPage.Tool,
             (input, ctx, ct) => ImageConverter.StripExifAsync(input, ctx.Capabilities, ct),
             glyph: Glyphs.StripExif),
+        BlurFacesAction.Create(),
         ActionDef.SingleOutput("Merge PDF", WheelPage.Tool,
             (paths, _, ct) => PdfConverter.MergeImagesAsync(paths, ct),
             glyph: Glyphs.MergePdf,
@@ -65,6 +66,7 @@ public static class ImageActions
             glyph: Glyphs.MergePdf,
             requires: c => c.Ocr,
             appliesTo: ActionDef.AtLeast(2)),
+        ReadQrCode(),
     ];
 
     private static readonly IReadOnlyDictionary<int, IReadOnlyList<ActionDef>> ByResize = ConversionOptions.ResizeChoices.ToDictionary(
@@ -104,6 +106,19 @@ public static class ImageActions
         })
         { HideFor = skip };
     }
+
+    /// <summary>Read QR code: <c>photo qr.txt</c> with the text of every code. Like <see cref="ActionDef.PerFile"/>, plus the first code's first line for the toast.</summary>
+    private static ActionDef ReadQrCode() => new("Read QR code", WheelPage.Tool, async (paths, ctx, ct) =>
+    {
+        var first = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var result = await Each.RunAsync(paths, ctx, async (input, token) =>
+        {
+            var (path, text) = await QrCodes.ReadAsync(input, token).ConfigureAwait(false);
+            first[path] = text;
+            return path;
+        }, ct, alreadyLabel: "Read QR code").ConfigureAwait(false);
+        return result with { Outputs = [.. result.Outputs.Select(o => first.TryGetValue(o.Path, out var text) ? o with { Preview = text } : o)] };
+    }) { Glyph = Glyphs.ReadQrCode };
 
     private static ActionDef Format(string title, ImageFormat format, params string[] hideFor) =>
         Format(title, format, null, hideFor);
