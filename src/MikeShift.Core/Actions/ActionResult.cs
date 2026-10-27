@@ -44,6 +44,9 @@ public sealed record ActionResult
     /// <summary>The user cancelled (or the token fired); earlier outputs were kept and later inputs were not attempted.</summary>
     public bool Cancelled { get; init; }
 
+    /// <summary>What the whole run did, as a plain statement rather than a caution ("Blurred 3 faces"): shown in the toast detail and printed by the command line as "note:". Unlike <see cref="Notes"/> it does not turn the toast into a warning. Null for most actions.</summary>
+    public string? Summary { get; init; }
+
     /// <summary>
     /// The "A folder I choose" setting that was in effect for this run (<see cref="ConversionOptions.OutputFolder"/>), or null when outputs go
     /// next to their originals. With it, <see cref="AnyDownloadsFallback"/> means "the chosen folder could not be used".

@@ -51,6 +51,7 @@ public static class WheelText
             _ when Feedback.SizeTargetCopy.MegabytesIn(action.Title) is { } megabytes => Feedback.SizeTargetCopy.Describe(megabytes),
             "Crop" => "Choose the part of the picture to keep",
             "Strip EXIF" => "Save a copy without camera and location data",
+            "Blur faces" => "Save a copy with the faces blurred",
             "Trim" => "Choose the part to keep",
             "Split" => "Save each page as its own PDF",
             "Merge" => "Combine the files into one PDF",

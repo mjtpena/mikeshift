@@ -69,9 +69,10 @@ public sealed record FeedbackPlan(ToastContent? Toast, DialogContent? Dialog, bo
 
         if (result.Outputs.Count == 1 && result.Failures.Count == 0 && result.Outputs[0].Preview is { Length: > 0 } preview)
         {
-            // Read QR code: what the code says is the answer, the file it was saved to is the detail.
+            // Read QR code: what the code says is the answer, the file it was saved to is the detail. The run-level Summary (when an action has one) follows it, and Notes (cautions) come last in every branch.
             title = preview.Length > MaxPreview ? preview[..MaxPreview] + "…" : preview;
             details.Add("Saved " + System.IO.Path.GetFileName(result.Outputs[0].Path));
+            if (result.Summary is not null) details.Add(result.Summary);
             details.Add(LocationText(result));
         }
         else if (result.Outputs.Count > 0 && result.Failures.Count == 0)
@@ -79,11 +80,13 @@ public sealed record FeedbackPlan(ToastContent? Toast, DialogContent? Dialog, bo
             title = result.Outputs.Count == 1
                 ? "Saved " + System.IO.Path.GetFileName(result.Outputs[0].Path.TrimEnd('\\', '/'))
                 : $"Saved {result.Outputs.Count} files";
+            if (result.Summary is not null) details.Add(result.Summary);
             details.Add(LocationText(result));
         }
         else if (result.Outputs.Count > 0)
         {
             title = $"Saved {result.Outputs.Count} of {Math.Max(result.Total, result.Outputs.Count + result.Failures.Count)}";
+            if (result.Summary is not null) details.Add(result.Summary);
             details.Add(result.Failures.Count == 1 ? "1 couldn't be converted" : $"{result.Failures.Count} couldn't be converted");
             kind = ToastKind.Warning;
         }

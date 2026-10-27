@@ -136,6 +136,8 @@ public static class CliRunner
         foreach (var o in result.Outputs)
             stdout.WriteLine(o.Path);
 
+        if (result.Summary is not null)
+            stderr.WriteLine($"note: {result.Summary}");
         if (result.AlreadyInFormat > 0)
             stderr.WriteLine($"note: {result.AlreadyInFormat} already {result.AlreadyLabel ?? action.Title}");
         foreach (var note in result.Notes)

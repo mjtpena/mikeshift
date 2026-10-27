@@ -53,6 +53,7 @@ public static class ImageActions
         ActionDef.PerFile("Strip EXIF", WheelPage.Tool,
             (input, ctx, ct) => ImageConverter.StripExifAsync(input, ctx.Capabilities, ct),
             glyph: Glyphs.StripExif),
+        BlurFacesAction.Create(),
         ActionDef.SingleOutput("Merge PDF", WheelPage.Tool,
             (paths, _, ct) => PdfConverter.MergeImagesAsync(paths, ct),
             glyph: Glyphs.MergePdf,
