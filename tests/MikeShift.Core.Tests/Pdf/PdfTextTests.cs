@@ -33,14 +33,14 @@ public class PdfTextTests
     }
 
     [Fact]
-    public async Task A_scan_has_no_text_and_says_so()
+    public async Task A_scan_has_no_text_and_says_so_when_scans_cannot_be_read()
     {
         using var tmp = new TempDir();
         var pdf = tmp.WriteFile("scan.pdf", Fixtures.PdfScan());
 
-        var ex = await Assert.ThrowsAsync<ConversionException>(() => PdfConverter.ToTextAsync(pdf, default));
+        var ex = await Assert.ThrowsAsync<ConversionException>(() => PdfConverter.ToTextAsync(pdf, readScans: false, default));
 
-        Assert.Equal("No text found — this PDF is probably a scan.", ex.Message);
+        Assert.StartsWith("No text found — this PDF is probably a scan.", ex.Message);
         Assert.Equal(["scan.pdf"], Directory.GetFiles(tmp.Path).Select(p => Path.GetFileName(p)!).ToArray());
     }
 

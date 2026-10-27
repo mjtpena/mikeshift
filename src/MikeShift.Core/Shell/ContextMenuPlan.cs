@@ -43,7 +43,7 @@ public static class ContextMenuPlanner
     /// <summary>Preferred order per category (<see cref="ActionDef.Id"/>s from <c>Actions/Catalog</c>, so "Resize" ranks whatever its percentage is); visible actions not listed follow in catalog order.</summary>
     internal static readonly Dictionary<Category, string[]> Ranking = new()
     {
-        [Category.Image] = ["JPG", "PNG", "Merge PDF", "PDF", "Compress", "Resize", "WebP", "HEIC", "TIFF", "GIF", "BMP", "Strip EXIF", "Crop"],
+        [Category.Image] = ["JPG", "PNG", "Merge PDF", "PDF", "Compress", "Resize", "WebP", "HEIC", "TIFF", "GIF", "BMP", "TXT", "Strip EXIF", "Crop"],
         [Category.Pdf] = ["Merge", "Compress", "PNG", "JPG", "Split", "TXT"],
         [Category.Video] = ["MP4", "MP3", "GIF", "Compress", "WMV", "M4A", "M4V", "Trim"],
         [Category.Audio] = ["MP3", "M4A", "WAV", "Compress", "FLAC", "AIFF", "Trim"],

@@ -299,6 +299,16 @@ public class CodecHelpTests
         Assert.True(CodecSummary.From(Capabilities.All).Single(r => r.Name.StartsWith("HEIC photos", StringComparison.Ordinal)).Available);
     }
 
+    [Fact]
+    public void Format_support_says_how_to_add_a_text_recognition_language()
+    {
+        var row = CodecSummary.From(Capabilities.All with { Ocr = false }).Single(r => r.Name == OcrCopy.FormatSupportName);
+        Assert.False(row.Available);
+        Assert.Contains("Optical character recognition", row.Hint);
+        Assert.Null(row.StoreUri); // a Windows setting, not a Store extension
+        Assert.True(CodecSummary.From(Capabilities.None with { Ocr = true }).Single(r => r.Name == OcrCopy.FormatSupportName).Available);
+    }
+
     // ------------------------------------------------------------------ the dev override
 
     [Fact]
@@ -315,6 +325,7 @@ public class CodecHelpTests
         Assert.Equal(Capabilities.None, f(Capabilities.None));
         Assert.False(CapabilityOverrides.Parse("no-hevc")!(Capabilities.All).HevcDecode);
         Assert.False(CapabilityOverrides.Parse("no-webp")!(Capabilities.All).WebpEncode);
+        Assert.Equal(Capabilities.All with { Ocr = false }, CapabilityOverrides.Parse("no-ocr")!(Capabilities.All));
         Assert.Null(CapabilityOverrides.Parse(null));
         Assert.Null(CapabilityOverrides.Parse("nonsense, other"));
     }

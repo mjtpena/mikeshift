@@ -4,6 +4,10 @@ All notable changes to MikeShift are listed here. The format follows [Keep a Cha
 
 ## Unreleased
 
+### Added
+
+* **Text from pictures and scanned PDFs.** Pictures have a new **TXT** tile that writes the text in a screenshot or a photo of a page to `photo.txt`, and PDF to **TXT** now reads scanned pages instead of refusing them; pages that already have text are read as before. It uses Windows' own text recognition, on your PC, in the languages Windows has installed. On a PC without such a language the picture tile is hidden and Settings → Format support says how to add one. Also `mikeshift --run TXT scan.png`.
+
 ### Fixed
 
 * **WebP to PDF, Merge PDF and the crop editor work without the WebP Image Extensions.** On a PC without the free extension (Windows Server, or a PC where it was removed), turning a WebP into a PDF said the picture "could not be read as an image", and the crop editor could not open it. They now read WebP themselves, like every other picture action.

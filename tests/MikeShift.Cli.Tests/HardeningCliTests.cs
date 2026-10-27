@@ -21,6 +21,8 @@ public class HardeningCliTests
         return new TheoryData<string, string, string>
         {
             { "truncated.png", Half(png), "JPG" },
+            { "truncated.png", Half(png), "TXT" },
+            { "truncated.jpg", Half(jpg), "TXT" },
             { "truncated.jpg", Half(jpg), "PNG" },
             { "truncated.jpg", Half(jpg), "Compress" },
             { "truncated.pdf", Half(pdf), "PNG" },
@@ -33,6 +35,9 @@ public class HardeningCliTests
             { "random.docx", Noise(), "PDF" },
             { "random.docx", Noise(), "RTF" },
             { "random.png", Noise(), "JPG" },
+            { "random.png", Noise(), "TXT" },
+            { "pdf-bytes.png", pdf, "TXT" },
+            { "empty.png", "", "TXT" },
             { "random.mp4", Noise(), "MP3" },
             { "empty.png", "", "JPG" },
             { "empty.pdf", "", "PNG" },
