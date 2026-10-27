@@ -238,6 +238,30 @@ public class ImageTextTests
     }
 
     [Fact]
+    public void One_hebrew_word_in_an_english_line_keeps_the_engines_text_and_order()
+    {
+        var words = new[] { W("Hello", 0), W("שלום", 100), W("world", 200) };
+
+        var line = TextRecognition.ToLine("Hello שלום world", words);
+
+        Assert.False(TextRecognition.IsRightToLeftLine(words));
+        Assert.Equal("Hello שלום world", line.Text);
+        Assert.Equal(["Hello", "שלום", "world"], line.Words.Select(w => w.Text));
+    }
+
+    [Fact]
+    public void A_mostly_hebrew_line_is_put_in_right_to_left_reading_order()
+    {
+        // Visual, left to right: עולם 2026 שלום — the engine's text is ignored for a right-to-left line.
+        var words = new[] { W("עולם", 0), W("2026", 100), W("שלום", 200) };
+
+        var line = TextRecognition.ToLine("עולם 2026 שלום", words);
+
+        Assert.True(TextRecognition.IsRightToLeftLine(words));
+        Assert.Equal("שלום 2026 עולם", line.Text);
+    }
+
+    [Fact]
     public void A_run_of_latin_words_in_a_right_to_left_line_keeps_its_own_order()
     {
         // Visual: [Windows 11] שלום — reading order is שלום, then "Windows 11" left to right.

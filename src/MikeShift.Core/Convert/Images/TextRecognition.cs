@@ -54,8 +54,11 @@ internal static class TextRecognition
         ct.ThrowIfCancellationRequested();
         var engine = OcrEngine.TryCreateFromUserProfileLanguages() ?? throw new ConversionException(OcrCopy.NoLanguage);
 
-        var input = FitWithin(pixels.FlattenOnWhite(), (int)OcrEngine.MaxImageDimension);
-        var scale = (double)pixels.Width / input.Width;
+        // Shrink first, then flatten: a full-size flattened copy of a 200-megapixel picture would be another 800 MB the engine never reads.
+        var input = FitWithin(pixels, (int)OcrEngine.MaxImageDimension).FlattenOnWhite();
+        // The two sides are rounded separately when shrinking, so each axis has its own factor back to the input's pixels.
+        var scaleX = (double)pixels.Width / input.Width;
+        var scaleY = (double)pixels.Height / input.Height;
 
         OcrResult result;
         try
@@ -69,7 +72,7 @@ internal static class TextRecognition
             throw new ConversionException(OcrCopy.Unreadable, ex);
         }
 
-        var lines = result.Lines.Select(l => ToLine(l, scale)).Where(l => l.Words.Count > 0).ToList();
+        var lines = result.Lines.Select(l => ToLine(l, scaleX, scaleY)).Where(l => l.Words.Count > 0).ToList();
         return new RecognizedText(pixels.Width, pixels.Height, lines);
     }
 
@@ -83,17 +86,37 @@ internal static class TextRecognition
         return pixels.CropScale(new RectPx(0, 0, pixels.Width, pixels.Height), w, h);
     }
 
-    private static RecognizedLine ToLine(OcrLine line, double scale)
-    {
-        var words = line.Words
+    private static RecognizedLine ToLine(OcrLine line, double scaleX, double scaleY) =>
+        ToLine(line.Text, line.Words
             .Where(w => !string.IsNullOrWhiteSpace(w.Text))
             .Select(w => new RecognizedWord(w.Text,
-                w.BoundingRect.X * scale, w.BoundingRect.Y * scale, w.BoundingRect.Width * scale, w.BoundingRect.Height * scale))
-            .ToList();
-        if (!words.Any(w => w.Text.Any(TextUtil.IsRtlChar))) return new RecognizedLine(line.Text, words);
+                w.BoundingRect.X * scaleX, w.BoundingRect.Y * scaleY, w.BoundingRect.Width * scaleX, w.BoundingRect.Height * scaleY))
+            .ToList());
 
+    /// <summary>
+    /// The line as written: the engine's own text for a left-to-right line, even one that contains a Hebrew or Arabic word; for a right-to-left
+    /// line, the words put in reading order by <see cref="RightToLeftReadingOrder"/>.
+    /// </summary>
+    internal static RecognizedLine ToLine(string engineText, IReadOnlyList<RecognizedWord> words)
+    {
+        if (!IsRightToLeftLine(words)) return new RecognizedLine(engineText, words);
         var ordered = RightToLeftReadingOrder(words);
         return new RecognizedLine(string.Join(' ', ordered.Select(w => w.Text)), ordered);
+    }
+
+    /// <summary>
+    /// True when most of the line's letters are right-to-left (Hebrew, Arabic): the line's base direction. One Hebrew word in an English line
+    /// does not make it right-to-left, and digits and punctuation do not count either way.
+    /// </summary>
+    internal static bool IsRightToLeftLine(IReadOnlyList<RecognizedWord> words)
+    {
+        int rtl = 0, ltr = 0;
+        foreach (var c in words.SelectMany(w => w.Text))
+        {
+            if (TextUtil.IsRtlChar(c)) rtl++;
+            else if (char.IsLetter(c)) ltr++;
+        }
+        return rtl > ltr;
     }
 
     /// <summary>
