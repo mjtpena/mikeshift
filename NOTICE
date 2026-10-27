@@ -15,6 +15,8 @@ Direct dependencies (src/*)
                                                  offered under the MIT licence (AGPL); do not bump without
                                                  re-checking the licence.
   PdfPig 0.1.16                       Apache-2.0 PDF text extraction.
+  ZXing.Net 0.16.11                   Apache-2.0 Reading and making QR codes (a port of the ZXing library; managed code, no
+                                                 dependencies, no network).
   DocumentFormat.OpenXml 3.5.1        MIT        DOCX reading/writing (Open XML SDK).
   SkiaSharp 4.153.1                   MIT        WebP encoding, image-decode fallback.
   SkiaSharp.NativeAssets.Win32 4.153.1 MIT       Native Skia library for the above.
