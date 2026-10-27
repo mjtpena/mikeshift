@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.WindowsRuntime;
 using Microsoft.UI.Xaml.Media.Imaging;
+using MikeShift.Core;
 using MikeShift.Core.Images;
 using Windows.Graphics.Imaging;
 using Windows.Storage;
@@ -20,6 +21,7 @@ internal static class PreviewLoader
 
     public static async Task<PreviewImage> LoadAsync(string path)
     {
+        if (CapabilityOverrides.HidesWicDecoder(path)) return await LoadWithoutWicDecoderAsync(path);
         var file = await StorageFile.GetFileFromPathAsync(path);
         using var stream = await file.OpenReadAsync();
         BitmapDecoder decoder;

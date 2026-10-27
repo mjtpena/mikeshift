@@ -25,7 +25,7 @@ internal static class PdfImageSource
         {
             using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
             using var ras = fs.AsRandomAccessStream();
-            var decoder = await TryCreateDecoderAsync(ras);
+            var decoder = CapabilityOverrides.HidesWicDecoder(path) ? null : await TryCreateDecoderAsync(ras);
             if (decoder is null) return [await LoadWithSkiaAsync(path)];
 
             var name = Path.GetFileName(path);
