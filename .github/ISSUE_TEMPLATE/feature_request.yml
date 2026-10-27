@@ -1,0 +1,114 @@
+name: Feature request
+description: Suggest a new action or a change to what MikeShift does. Start from the job you are trying to do.
+title: "Add "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        MikeShift's scope is deliberate: it converts the common file types from File Explorer, offline. Anything that needs the network is out of scope, and it is not a format zoo with presets. [Known limitations](https://github.com/mjtpena/mikeshift/blob/main/docs/limitations.md#not-offered) lists what is not offered and why.
+
+        Only **The job** is required. Fill in the other sections if you can; the maintainers complete them before the work starts.
+
+        Security problems do not belong here: see [SECURITY.md](https://github.com/mjtpena/mikeshift/blob/main/SECURITY.md).
+
+  - type: textarea
+    id: job
+    attributes:
+      label: The job
+      description: What are you trying to do, and what do you do today instead (a website, another app)? Describe the problem, not the solution.
+      placeholder: |
+        "I have a screenshot of a document and I want the text in it." Today I upload it to an OCR website.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Kind of file
+      description: Which files would this work on?
+      multiple: true
+      options:
+        - Pictures
+        - PDF
+        - Video
+        - Audio
+        - Documents
+        - Zip or folders
+        - Other or not about one kind of file
+    validations:
+      required: false
+
+  - type: textarea
+    id: behaviour
+    attributes:
+      label: Proposed behaviour
+      description: What you see. Which wheel page (format or tools) the tile goes on, its title, the output name, the toast or failure message, and the `mikeshift --run` name.
+      placeholder: |
+        - **Pictures:** a new **TXT** tile on the format page. `photo.png` becomes `photo.txt` next to it.
+        - Nothing recognised: the job fails with a message, and there is no empty output file.
+        - **CLI:** `mikeshift --run TXT scan.png`.
+    validations:
+      required: false
+
+  - type: textarea
+    id: engine
+    attributes:
+      label: Engine
+      description: How it could work offline. The Windows API or library, how the tile is hidden on PCs that can't run it (`Capabilities`), and the cost in package size.
+      placeholder: |
+        `Windows.Media.Ocr.OcrEngine`, built into Windows 10 and 11. Hidden when no OCR language is installed (a new `Capabilities` flag). Adds nothing to the package.
+    validations:
+      required: false
+
+  - type: textarea
+    id: not-in-scope
+    attributes:
+      label: Not in scope
+      description: What this request deliberately does not include.
+      placeholder: |
+        - A searchable PDF output (a separate issue)
+        - Handwriting
+    validations:
+      required: false
+
+  - type: textarea
+    id: where
+    attributes:
+      label: Where it goes
+      description: The files or folders that would change, if you know them. See the [architecture](https://github.com/mjtpe/mikeshift/blob/main/docs/developer/architecture.md).
+      placeholder: |
+        - `src/MikeShift.Core/Convert/Images/`
+        - `src/MikeShift.Core/Actions/Catalog/ImageActions.cs`
+    validations:
+      required: false
+
+  - type: textarea
+    id: done-when
+    attributes:
+      label: Done when
+      description: The checks that show this works, as a checklist.
+      placeholder: |
+        - [ ] A generated picture of known text gives a `.txt` that contains that text
+        - [ ] With no OCR language installed, the tile is hidden and `--list` does not show it
+    validations:
+      required: false
+
+  - type: textarea
+    id: standard-checks
+    attributes:
+      label: Standard checks for a new action
+      description: These apply to every new action ([CONTRIBUTING](https://github.com/mjtpe/mikeshift/blob/main/CONTRIBUTING.md#coding-conventions)). Leave them as they are, or clear the box if the request is not a new action.
+      value: |
+        - [ ] Defined in `src/MikeShift.Core/Actions/Catalog/` and gated through `Capabilities`, so the tile is hidden on PCs where it cannot work (the same way `HeifEncode` hides HEIC)
+        - [ ] Works from the wheel, the right-click submenu (`src/MikeShift.Core/Shell/ContextMenuPlan.cs` ranking, if it should be one of the five lines), the Explorer hotkey and `mikeshift --run "<title>"`
+        - [ ] Writes through `Naming` and never touches the input; a test uses `OriginalsGuard`
+        - [ ] Added to the corrupt-input matrix: truncated, misnamed and empty files end in `error: …` (exit 1) or a valid output, never a crash, a hang or a stray file
+        - [ ] Respects `CancellationToken`, and batches through `Each` so a partial failure keeps the outputs already written
+        - [ ] User-facing words (tile title, toast, failure message) live in `MikeShift.Core/Feedback`: sentence case, plain language, "couldn't" rather than "failed"
+        - [ ] No network: `scripts/audit-network-imports.ps1` and `scripts/verify-offline.ps1` pass, and no internet capability in the manifest
+        - [ ] Trimming-safe: the trimmed Release package builds with 0 warnings (`./scripts/release.ps1`), and the action runs from the installed package, not only from a Debug build
+        - [ ] Tests are xUnit, named as snake-case sentences; slow ones use `[SlowFact]`/`[SlowTheory]`, ones that need a codec or feature the PC may lack use `[SkipIfNoCapability]`
+        - [ ] Docs in the same change: `CHANGELOG.md`, `docs/supported-formats.md`, `docs/user-guide.md`, `docs/limitations.md` (and its "Not offered" table if this changes what is refused), `NOTICE` for any new package, `docs/privacy.md` if data handling changes; `./scripts/check-docs.ps1` passes
+    validations:
+      required: false
