@@ -174,11 +174,31 @@ internal static class PixDecode
     private static readonly Lazy<HashSet<string>> s_wicExtensions = new(() => BitmapDecoder.GetDecoderInformationEnumerator()
         .SelectMany(d => d.FileExtensions).ToHashSet(StringComparer.OrdinalIgnoreCase));
 
+    // A listed decoder is not proof: the windows-latest runner lists a WebP decoder whose CreateAsync then throws an empty COMException.
+    private static readonly Lazy<bool> s_wicDecodesWebp = new(() =>
+    {
+        try
+        {
+            using var ms = new InMemoryRandomAccessStream();
+            ms.WriteAsync(Fixtures.Webp(4, 4).AsBuffer()).AsTask().GetAwaiter().GetResult();
+            ms.Seek(0);
+            var decoder = BitmapDecoder.CreateAsync(ms).AsTask().GetAwaiter().GetResult();
+            using var bitmap = decoder.GetSoftwareBitmapAsync().AsTask().GetAwaiter().GetResult();
+            return bitmap.PixelWidth == 4;
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+    });
+
     /// <summary>
-    /// True when Windows has a WIC decoder for <paramref name="extension"/> (".webp"). WebP needs the free WebP Image Extension, which a
-    /// desktop PC usually has and Windows Server (the CI runner) never does.
+    /// True when WIC really decodes <paramref name="extension"/> (".webp"): a decoder is listed for it and, for WebP, a tiny WebP
+    /// actually decodes. WebP needs the free WebP Image Extension, which a desktop PC usually has; on the CI runner (Windows Server)
+    /// it is missing or listed but not working.
     /// </summary>
-    public static bool WicDecodes(string extension) => s_wicExtensions.Value.Contains(extension);
+    public static bool WicDecodes(string extension) =>
+        s_wicExtensions.Value.Contains(extension) && (!extension.Equals(".webp", StringComparison.OrdinalIgnoreCase) || s_wicDecodesWebp.Value);
 
     /// <summary>
     /// True when WIC can read the file at <paramref name="path"/>, judged by what it really is (its magic numbers). Only WebP can be
