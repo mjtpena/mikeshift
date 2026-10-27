@@ -75,7 +75,7 @@ The wheel is a ring of formats that appears under your pointer while you drag.
 
 While the wheel is open:
 
-* **The other key switches to tools** (Compress, Resize, Crop, Trim, Strip EXIF, Merge, Split, Zip). Press the key you opened the wheel with, once more, to come back to formats. A tick of the mouse wheel switches pages too, and so does Alt if you chose it in Settings.
+* **The other key switches to tools** (Compress, Resize, Crop, Trim, Fit 10 MB, Strip EXIF, Merge, Split, Zip). Press the key you opened the wheel with, once more, to come back to formats. A tick of the mouse wheel switches pages too, and so does Alt if you chose it in Settings.
 * **Esc cancels.** Letting go anywhere other than a tile also cancels, and File Explorer then handles the drop the way it normally would. Dropping on the middle of the wheel does nothing.
 * The hint line under the wheel shows the keys: for example **Convert to PNG | Ctrl Tools**.
 * The wheel stays clear of the taskbar and the edges of your monitors, and it works on any monitor.
@@ -121,7 +121,7 @@ The wheel and the right-click menu show only what fits your selection and works 
 |---|---|---|
 | **Pictures** (PNG, JPG, HEIC, TIFF, GIF, WebP, BMP, AVIF …) | PNG, JPG, TIFF, GIF, BMP, WebP, HEIC, PDF, TXT (the text in the picture) | Compress, Resize, Crop, Strip EXIF, Merge PDF (two or more pictures) |
 | **PDF** | PNG or JPG (one image per page), TXT (including scanned pages) | Compress, Split, Merge (two or more PDFs) |
-| **Video** (MP4, MOV, MKV, AVI, WMV, WebM …) | MP4, M4V, WMV, GIF, M4A (audio only), MP3 (audio only) | Compress, Trim |
+| **Video** (MP4, MOV, MKV, AVI, WMV, WebM …) | MP4, M4V, WMV, GIF, M4A (audio only), MP3 (audio only) | Compress, Fit 10 MB, Fit 25 MB, Trim |
 | **Audio** (MP3, WAV, M4A, FLAC, AIFF, WMA …) | M4A, WAV, AIFF, FLAC, MP3 | Compress, Trim |
 | **Documents** (DOCX, RTF, ODT, HTML, TXT, Markdown, DOC) | PDF, DOCX, RTF, TXT, HTML, ODT | none |
 | **Anything, including folders and mixed selections** | none | Zip |
@@ -153,6 +153,7 @@ Tools appear on the wheel's second page (and on the right-click menu where they 
 | **Resize** | Pictures | Makes a copy at 50 percent of the width and height (or 25 or 75 percent, see [Settings](#conversions)). The tool is then called **Resize 25%**. | `photo 50%.jpg` |
 | **Crop** | Pictures | Opens the crop editor; see below. | `photo cropped.jpg` |
 | **Strip EXIF** | Pictures | Removes the metadata (camera, location, date) and keeps the picture upright. | `photo clean.jpg` |
+| **Fit 10 MB**, **Fit 25 MB** | Video | Makes an MP4 small enough to attach: at most 10 MB (or 25 MB), never over it. A video already under the size is copied into MP4 without re-encoding where possible. A video too long to stay watchable at that size is refused, with roughly how long one can be. See [supported formats](supported-formats.md#video). | `clip 10 MB.mp4` |
 | **Trim** | Video, audio | Opens the trim dialog; see below. | `clip trimmed.mp4` |
 | **Merge PDF** | Two or more pictures | Puts them into one PDF, in the order listed. | `Merged.pdf` |
 | **Merge** | Two or more PDFs | Joins them into one PDF. | `Merged.pdf` |
@@ -183,7 +184,7 @@ PDF to PNG or JPG also writes a folder (`report pages`) with one image per page.
 ## Where converted files go
 
 * **Next to the original,** by default, with the same name and the new extension: `photo.heic` becomes `photo.png`.
-* **Names never overwrite.** If `photo.png` exists, the new file is `photo 2.png`, then `photo 3.png`. The result of a tool adds a word (`photo compressed.jpg`, `photo 50%.jpg`, `photo cropped.jpg`, `photo clean.jpg`, `clip trimmed.mp4`).
+* **Names never overwrite.** If `photo.png` exists, the new file is `photo 2.png`, then `photo 3.png`. The result of a tool adds a word (`photo compressed.jpg`, `photo 50%.jpg`, `photo cropped.jpg`, `photo clean.jpg`, `clip trimmed.mp4`, `clip 10 MB.mp4`).
 * **In a folder you choose,** if you set **Where converted files go** in [Settings](#conversions). If that folder is missing or cannot be written to, the files go to your **Downloads** folder for that job and the message says so.
 * **If the original's folder cannot be written to** (a read-only share, a protected folder), the files go to **Downloads** too, and the message says "in Downloads".
 * **Merged and zipped files** are named `Merged.pdf` and `Archive.zip` (or `<name>.zip` for a single item) and placed next to the first file.
@@ -288,6 +289,7 @@ mikeshift --run "Resize 50%" a.jpg b.jpg
 mikeshift --run Merge a.pdf b.pdf              # Merged.pdf next to a.pdf
 mikeshift --run TXT screenshot.png scan.pdf    # the text in a picture and in a scanned PDF
 mikeshift --run Trim --range 0:05-0:12.5 clip.mp4
+mikeshift --run "Fit 10 MB" clip.mov            # an MP4 of at most 10 MB
 mikeshift --run Crop --crop 100,50,800,600@400x300 photo.jpg
 mikeshift --run Zip "My Folder"
 mikeshift --use-word --run PDF old.doc         # legacy .doc needs Word, opt-in per run
@@ -304,7 +306,7 @@ mikeshift [--use-word] [OPTIONS] --run TITLE [--range m:ss-m:ss] [--crop X,Y,W,H
 | Option | Meaning |
 |---|---|
 | `--list` | Prints, on one line separated by commas, the actions that can be run on these files on this PC (exit code 0). |
-| `--run TITLE` | Runs one action on all the files and prints the path of each output, one per line. `TITLE` is a name from `--list`, such as `PNG`, `Compress`, `"Resize 50%"`, `"Strip EXIF"` or `Zip`. `Resize` alone also works. |
+| `--run TITLE` | Runs one action on all the files and prints the path of each output, one per line. `TITLE` is a name from `--list`, such as `PNG`, `Compress`, `"Resize 50%"`, `"Fit 10 MB"`, `"Strip EXIF"` or `Zip`. `Resize` and `Fit` alone also work. |
 | `--use-word` | Lets this run use Microsoft Word, if it is installed (legacy `.doc`, Word's own PDF export). Without it the command line never starts Word. See [Microsoft Word](#microsoft-word). |
 | `--range m:ss-m:ss` | For **Trim**: the part to keep, for example `--range 0:05-0:12.5` (`h:mm:ss` and fractions are accepted). |
 | `--crop X,Y,W,H[@OWxOH]` | For **Crop**: the rectangle in pixels from the top-left corner, and an optional output size, for example `--crop 100,50,800,600@400x300`. |
@@ -312,6 +314,7 @@ mikeshift [--use-word] [OPTIONS] --run TITLE [--range m:ss-m:ss] [--crop X,Y,W,H
 | `--compress LEVEL` | How hard picture Compress squeezes: `light`, `medium` (default) or `strong`. |
 | `--resize P` | The Resize percentage: 25, 50 or 75 (default 50). `--run "Resize 25%"` says the same thing. |
 | `--gif-seconds N` | The longest a GIF made from a video runs: 5, 10, 15 (default) or 30. |
+| `--max-size MB` | The size the video Fit tool keeps under, in whole megabytes from 1 to 2000, for scripts that need another limit than 10 or 25 MB. `--list` then offers that one size (`Fit 8 MB`) instead of the two, and `--run "Fit 8 MB"` says the same thing. |
 | `--out DIR` | Put converted files in this existing folder instead of next to the originals (Downloads if it cannot be written to). |
 | `--` | Everything after it is a file name, even if it starts with a dash. |
 
@@ -323,7 +326,7 @@ The command line **never reads Settings**, so a script gives the same result on 
 * **Standard error** gets messages: `error: …` for a problem, and `note: …` for things worth knowing ("2 already PNG", "saved in Downloads").
 * **Exit code 0**: everything succeeded.
 * **Exit code 1**: an error. The message is on standard error: a file that does not exist (`error: not found: …`), an unknown action (the message lists the actions that are available), a file that cannot be converted, a cancelled run, or `Trim` and `Crop` without `--range` or `--crop` (which prints the syntax). In a batch, files that can be converted are converted and each failure is listed; the exit code is 1 if any failed.
-* **Exit code 2**: a usage error: an unknown option, a missing argument, a value out of range (`--quality 40`, `--resize 60`, `--gif-seconds 20`, `--compress heavy`), an `--out` folder that does not exist, or `--run "Resize 25%"` together with `--resize 75`. The usage text is printed.
+* **Exit code 2**: a usage error: an unknown option, a missing argument, a value out of range (`--quality 40`, `--resize 60`, `--gif-seconds 20`, `--compress heavy`, `--max-size 0`), an `--out` folder that does not exist, or `--run "Resize 25%"` together with `--resize 75` (or `--run "Fit 10 MB"` with `--max-size 25`). The usage text is printed.
 
 Without installing the package you can run it from a source checkout: `dotnet run --project src/MikeShift.Cli -- --list file.png`.
 

@@ -45,7 +45,7 @@ public static class ContextMenuPlanner
     {
         [Category.Image] = ["JPG", "PNG", "Merge PDF", "PDF", "Compress", "Resize", "WebP", "HEIC", "TIFF", "GIF", "BMP", "TXT", "Strip EXIF", "Crop"],
         [Category.Pdf] = ["Merge", "Compress", "PNG", "JPG", "Split", "TXT"],
-        [Category.Video] = ["MP4", "MP3", "GIF", "Compress", "WMV", "M4A", "M4V", "Trim"],
+        [Category.Video] = ["MP4", "MP3", "GIF", "Compress", "Fit", "WMV", "M4A", "M4V", "Trim"],
         [Category.Audio] = ["MP3", "M4A", "WAV", "Compress", "FLAC", "AIFF", "Trim"],
         [Category.Document] = ["PDF", "DOCX", "TXT", "HTML", "RTF", "ODT"],
     };

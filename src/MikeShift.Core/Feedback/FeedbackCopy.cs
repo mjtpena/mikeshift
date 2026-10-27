@@ -67,6 +67,7 @@ public static partial class FeedbackCopy
     {
         "Compress" => "Compressing",
         _ when ActionCatalog.ResizePercentIn(title) is { } percent => withObject ? $"Resizing to {percent}%" : "Resizing",
+        _ when SizeTargetCopy.MegabytesIn(title) is { } megabytes => SizeTargetCopy.Gerund(megabytes, withObject),
         "Crop" => "Cropping",
         "Strip EXIF" => withObject ? "Removing EXIF data" : "Cleaning",
         "Trim" => "Trimming",

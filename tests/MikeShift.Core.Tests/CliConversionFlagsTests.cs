@@ -4,7 +4,7 @@ using static MikeShift.Core.Tests.Images.ImageTestUtil;
 
 namespace MikeShift.Core.Tests;
 
-/// <summary>The command-line mirror of the conversion settings: <c>--quality</c>, <c>--compress</c>, <c>--resize</c>, <c>--gif-seconds</c>, <c>--out</c>.</summary>
+/// <summary>The command-line mirror of the conversion settings: <c>--quality</c>, <c>--compress</c>, <c>--resize</c>, <c>--gif-seconds</c>, <c>--max-size</c>, <c>--out</c>.</summary>
 public class CliConversionFlagsTests
 {
     private static async Task<(int Exit, string Out, string Err)> Run(params string[] args)
@@ -20,12 +20,13 @@ public class CliConversionFlagsTests
     [Fact]
     public void The_usage_text_documents_every_flag_and_its_choices()
     {
-        foreach (var flag in new[] { "--quality N", "--compress LEVEL", "--resize P", "--gif-seconds N", "--out DIR" })
+        foreach (var flag in new[] { "--quality N", "--compress LEVEL", "--resize P", "--gif-seconds N", "--max-size MB", "--out DIR" })
             Assert.Contains(flag, CliRunner.UsageText);
         Assert.Contains("50 to 100", CliRunner.UsageText);
         Assert.Contains("light, medium or strong", CliRunner.UsageText);
         Assert.Contains("25, 50 or 75", CliRunner.UsageText);
         Assert.Contains("5, 10, 15 or 30", CliRunner.UsageText);
+        Assert.Contains("1 to 2000", CliRunner.UsageText);
     }
 
     [Theory]
@@ -42,6 +43,12 @@ public class CliConversionFlagsTests
     [InlineData("--gif-seconds", "20", "--gif-seconds must be")]
     [InlineData("--gif-seconds", "0", "--gif-seconds must be")]
     [InlineData("--gif-seconds", "15s", "--gif-seconds must be")]
+    [InlineData("--max-size", "0", "--max-size must be")]
+    [InlineData("--max-size", "2001", "--max-size must be")]
+    [InlineData("--max-size", "9.5", "--max-size must be")]
+    [InlineData("--max-size", "-10", "--max-size must be")]
+    [InlineData("--max-size", "ten", "--max-size must be")]
+    [InlineData("--max-size", "", "--max-size must be")]
     public async Task A_bad_value_is_a_usage_error_naming_the_flag(string flag, string value, string message)
     {
         using var tmp = new TempDir();
@@ -61,6 +68,7 @@ public class CliConversionFlagsTests
     [InlineData("--compress")]
     [InlineData("--resize")]
     [InlineData("--gif-seconds")]
+    [InlineData("--max-size")]
     [InlineData("--out")]
     public async Task A_flag_without_its_value_is_a_usage_error(string flag)
     {
@@ -157,6 +165,66 @@ public class CliConversionFlagsTests
         Assert.Equal(2, exit);
         Assert.Equal("", stdout);
         Assert.Contains("disagree", stderr);
+    }
+
+    [SkipIfNoCapability(nameof(Capabilities.H264Encode), nameof(Capabilities.AacEncode))]
+    public async Task Max_size_flag_title_and_listing_agree()
+    {
+        using var tmp = new TempDir();
+        var mp4 = Media.MediaTestSupport.CopyMp4(tmp);
+
+        var plain = await Run("--list", mp4);
+        Assert.Contains("Fit 10 MB, Fit 25 MB", plain.Out);
+        var listed = await Run("--list", "--max-size", "8", mp4);
+        Assert.Contains("Fit 8 MB", listed.Out);
+        Assert.DoesNotContain("Fit 10 MB", listed.Out);
+
+        var viaFlag = await Run("--run", "Fit", "--max-size", "8", mp4);
+        var viaTitle = await Run("--run", "Fit 3 MB", mp4);
+        var fixedSize = await Run("--run", "fit 10 mb", mp4);
+        var viaBoth = await Run("--run", "Fit 25 MB", "--max-size", "25MB", mp4);
+        // Any spelling the size is read from names the same tile.
+        var squeezed = await Run("--run", "Fit 4MB", mp4);
+        var spaced = await Run("--run", "fit  5 mb", mp4);
+        var padded = await Run("--run", "Fit 006 MB", mp4);
+
+        Assert.Equal(tmp.Combine("clip 8 MB.mp4"), viaFlag.Out.Trim());
+        Assert.Equal(tmp.Combine("clip 3 MB.mp4"), viaTitle.Out.Trim());
+        Assert.Equal(tmp.Combine("clip 10 MB.mp4"), fixedSize.Out.Trim());
+        Assert.Equal(tmp.Combine("clip 25 MB.mp4"), viaBoth.Out.Trim());
+        Assert.Equal(tmp.Combine("clip 4 MB.mp4"), squeezed.Out.Trim());
+        Assert.Equal(tmp.Combine("clip 5 MB.mp4"), spaced.Out.Trim());
+        Assert.Equal(tmp.Combine("clip 6 MB.mp4"), padded.Out.Trim());
+        Assert.InRange(Size(viaTitle.Out.Trim()), 1, 3_000_000);
+    }
+
+    [Theory]
+    [InlineData("Fit 10 MB", "--max-size", "25")]
+    [InlineData("Fit 8 MB", "--max-size", "9")]
+    public async Task A_fit_title_and_a_max_size_that_disagree_are_a_usage_error(string title, string flag, string value)
+    {
+        using var tmp = new TempDir();
+        var file = tmp.WriteFile("pic.png", Fixtures.PngRgb(40, 30));
+
+        var (exit, stdout, stderr) = await Run("--run", title, flag, value, file);
+
+        Assert.Equal(2, exit);
+        Assert.Equal("", stdout);
+        Assert.Contains("disagree", stderr);
+    }
+
+    [Theory]
+    [InlineData("Fit 0 MB")]
+    [InlineData("Fit 2001 MB")]
+    public async Task A_fit_title_outside_the_sizes_is_a_usage_error(string title)
+    {
+        using var tmp = new TempDir();
+        var file = tmp.WriteFile("pic.png", Fixtures.PngRgb(40, 30));
+
+        var (exit, _, stderr) = await Run("--run", title, file);
+
+        Assert.Equal(2, exit);
+        Assert.Contains("1 to 2000 MB", stderr);
     }
 
     [Fact]

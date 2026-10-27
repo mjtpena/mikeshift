@@ -20,6 +20,7 @@ public class ConversionOptionsTests
         Assert.Equal(50, d.ResizePercent);
         Assert.Equal(15, d.GifSeconds);
         Assert.Null(d.OutputFolder);
+        Assert.Null(d.FitMegabytes); // the two fixed Fit sizes
         Assert.Equal(d, new ConversionOptions());
     }
 
@@ -73,6 +74,32 @@ public class ConversionOptionsTests
     [InlineData(60)]
     public void Only_the_offered_gif_lengths_are_accepted(int seconds) =>
         Assert.Throws<ArgumentOutOfRangeException>(() => new ConversionOptions { GifSeconds = seconds });
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-5)]
+    [InlineData(2001)]
+    public void A_fit_size_outside_one_to_two_thousand_megabytes_is_refused(int megabytes) =>
+        Assert.Throws<ArgumentOutOfRangeException>(() => ConversionOptions.Default with { FitMegabytes = megabytes });
+
+    [Theory]
+    [InlineData("8", true, 8)]
+    [InlineData(" 25 ", true, 25)]
+    [InlineData("10MB", true, 10)]
+    [InlineData("10 mb", true, 10)]
+    [InlineData("1", true, 1)]
+    [InlineData("2000", true, 2000)]
+    [InlineData("0", false, 0)]
+    [InlineData("2001", false, 0)]
+    [InlineData("9.5", false, 0)]
+    [InlineData("+8", false, 0)]
+    [InlineData("MB", false, 0)]
+    [InlineData(null, false, 0)]
+    public void Fit_sizes_are_read_as_whole_megabytes(string? text, bool ok, int expected)
+    {
+        Assert.Equal(ok, ConversionOptions.TryParseFitMegabytes(text, out var megabytes));
+        if (ok) Assert.Equal(expected, megabytes);
+    }
 
     [Fact]
     public void An_unknown_compress_strength_is_refused() =>

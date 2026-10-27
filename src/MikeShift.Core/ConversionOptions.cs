@@ -46,6 +46,15 @@ public sealed record ConversionOptions
     /// <summary>The GIF length that was always used.</summary>
     public const int DefaultGifSeconds = 15;
 
+    /// <summary>The sizes the video Fit tools offer in the wheel and the right-click menu, in megabytes ("Fit 10 MB", "Fit 25 MB").</summary>
+    public static IReadOnlyList<int> FitChoices { get; } = [10, 25];
+
+    /// <summary>The smallest size <c>--max-size</c> takes, in megabytes.</summary>
+    public const int MinFitMegabytes = 1;
+
+    /// <summary>The largest size <c>--max-size</c> takes, in megabytes (2 GB; far beyond what any upload limit asks for).</summary>
+    public const int MaxFitMegabytes = 2000;
+
     /// <summary>The settings before anyone changed anything.</summary>
     public static ConversionOptions Default { get; } = new();
 
@@ -54,6 +63,7 @@ public sealed record ConversionOptions
     private readonly int _resizePercent = DefaultResizePercent;
     private readonly int _gifSeconds = DefaultGifSeconds;
     private readonly string? _outputFolder;
+    private readonly int? _fitMegabytes;
 
     /// <summary>JPEG, WebP and HEIC quality, <see cref="MinQuality"/> to <see cref="MaxQuality"/> (default 90). PNG, TIFF, BMP and GIF are lossless or palette formats and ignore it.</summary>
     public int Quality
@@ -99,6 +109,19 @@ public sealed record ConversionOptions
     {
         get => _outputFolder;
         init => _outputFolder = Normalize(value);
+    }
+
+    /// <summary>
+    /// One size for the video Fit tool instead of the two fixed ones, in whole megabytes (<see cref="MinFitMegabytes"/> to
+    /// <see cref="MaxFitMegabytes"/>); null (the default) offers "Fit 10 MB" and "Fit 25 MB". Only the command line sets it
+    /// (<c>--max-size</c>, or a <c>--run "Fit 8 MB"</c> title): it is not a Settings choice, so the wheel always shows the two fixed sizes.
+    /// </summary>
+    public int? FitMegabytes
+    {
+        get => _fitMegabytes;
+        init => _fitMegabytes = value is null or (>= MinFitMegabytes and <= MaxFitMegabytes)
+            ? value
+            : throw new ArgumentOutOfRangeException(nameof(FitMegabytes), value, $"A size must be {MinFitMegabytes} to {MaxFitMegabytes} MB.");
     }
 
     // ------------------------------------------------------------ derived values the converters read
@@ -162,6 +185,14 @@ public sealed record ConversionOptions
     /// <summary>Reads 5, 10, 15 or 30.</summary>
     public static bool TryParseGifSeconds(string? text, out int seconds) =>
         TryParseInt(text, out seconds) && GifSecondsChoices.Contains(seconds);
+
+    /// <summary>Reads a size in whole megabytes, <see cref="MinFitMegabytes"/> to <see cref="MaxFitMegabytes"/>, with or without a trailing "MB".</summary>
+    public static bool TryParseFitMegabytes(string? text, out int megabytes)
+    {
+        var t = text?.Trim();
+        if (t is { Length: > 2 } && t.EndsWith("MB", StringComparison.OrdinalIgnoreCase)) t = t[..^2].TrimEnd();
+        return TryParseInt(t, out megabytes) && megabytes is >= MinFitMegabytes and <= MaxFitMegabytes;
+    }
 
     /// <summary>
     /// Checks a folder given by a person (CLI <c>--out</c>, a stored setting): a full path of an existing folder. Returns the normalised path,

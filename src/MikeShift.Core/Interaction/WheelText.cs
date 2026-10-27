@@ -48,6 +48,7 @@ public static class WheelText
             _ when ActionCatalog.ResizePercentIn(action.Title) is { } percent => percent == 50
                 ? "Save a copy at half the width and height"
                 : $"Save a copy at {percent}% of the width and height",
+            _ when Feedback.SizeTargetCopy.MegabytesIn(action.Title) is { } megabytes => Feedback.SizeTargetCopy.Describe(megabytes),
             "Crop" => "Choose the part of the picture to keep",
             "Strip EXIF" => "Save a copy without camera and location data",
             "Trim" => "Choose the part to keep",
