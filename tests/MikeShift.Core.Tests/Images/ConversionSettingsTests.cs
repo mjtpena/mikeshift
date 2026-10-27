@@ -244,7 +244,7 @@ public class ConversionSettingsTests
     public void The_default_catalog_is_unchanged_and_resize_keeps_its_place_in_the_list()
     {
         var defaults = ActionCatalog.For([@"C:\x\a.png"], NoHeic, _ => Category.Image).Select(a => a.Title).ToList();
-        Assert.Equal(["JPG", "TIFF", "GIF", "BMP", "WebP", "PDF", "Searchable PDF", "TXT", "Compress", "Resize 50%", "Crop", "Strip EXIF", "Zip"], defaults);
+        Assert.Equal(["JPG", "TIFF", "GIF", "BMP", "WebP", "ICO", "PDF", "Searchable PDF", "TXT", "Compress", "Resize 50%", "Crop", "Strip EXIF", "Zip"], defaults);
 
         var quarter = ActionCatalog.For([@"C:\x\a.png"], NoHeic, _ => Category.Image, new ConversionOptions { ResizePercent = 25 })
             .Select(a => a.Title).ToList();

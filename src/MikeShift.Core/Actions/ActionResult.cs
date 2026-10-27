@@ -34,6 +34,9 @@ public sealed record ActionResult
     /// <summary>Label used for the "already" note, e.g. "PNG".</summary>
     public string? AlreadyLabel { get; init; }
 
+    /// <summary>Short cautions about outputs that were written anyway (the toast shows them, the command line prints them as "note:").</summary>
+    public IReadOnlyList<string> Notes { get; init; } = [];
+
     /// <summary>The user cancelled (or the token fired); earlier outputs were kept and later inputs were not attempted.</summary>
     public bool Cancelled { get; init; }
 

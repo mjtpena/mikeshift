@@ -47,7 +47,7 @@ public static class Glyphs
     /// </summary>
     public static string ForFormat(string title) => title.ToUpperInvariant() switch
     {
-        "PNG" or "JPG" or "JPEG" or "TIFF" or "TIF" or "GIF" or "BMP" or "HEIC" or "WEBP" => Image,
+        "PNG" or "JPG" or "JPEG" or "TIFF" or "TIF" or "GIF" or "BMP" or "HEIC" or "WEBP" or "ICO" => Image,
         "PDF" or "SEARCHABLE PDF" => Pdf,
         "MP4" or "M4V" or "WMV" or "MOV" or "WEBM" => Video,
         "MP3" or "M4A" or "WAV" or "FLAC" or "AIFF" or "AAC" => Audio,

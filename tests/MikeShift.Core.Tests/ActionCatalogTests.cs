@@ -41,7 +41,7 @@ public class ActionCatalogTests
         var all = For(Full, @"C:\x\a.ico", @"C:\x\b.avif");
         var formats = all.Where(a => a.Page == WheelPage.Format).Select(a => a.Title).ToArray();
         var tools = all.Where(a => a.Page == WheelPage.Tool).Select(a => a.Title).ToArray();
-        Assert.Equal(["PNG", "JPG", "TIFF", "GIF", "BMP", "HEIC", "WebP", "PDF", "Searchable PDF", "TXT"], formats);
+        Assert.Equal(["PNG", "JPG", "TIFF", "GIF", "BMP", "HEIC", "WebP", "ICO", "PDF", "Searchable PDF", "TXT"], formats);
         Assert.Equal(["Compress", "Resize 50%", "Crop", "Strip EXIF", "Merge PDF", "Merge searchable PDF", "Zip"], tools);
         Assert.All(all.Where(a => a.Page == WheelPage.Tool), a => Assert.False(string.IsNullOrEmpty(a.Glyph)));
         Assert.All(all.Where(a => a.Page == WheelPage.Format), a => Assert.Null(a.Glyph));

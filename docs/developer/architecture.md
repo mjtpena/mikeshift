@@ -1,6 +1,6 @@
 # Architecture
 
-How MikeShift is put together: the projects, the threads, how the wheel works, how conversions are written, how the package is built, and how the Explorer right-click entry works. For how it is tested see [testing.md](testing.md); for how a release is made see [releasing.md](releasing.md); for what users can expect see [the limitations](../limitations.md).
+How MikeShift is put together: the projects, the threads, how the wheel works, how conversions are written, how the package is built, and how the Explorer right-click entry works. For how it is tested see [testing.md](testing.md); for how a release is made see [releasing.md](releasing.md); for what users can expect see [the limitations](../limitations.md). For which parts other tools could reuse, and why they are not split out yet, see [host-design.md](host-design.md).
 
 ## 1. Solution layout
 
@@ -128,7 +128,7 @@ A tray app sits resident all day, so what it holds while idle matters more than 
 
 | Area | Built on | Notes |
 |---|---|---|
-| Images | [Windows Imaging Component](https://learn.microsoft.com/en-us/windows/win32/wic/-wic-lh) via the WinRT `BitmapDecoder`/`BitmapEncoder`; SkiaSharp for WebP encode and as decode fallback | 200-megapixel guard, blank-decode check, orientation/EXIF handling, JPEG segment scan for Strip EXIF |
+| Images | [Windows Imaging Component](https://learn.microsoft.com/en-us/windows/win32/wic/-wic-lh) via the WinRT `BitmapDecoder`/`BitmapEncoder`; SkiaSharp for WebP encode and as decode fallback | 200-megapixel guard, blank-decode check, orientation/EXIF handling, JPEG segment scan for Strip EXIF; ICO output is written by hand (`IcoWriter`: WIC has no ICO encoder), seven PNG-compressed images each scaled from the source |
 | PDF to images | [`Windows.Data.Pdf`](https://learn.microsoft.com/en-us/uwp/api/windows.data.pdf) | ≤2× scale, ≤8000 px long side, white background |
 | PDF text | PdfPig; pages without a text layer are rendered at 300 dpi with `Windows.Data.Pdf` and read by text recognition | reversed-Hebrew detection refuses with a message; without text recognition a scan is refused |
 | Text recognition (picture TXT, scanned PDF pages) | [`Windows.Media.Ocr`](https://learn.microsoft.com/en-us/uwp/api/windows.media.ocr.ocrengine), user profile languages, offline | gated by `Capabilities.Ocr`; pictures over `OcrEngine.MaxImageDimension` are scaled down; results keep word boxes in the input's pixels (`RecognizedText`) |

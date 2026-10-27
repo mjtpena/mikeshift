@@ -1,3 +1,4 @@
+using MikeShift.Core.Feedback;
 using MikeShift.Core.Images;
 using MikeShift.Core.Pdf;
 
@@ -27,6 +28,7 @@ public static class ImageActions
         Format("BMP", ImageFormat.Bmp, "bmp", "dib"),
         Format("HEIC", ImageFormat.Heic, requires: c => c.HeifEncode, hideFor: ["heic", "heif"]),
         Format("WebP", ImageFormat.Webp, requires: c => c.WebpEncode, hideFor: ["webp"]),
+        Ico(),
         ActionDef.PerFile("PDF", WheelPage.Format,
             (input, _, ct) => PdfConverter.ImageToPdfAsync(input, ct)),
         ActionDef.PerFile("Searchable PDF", WheelPage.Format,
@@ -81,6 +83,27 @@ public static class ImageActions
     /// </summary>
     internal static bool CanCompress(IReadOnlyList<string> paths, Capabilities caps) =>
         caps.HeifEncode || paths.Count == 0 || !paths.All(p => Kind.ExtensionOf(p) is "heic" or "heif");
+
+    /// <summary>
+    /// The ICO tile. It runs through <see cref="Each"/> like the other formats, then adds one caution to the result when a source was under
+    /// 256 px (the file is still written).
+    /// </summary>
+    private static ActionDef Ico()
+    {
+        HashSet<string> skip = ["ico"];
+        return new ActionDef("ICO", WheelPage.Format, async (paths, ctx, ct) =>
+        {
+            var soft = false;
+            var result = await Each.RunAsync(paths, ctx, async (input, token) =>
+            {
+                var (path, isSoft) = await ImageConverter.ToIcoAsync(input, token).ConfigureAwait(false);
+                soft |= isSoft;
+                return path;
+            }, ct, skip, "ICO").ConfigureAwait(false);
+            return soft ? result with { Notes = [FeedbackCopy.IconSourceSmall] } : result;
+        })
+        { HideFor = skip };
+    }
 
     private static ActionDef Format(string title, ImageFormat format, params string[] hideFor) =>
         Format(title, format, null, hideFor);
