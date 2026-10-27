@@ -294,6 +294,34 @@ public class PdfCoverageTests
     }
 
     [Fact]
+    public async Task Pictures_without_a_wic_decoder_become_upright_opaque_jpeg_pages_through_skia()
+    {
+        // WebP on a PC without the WebP Image Extension (Windows Server) reaches this path; SkiaSharp also reads the formats below, so
+        // the path is checked on every PC.
+        using var tmp = new TempDir();
+        var webp = await PdfImageSource.LoadWithSkiaAsync(tmp.WriteFile("a.webp", Fixtures.Webp(64, 48)));
+        Assert.Equal((64, 48), (webp.Width, webp.Height));
+        Assert.Equal([0xFF, 0xD8, 0xFF], webp.Jpeg[..3]);
+
+        var rotated = await PdfImageSource.LoadWithSkiaAsync(tmp.WriteFile("r.jpg", Fixtures.JpegWithMetadata(64, 32, orientation: 6)));
+        Assert.Equal((32, 64), (rotated.Width, rotated.Height));
+
+        var wide = await PdfImageSource.LoadWithSkiaAsync(tmp.WriteFile("w.png", Fixtures.PdfSourcePng(4000, 300)));
+        Assert.Equal((PdfImageSource.MaxLongSide, 263), (wide.Width, wide.Height));
+
+        // The transparent top-left quadrant is flattened on white, not left black.
+        var alpha = await PdfImageSource.LoadWithSkiaAsync(tmp.WriteFile("t.png", Fixtures.PngAlpha(64, 48)));
+        using var page = SkiaSharp.SKBitmap.Decode(alpha.Jpeg);
+        var corner = page.GetPixel(8, 8);
+        Assert.True(corner.Red > 240 && corner.Green > 240 && corner.Blue > 240, $"corner is {corner}");
+
+        var junk = await Assert.ThrowsAsync<ConversionException>(() => PdfImageSource.LoadWithSkiaAsync(tmp.WriteFile("junk.webp", Fixtures.Noise(400))));
+        Assert.Equal("junk.webp could not be read as an image.", junk.Message);
+        var big = await Assert.ThrowsAsync<ConversionException>(() => PdfImageSource.LoadWithSkiaAsync(tmp.WriteFile("huge.png", Fixtures.PngHeaderOnly(20_000, 15_000))));
+        Assert.Equal("huge.png is too large to convert (over 200 megapixels).", big.Message);
+    }
+
+    [Fact]
     public async Task Unusable_image_sources_say_which_file_and_why()
     {
         using var tmp = new TempDir();

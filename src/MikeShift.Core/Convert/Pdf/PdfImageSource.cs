@@ -5,7 +5,7 @@ namespace MikeShift.Core.Pdf;
 
 /// <summary>
 /// Decodes an image file (every TIFF frame; first frame for everything else) into upright, opaque JPEG pages for the PDF
-/// writer. Own small WIC helper so the PDF package does not depend on the image package.
+/// writer. Own small WIC helper (SkiaSharp when WIC has no decoder for the file) so the PDF package does not depend on the image package.
 /// </summary>
 internal static class PdfImageSource
 {
@@ -25,7 +25,8 @@ internal static class PdfImageSource
         {
             using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
             using var ras = fs.AsRandomAccessStream();
-            var decoder = await BitmapDecoder.CreateAsync(ras);
+            var decoder = await TryCreateDecoderAsync(ras);
+            if (decoder is null) return [await LoadWithSkiaAsync(path)];
 
             var name = Path.GetFileName(path);
             if ((long)decoder.PixelWidth * decoder.PixelHeight > MaxPixels)
@@ -60,5 +61,32 @@ internal static class PdfImageSource
         {
             throw new ConversionException($"{Path.GetFileName(path)} could not be opened: {ex.Message}", ex);
         }
+    }
+
+    /// <summary>A WIC decoder for the stream, or null when Windows has none for its format (the image converters fall back the same way).</summary>
+    private static async Task<BitmapDecoder?> TryCreateDecoderAsync(Windows.Storage.Streams.IRandomAccessStream stream)
+    {
+        try
+        {
+            return await BitmapDecoder.CreateAsync(stream);
+        }
+        catch (COMException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// The one page of a file only SkiaSharp can read (WebP on a PC without the WebP Image Extension). Internal so tests can exercise it
+    /// on a PC that has the extension.
+    /// </summary>
+    internal static async Task<PageImage> LoadWithSkiaAsync(string path)
+    {
+        var (raster, orientation) = PdfPixels.DecodeSkia(path, MaxLongSide, MaxPixels)
+            ?? throw new ConversionException($"{Path.GetFileName(path)} could not be read as an image.");
+        raster = PdfPixels.ApplyOrientation(raster, orientation);
+        PdfPixels.FlattenOnWhite(raster.Data);
+        var jpeg = await PdfPixels.EncodeJpegAsync(raster, JpegQuality);
+        return new PageImage(jpeg, raster.Width, raster.Height);
     }
 }

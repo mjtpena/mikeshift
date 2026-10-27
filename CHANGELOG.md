@@ -2,6 +2,12 @@
 
 All notable changes to MikeShift are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+### Fixed
+
+* **WebP to PDF, Merge PDF and the crop editor work without the WebP Image Extensions.** On a PC without the free extension (Windows Server, or a PC where it was removed), turning a WebP into a PDF said the picture "could not be read as an image", and the crop editor could not open it. They now read WebP themselves, like every other picture action.
+
 ## 1.0.0 (2026-10-26)
 
 The first release.

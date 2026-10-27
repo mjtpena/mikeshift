@@ -72,8 +72,22 @@ public class ImageIntegrityTests
 
     // ------------------------------------------------------------------ the oracle is sound
 
-    [Theory, MemberData(nameof(PdfCases))]
-    public async Task Fixtures_decode_the_same_in_wic_and_skia(string id)
+    /// <summary>Every fixture except WebP, whose WIC decoder is optional and is checked by its own test below.</summary>
+    public static TheoryData<string> OracleCases()
+    {
+        var data = new TheoryData<string>();
+        foreach (var id in ImgSource.Ids)
+            if (Available(id, null) && id != "webp") data.Add(id);
+        return data;
+    }
+
+    [Theory, MemberData(nameof(OracleCases))]
+    public Task Fixtures_decode_the_same_in_wic_and_skia(string id) => AssertWicAndSkiaAgree(id);
+
+    [SkipIfNoWicDecoder(".webp")]
+    public Task The_webp_fixture_decodes_the_same_in_wic_and_skia() => AssertWicAndSkiaAgree("webp");
+
+    private static async Task AssertWicAndSkiaAgree(string id)
     {
         var src = ImgSource.Get(id);
         using var tmp = new TempDir();
@@ -176,12 +190,14 @@ public class ImageIntegrityTests
 
     /// <summary>
     /// Decodes with WIC and SkiaSharp and checks they agree: exactly for lossless, closely for lossy (their IDCT and chroma
-    /// upsampling differ). HEIC has no Skia decoder, so WIC alone.
+    /// upsampling differ). HEIC has no Skia decoder, so WIC alone; WebP on a PC without a WIC WebP decoder (Windows Server) is
+    /// judged by libwebp alone.
     /// </summary>
     internal static async Task<Px> DecodeBoth(string path, bool lossy)
     {
-        var wic = await PixDecode.WicAsync(path);
         var skia = PixDecode.Skia(path);
+        if (skia is not null && !PixDecode.WicReads(path)) return skia;
+        var wic = await PixDecode.WicAsync(path);
         if (skia is null) return wic;
         Assert.Equal((skia.W, skia.H), (wic.W, wic.H));
         if (lossy)
