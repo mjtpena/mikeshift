@@ -165,15 +165,18 @@ internal static class ImageCodec
         var animated = false;
         IReadOnlyDictionary<string, BitmapTypedValue>? props = null;
 
-        try
+        if (!CapabilityOverrides.HidesWicDecoder(path))
         {
-            (pixels, frames, props) = await DecodeWicAsync(path, maxPixels, ct).ConfigureAwait(false);
-        }
-        catch (ConversionException) { throw; }
-        catch (OperationCanceledException) { throw; }
-        catch (Exception)
-        {
-            pixels = null; // fall back to SkiaSharp below
+            try
+            {
+                (pixels, frames, props) = await DecodeWicAsync(path, maxPixels, ct).ConfigureAwait(false);
+            }
+            catch (ConversionException) { throw; }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception)
+            {
+                pixels = null; // fall back to SkiaSharp below
+            }
         }
 
         if (pixels is null)
@@ -345,16 +348,19 @@ internal static class ImageCodec
     /// <summary>Header-only check that some decoder accepts the file.</summary>
     public static bool CanDecodeHeader(string path)
     {
-        try
+        if (!CapabilityOverrides.HidesWicDecoder(path))
         {
-            using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete, 4096);
-            using var ras = fs.AsRandomAccessStream();
-            var decoder = BitmapDecoder.CreateAsync(ras).AsTask().GetAwaiter().GetResult();
-            if (decoder.PixelWidth > 0 && decoder.PixelHeight > 0) return true;
-        }
-        catch (Exception)
-        {
-            // try SkiaSharp
+            try
+            {
+                using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete, 4096);
+                using var ras = fs.AsRandomAccessStream();
+                var decoder = BitmapDecoder.CreateAsync(ras).AsTask().GetAwaiter().GetResult();
+                if (decoder.PixelWidth > 0 && decoder.PixelHeight > 0) return true;
+            }
+            catch (Exception)
+            {
+                // try SkiaSharp
+            }
         }
 
         try

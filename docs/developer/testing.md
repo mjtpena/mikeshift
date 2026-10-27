@@ -135,6 +135,8 @@ Scenarios of the synthetic source: `copy`, `tools`, `shiftfirst`, `multi`, `esc`
 
 Every scenario also asserts that the originals are byte-identical and in place, that the app log has no `[ERROR]`, and that the wheel is hidden at the end. The scenario IDs map to the manual checklist below. The missing-HEIF tile cannot be reproduced on a PC that has the extension, so it is checked three ways: unit tests with fake capabilities (`CodecHelpTests`), the developer capability override `MIKESHIFT_CAPS=no-heif,no-hevc`, and offscreen renders (`MikeShift.exe --dev --render-wheel heic-missing-drag-dark`; `--render-wheel list` lists the scenarios).
 
+The same switch takes `no-wic-webp` (`MIKESHIFT_CAPS=no-wic-webp`, unpackaged `--dev` or Debug only): every WIC decode of a WebP behaves as if Windows had no WebP decoder, so the SkiaSharp fallbacks of the image converters, Image to PDF and the crop editor can be tried in the real app on a PC that has the WebP Image Extension. `WicWebpOverrideTests` covers it in Core.
+
 ### Context-menu harness (`tools/ContextMenuHarness`)
 
 Checks the Explorer right-click entry ([architecture §9](architecture.md#9-explorer-right-click-entry-convert-with-mikeshift)). It needs a **registered package** (the COM server and the menu entry exist only for an installed or registered MikeShift: `Add-AppxPackage -Register <layout>\AppxManifest.xml`, with Developer Mode on) and the desktop to itself.
