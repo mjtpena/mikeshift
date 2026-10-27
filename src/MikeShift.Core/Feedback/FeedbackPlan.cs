@@ -72,6 +72,7 @@ public sealed record FeedbackPlan(ToastContent? Toast, DialogContent? Dialog, bo
             title = result.Outputs.Count == 1
                 ? "Saved " + System.IO.Path.GetFileName(result.Outputs[0].Path.TrimEnd('\\', '/'))
                 : $"Saved {result.Outputs.Count} files";
+            if (result.Summary is not null) details.Add(result.Summary);
             details.Add(LocationText(result));
         }
         else if (result.Outputs.Count > 0)

@@ -119,7 +119,7 @@ The wheel and the right-click menu show only what fits your selection and works 
 
 | You select | Formats (convert to) | Tools |
 |---|---|---|
-| **Pictures** (PNG, JPG, HEIC, TIFF, GIF, WebP, BMP, AVIF …) | PNG, JPG, TIFF, GIF, BMP, WebP, HEIC, PDF, TXT (the text in the picture) | Compress, Resize, Crop, Strip EXIF, Merge PDF (two or more pictures) |
+| **Pictures** (PNG, JPG, HEIC, TIFF, GIF, WebP, BMP, AVIF …) | PNG, JPG, TIFF, GIF, BMP, WebP, HEIC, PDF, TXT (the text in the picture) | Compress, Resize, Crop, Strip EXIF, Blur faces, Merge PDF (two or more pictures) |
 | **PDF** | PNG or JPG (one image per page), TXT (including scanned pages) | Compress, Split, Merge (two or more PDFs) |
 | **Video** (MP4, MOV, MKV, AVI, WMV, WebM …) | MP4, M4V, WMV, GIF, M4A (audio only), MP3 (audio only) | Compress, Fit 10 MB, Fit 25 MB, Trim |
 | **Audio** (MP3, WAV, M4A, FLAC, AIFF, WMA …) | M4A, WAV, AIFF, FLAC, MP3 | Compress, Trim |
@@ -153,6 +153,7 @@ Tools appear on the wheel's second page (and on the right-click menu where they 
 | **Resize** | Pictures | Makes a copy at 50 percent of the width and height (or 25 or 75 percent, see [Settings](#conversions)). The tool is then called **Resize 25%**. | `photo 50%.jpg` |
 | **Crop** | Pictures | Opens the crop editor; see below. | `photo cropped.jpg` |
 | **Strip EXIF** | Pictures | Removes the metadata (camera, location, date) and keeps the picture upright. | `photo clean.jpg` |
+| **Blur faces** | Pictures | Covers every face with a strong blur that cannot be undone, in the same format as the picture, with no metadata or embedded thumbnail. The toast says how many faces were blurred; a picture with no faces is not saved. Look at the result before you share it: faces seen from the side, small or partly hidden can be missed. See [known limitations](limitations.md#pictures). | `photo blurred.jpg` |
 | **Fit 10 MB**, **Fit 25 MB** | Video | Makes an MP4 small enough to attach: at most 10 MB (or 25 MB), never over it. A video already under the size is copied into MP4 without re-encoding where possible. A video too long to stay watchable at that size is refused, with roughly how long one can be. See [supported formats](supported-formats.md#video). | `clip 10 MB.mp4` |
 | **Trim** | Video, audio | Opens the trim dialog; see below. | `clip trimmed.mp4` |
 | **Merge PDF** | Two or more pictures | Puts them into one PDF, in the order listed. | `Merged.pdf` |

@@ -56,6 +56,9 @@ public sealed record Capabilities
     /// </summary>
     public bool Ocr { get; init; }
 
+    /// <summary>Windows face detection (<c>FaceDetector.IsSupported</c>) works on this PC. Gates the Blur faces tile.</summary>
+    public bool FaceDetect { get; init; }
+
     /// <summary>Microsoft Word is installed (<c>HKCR\Word.Application</c>). Informational: MikeShift only drives Word when <see cref="WordCom"/> is true.</summary>
     public bool WordInstalled { get; init; }
 
@@ -81,7 +84,7 @@ public sealed record Capabilities
     {
         HeifEncode = true, HeifDecode = true, WebpEncode = true, AvifDecode = true,
         Mp3Encode = true, FlacEncode = true, H264Encode = true, AacEncode = true,
-        HevcDecode = true, Vp9Decode = true, Av1Decode = true, WebmOpen = true, Ocr = true,
+        HevcDecode = true, Vp9Decode = true, Av1Decode = true, WebmOpen = true, Ocr = true, FaceDetect = true,
         WordInstalled = true, WordCom = true,
     };
 

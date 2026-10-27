@@ -1,3 +1,4 @@
+using MikeShift.Core;
 using MikeShift.Core.Images;
 
 namespace MikeShift.Cli.Tests;
@@ -87,6 +88,21 @@ public class ImageCliTests
         Assert.Equal(0, clean.ExitCode);
         Assert.Equal(tmp.Combine("photo clean.jpg"), Assert.Single(clean.StdoutLines));
         Assert.False(JpegMeta.HasMetadataSegments(File.ReadAllBytes(clean.StdoutLines[0])));
+    }
+
+    [SkipIfNoCapability(nameof(Capabilities.FaceDetect))]
+    public void Run_blur_faces_on_a_picture_without_faces_exits_1_and_writes_no_file()
+    {
+        using var tmp = new TempDir();
+        var png = tmp.WriteFile("scenery.png", Fixtures.PngRgb(320, 240));
+
+        var listed = CliProcess.Run("--list", png);
+        var r = CliProcess.Run("--run", "Blur faces", png);
+
+        Assert.Contains("Blur faces", listed.Stdout.Trim().Split(", "));
+        Assert.Equal(1, r.ExitCode);
+        Assert.Contains("error: No faces found", r.Stderr);
+        Assert.Equal(["scenery.png"], Directory.GetFiles(tmp.Path).Select(Path.GetFileName));
     }
 
     [Fact]

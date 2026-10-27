@@ -31,7 +31,7 @@ public class ActionCatalogTests
     {
         // A single .ico: nothing is hidden by extension and there is no Merge PDF.
         Assert.Equal(
-            ["PNG", "JPG", "TIFF", "GIF", "BMP", "HEIC", "WebP", "PDF", "TXT", "Compress", "Resize 50%", "Crop", "Strip EXIF", "Zip"],
+            ["PNG", "JPG", "TIFF", "GIF", "BMP", "HEIC", "WebP", "PDF", "TXT", "Compress", "Resize 50%", "Crop", "Strip EXIF", "Blur faces", "Zip"],
             Titles(Full, @"C:\x\a.ico"));
     }
 
@@ -42,7 +42,7 @@ public class ActionCatalogTests
         var formats = all.Where(a => a.Page == WheelPage.Format).Select(a => a.Title).ToArray();
         var tools = all.Where(a => a.Page == WheelPage.Tool).Select(a => a.Title).ToArray();
         Assert.Equal(["PNG", "JPG", "TIFF", "GIF", "BMP", "HEIC", "WebP", "PDF", "TXT"], formats);
-        Assert.Equal(["Compress", "Resize 50%", "Crop", "Strip EXIF", "Merge PDF", "Zip"], tools);
+        Assert.Equal(["Compress", "Resize 50%", "Crop", "Strip EXIF", "Blur faces", "Merge PDF", "Zip"], tools);
         Assert.All(all.Where(a => a.Page == WheelPage.Tool), a => Assert.False(string.IsNullOrEmpty(a.Glyph)));
         Assert.All(all.Where(a => a.Page == WheelPage.Format), a => Assert.Null(a.Glyph));
         Assert.Single(all.Where(a => a.Interactive), a => a.Title == "Crop");

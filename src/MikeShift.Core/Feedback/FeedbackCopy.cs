@@ -70,6 +70,7 @@ public static partial class FeedbackCopy
         _ when SizeTargetCopy.MegabytesIn(title) is { } megabytes => SizeTargetCopy.Gerund(megabytes, withObject),
         "Crop" => "Cropping",
         "Strip EXIF" => withObject ? "Removing EXIF data" : "Cleaning",
+        "Blur faces" => withObject ? "Blurring faces" : "Blurring",
         "Trim" => "Trimming",
         "Split" => "Splitting",
         "Merge" or "Merge PDF" => "Merging",

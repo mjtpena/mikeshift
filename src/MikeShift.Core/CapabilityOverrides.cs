@@ -5,7 +5,7 @@ namespace MikeShift.Core;
 /// to look at the "Get HEIF" tile). The app turns the dev switch <c>MIKESHIFT_CAPS=no-heif,no-hevc</c> into <see cref="Capabilities.Override"/>;
 /// a shipped build never reads it (dev switches are ignored there, see docs/developer/architecture.md, "Developer switches"). It can only <em>remove</em> capabilities.
 /// <para>Names: <c>no-heif</c> (HEIF decode and encode), <c>no-hevc</c> (HEVC decoder, which also ends HEIC encode), <c>no-av1</c> (AVIF and AV1),
-/// <c>no-webp</c>, <c>no-ocr</c> (no text recognition language), <c>no-wic-webp</c> (Windows has no WebP decoder: WebP decoding goes through SkiaSharp, see <see cref="HidesWicDecoder"/>).</para>
+/// <c>no-webp</c>, <c>no-ocr</c> (no text recognition language), <c>no-faces</c> (no face detection),<c>no-wic-webp</c> (Windows has no WebP decoder: WebP decoding goes through SkiaSharp, see <see cref="HidesWicDecoder"/>).</para>
 /// </summary>
 public static class CapabilityOverrides
 {
@@ -50,7 +50,7 @@ public static class CapabilityOverrides
         if (string.IsNullOrWhiteSpace(spec)) return null;
         var names = spec.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Select(n => n.ToLowerInvariant()).ToHashSet(StringComparer.Ordinal);
-        if (!names.Overlaps(["no-heif", "no-hevc", "no-av1", "no-webp", "no-ocr"])) return null;
+        if (!names.Overlaps(["no-heif", "no-hevc", "no-av1", "no-webp", "no-ocr", "no-faces"])) return null;
 
         return caps =>
         {
@@ -59,6 +59,7 @@ public static class CapabilityOverrides
             if (names.Contains("no-av1")) caps = caps with { AvifDecode = false, Av1Decode = false };
             if (names.Contains("no-webp")) caps = caps with { WebpEncode = false };
             if (names.Contains("no-ocr")) caps = caps with { Ocr = false };
+            if (names.Contains("no-faces")) caps = caps with { FaceDetect = false };
             return caps;
         };
     }

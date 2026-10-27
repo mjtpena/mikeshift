@@ -16,7 +16,8 @@ public static class Glyphs
     public const string Resize = "";     // BackToWindow (arrows pointing inward)
     public const string Crop = "";       // Crop
     public const string StripExif = "";  // Hide (an eye with a slash)
-    public const string Trim = "";       // Cut
+    public const string BlurFaces = ""; // Contact (a person)
+    public const string Trim ="";       // Cut
     public const string Split = "";      // Split page
     public const string Merge = "";      // Combine
     public const string Zip = "";        // ZipFolder
@@ -34,7 +35,7 @@ public static class Glyphs
     public const string Info = "";
 
     /// <summary>Every tool glyph, for tests.</summary>
-    public static IReadOnlyList<string> All { get; } = [Compress, Resize, Crop, StripExif, Trim, Split, Merge, Zip, Fit];
+    public static IReadOnlyList<string> All { get; } = [Compress, Resize, Crop, StripExif, BlurFaces, Trim,Split, Merge, Zip, Fit];
 
     /// <summary>Every glyph the wheel can draw (tool, category and info glyphs), for the font-coverage test.</summary>
     public static IReadOnlyList<string> Everything { get; } = [.. All, Image, Document, Pdf, Video, Audio, Info];

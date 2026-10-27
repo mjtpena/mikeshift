@@ -29,6 +29,7 @@ public static class ImageConverter
     private const string CompressedSuffix = " compressed";
     private const string CroppedSuffix = " cropped";
     private const string CleanSuffix = " clean";
+    private const string BlurredSuffix = " blurred";
 
     private const double StripQuality = 0.95;
     private const double CompressMinSaving = 0.05;
@@ -192,6 +193,44 @@ public static class ImageConverter
             bytes = JpegMeta.RemoveMetadataSegments(bytes);
 
         return await CommitAsync(input, ExtensionFor(format, input), CleanSuffix, bytes, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>What <see cref="BlurFacesAsync(string, Capabilities, ConversionOptions, CancellationToken)"/> wrote and how many faces it covered.</summary>
+    public sealed record FaceBlurResult(string Path, int Faces);
+
+    /// <summary>Blur faces with the detector Windows provides; see the overload below.</summary>
+    public static Task<FaceBlurResult> BlurFacesAsync(string input, Capabilities caps, ConversionOptions options, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(caps);
+        if (!caps.FaceDetect) throw new ConversionException(Feedback.FaceBlurCopy.NoDetector);
+        return BlurFacesAsync(input, caps, options, FaceDetection.FindAsync, ct);
+    }
+
+    /// <summary>
+    /// Finds the faces with <paramref name="find"/>, covers each (grown by 30 %) with a coarse pixelation that is then blurred
+    /// (<see cref="FaceBlur"/>), and saves the picture in its own format as " blurred". Nothing else is changed, and no Exif, GPS, XMP or embedded
+    /// thumbnail is written, because the thumbnail would still show the face. Animated and multi-page files are refused, and a picture with no face
+    /// fails with <see cref="Feedback.FaceBlurCopy.NoFaces"/> before anything is written.
+    /// </summary>
+    internal static async Task<FaceBlurResult> BlurFacesAsync(
+        string input, Capabilities caps, ConversionOptions options, FaceFinder find, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        await RequireSingleFrameAsync(input, "blurred", ct).ConfigureAwait(false);
+        var img = await ImageCodec.DecodeAsync(input, ImageCodec.MaxPixels, ct).ConfigureAwait(false);
+        RequireSingleFrame(img, "blurred");
+
+        var boxes = FaceBlur.Cover(await find(img.Pixels, ct).ConfigureAwait(false), img.Width, img.Height);
+        if (boxes.Count == 0) throw new ConversionException(Feedback.FaceBlurCopy.NoFaces);
+
+        var pixels = FaceBlur.Apply(img.Pixels, boxes);
+        var format = SameFormat(img, caps);
+        var bytes = await EncodeAsync(img, pixels, format, options.QualityFraction, keepExif: false, ct).ConfigureAwait(false);
+        if (format == ImageFormat.Jpg && JpegMeta.HasMetadataSegments(bytes))
+            bytes = JpegMeta.RemoveMetadataSegments(bytes);
+
+        var path = await CommitAsync(input, ExtensionFor(format, input), BlurredSuffix, bytes, ct).ConfigureAwait(false);
+        return new FaceBlurResult(path, boxes.Count);
     }
 
     // ------------------------------------------------------------------ helpers

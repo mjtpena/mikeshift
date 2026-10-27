@@ -46,6 +46,7 @@ MikeShift checks your PC at start-up and hides tiles that cannot work instead of
 | **Decoders for HEVC, VP9 or AV1 video** | The video is not recognised (Zip only) or fails with "Windows can't decode the video in this file." |
 | **Web Media Extensions** (free) | `.webm` input depends on them and on the installed Media Foundation codecs. If WebM does not open, `.webm` files are unknown files (Zip only). |
 | **MP3, FLAC, H.264 or AAC encoders** | The matching tiles are hidden (MP3, FLAC, MP4/M4V, M4A, and video and audio Compress). FLAC needs Windows 10 version 1703 or later. |
+| **Windows face detection** | There is no **Blur faces** tile. Windows 10 and 11 normally have it; some editions and virtual machines do not. |
 | **Microsoft Word, turned on in Settings** | See below. |
 
 ### Microsoft Word
@@ -98,6 +99,7 @@ A batch converts what it can and lists the files that failed.
 * **Compress keeps its result only if it is at least 5 percent smaller:** "This image is already small, so compressing it wouldn't save much space." JPG output is flattened on white; pictures with real transparency compress to PNG (the only output here that keeps transparency), so they are often "already small". HEIC output is also flattened on white, because Windows' HEIF encoder cannot store transparency.
 * Crop: "The crop area is outside the image." and "The cropped picture would be too large."
 * **TXT (text in a picture)** needs a Windows language with Optical character recognition; without one the tile is hidden. It reads printed text in the languages of your Windows profile (there is no choice of language), not handwriting, and writes one line per recognised line without rebuilding columns or tables. A picture with nothing readable: "Couldn't find any text in this picture." (no empty file is written). A multi-page TIFF: "This file has N pages. Convert it to PDF first, then use TXT on the PDF to read every page." An animated picture: "Text can't be read from an animated picture." Hebrew that comes out reversed is refused rather than written backwards.
+* **Blur faces can miss faces, so check the result before you share it.** It uses the face detector built into Windows, which finds faces looking toward the camera best. Faces seen from the side, small or far away, tilted, covered by a mask, hand or hair, or in poor light can be missed, and a few things that are not faces can be covered. It does not blur names, text, number plates or anything else in the picture, and there is no way to draw a box by hand. Each face found is grown by about 30 percent, pixelated in coarse blocks and then blurred, so the covered part cannot be restored; the rest of the picture is left exactly as it was. The copy has no EXIF, GPS or embedded thumbnail (the thumbnail in a camera's JPEG would otherwise still show the face), so the camera and date are gone too. A picture with no faces found: "No faces found in this picture." (nothing is saved). Animated pictures and multi-page files are refused like Crop's. Pictures are looked at in a copy reduced to 1600 pixels on the long side.
 * "There isn't enough memory to process this image."
 
 ### PDF
