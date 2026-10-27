@@ -391,7 +391,10 @@ public class ImageIntegrityTests
         }
     }
 
-    /// <summary>No Exif, GPS, XMP or Photoshop data in the output (raw bytes for JPEG, WIC properties for everything), and it still decodes upright.</summary>
+    /// <summary>
+    /// No Exif, GPS, XMP or Photoshop data in the output (raw bytes for JPEG and WebP, WIC properties for everything WIC can read), and it
+    /// still decodes upright.
+    /// </summary>
     private static async Task<string> AssertNoMetadata(string output)
     {
         var bytes = await File.ReadAllBytesAsync(output);
@@ -402,6 +405,13 @@ public class ImageIntegrityTests
             Assert.DoesNotContain(markers, m => m.Marker == 0xED);   // APP13: Photoshop / IPTC
             Assert.False(ImageBytes.Contains(bytes, "Exif\0\0"u8), "Exif block present");
             Assert.False(ImageBytes.Contains(bytes, "http://ns.adobe.com/xap"u8), "XMP packet present");
+        }
+        if (ImageBytes.Sniff(output) == "webp")
+        {
+            var chunks = ImageBytes.WebpChunks(bytes);
+            Assert.DoesNotContain("EXIF", chunks);
+            Assert.DoesNotContain("XMP ", chunks);
+            if (!PixDecode.WicReads(output)) return "no EXIF/XMP chunks (no WIC WebP decoder to read properties)";
         }
         var props = await PixDecode.WicPropertiesAsync(output,
             "System.GPS.LatitudeNumerator", "System.GPS.LongitudeNumerator", "System.GPS.Latitude", "System.GPS.Longitude",
