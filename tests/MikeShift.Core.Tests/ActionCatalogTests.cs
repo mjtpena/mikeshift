@@ -23,6 +23,7 @@ public class ActionCatalogTests
         if (Kind.VideoExtensions.Contains(e)) return Category.Video;
         if (Kind.AudioExtensions.Contains(e)) return Category.Audio;
         if (Kind.DocumentExtensions.Contains(e)) return Category.Document;
+        if (e == Kind.LinkExtension) return Category.Link;
         return Category.Other;
     }
 
@@ -31,7 +32,7 @@ public class ActionCatalogTests
     {
         // A single .ico: nothing is hidden by extension and there is no Merge PDF.
         Assert.Equal(
-            ["PNG", "JPG", "TIFF", "GIF", "BMP", "HEIC", "WebP", "PDF", "TXT", "Compress", "Resize 50%", "Crop", "Strip EXIF", "Blur faces", "Zip"],
+            ["PNG", "JPG", "TIFF", "GIF", "BMP", "HEIC", "WebP", "PDF", "TXT", "Compress", "Resize 50%", "Crop", "Strip EXIF", "Blur faces", "Read QR code", "Zip"],
             Titles(Full, @"C:\x\a.ico"));
     }
 
@@ -42,7 +43,7 @@ public class ActionCatalogTests
         var formats = all.Where(a => a.Page == WheelPage.Format).Select(a => a.Title).ToArray();
         var tools = all.Where(a => a.Page == WheelPage.Tool).Select(a => a.Title).ToArray();
         Assert.Equal(["PNG", "JPG", "TIFF", "GIF", "BMP", "HEIC", "WebP", "ICO", "PDF", "TXT"], formats);
-        Assert.Equal(["Compress", "Resize 50%", "Crop", "Strip EXIF", "Blur faces", "Merge PDF", "Zip"], tools);
+        Assert.Equal(["Compress", "Resize 50%", "Crop", "Strip EXIF", "Blur faces", "Merge PDF", "Read QR code", "Zip"], tools);
         Assert.All(all.Where(a => a.Page == WheelPage.Tool), a => Assert.False(string.IsNullOrEmpty(a.Glyph)));
         Assert.All(all.Where(a => a.Page == WheelPage.Format), a => Assert.Null(a.Glyph));
         Assert.Single(all.Where(a => a.Interactive), a => a.Title == "Crop");
@@ -92,9 +93,25 @@ public class ActionCatalogTests
     }
 
     [Fact]
+    public void Text_files_get_the_QR_code_tool_and_other_documents_do_not()
+    {
+        Assert.Equal(["PDF", "DOCX", "RTF", "HTML", "ODT", "QR code", "Zip"], Titles(Full, @"C:\x\a.txt"));
+        Assert.DoesNotContain("QR code", Titles(Full, @"C:\x\a.docx"));
+        Assert.DoesNotContain("QR code", Titles(Full, @"C:\x\a.txt", @"C:\x\b.md"));
+    }
+
+    [Fact]
+    public void Link_list_is_the_QR_code_tool()
+    {
+        Assert.Equal(["QR code", "Zip"], Titles(Full, @"C:\x\site.url"));
+        Assert.Equal(["QR code", "Zip"], Titles(Full, @"C:\x\site.url", @"C:\x\other.URL"));
+        Assert.Equal(["Zip"], Titles(Full, @"C:\x\site.url", @"C:\x\a.png"));
+    }
+
+    [Fact]
     public void Titles_are_unique_within_every_category_list()
     {
-        foreach (var c in new[] { Category.Image, Category.Pdf, Category.Video, Category.Audio, Category.Document })
+        foreach (var c in new[] { Category.Image, Category.Pdf, Category.Video, Category.Audio, Category.Document, Category.Link })
         {
             var titles = ActionCatalog.ListFor(c).Select(a => a.Title).ToList();
             Assert.Equal(titles.Count, titles.Distinct(StringComparer.OrdinalIgnoreCase).Count());

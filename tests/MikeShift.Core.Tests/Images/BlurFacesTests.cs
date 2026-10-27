@@ -369,8 +369,8 @@ public class BlurFacesTests
         var result = new ActionResult
         {
             Total = 2,
-            Outputs = [new ActionOutput(@"C:.png", @"C: blurred.png", false)],
-            Failures = [new ActionFailure(@"C:.png", FaceBlurCopy.NoFaces)],
+            Outputs = [new ActionOutput(@"C:\a\a.png", @"C:\a\a blurred.png", false)],
+            Failures = [new ActionFailure(@"C:\a\b.png", FaceBlurCopy.NoFaces)],
             Summary = FaceBlurCopy.Blurred(2),
         };
 
@@ -379,6 +379,27 @@ public class BlurFacesTests
         Assert.Equal("Saved 1 of 2", toast.Title);
         Assert.Equal("Blurred 2 faces · 1 couldn't be converted", toast.Detail);
         Assert.Equal(ToastKind.Warning, toast.Kind);
+    }
+
+    [Fact]
+    public void A_preview_a_summary_and_notes_each_keep_their_own_place_in_the_toast()
+    {
+        var result = new ActionResult
+        {
+            Total = 1,
+            Outputs = [new ActionOutput(@"C:\a\a.png", @"C:\a\a blurred.png", false) { Preview = "https://example.com" }],
+            Summary = FaceBlurCopy.Blurred(2),
+            Notes = ["The picture is small"],
+        };
+
+        var toast = FeedbackPlan.ToastFor(result);
+
+        Assert.Equal("https://example.com", toast.Title); // the per-output preview is the title
+        Assert.Equal("Saved a blurred.png · Blurred 2 faces · Next to the original · The picture is small", toast.Detail);
+        Assert.Equal(ToastKind.Warning, toast.Kind); // only the note makes it a warning
+        var withoutNote = FeedbackPlan.ToastFor(result with { Notes = [] });
+        Assert.Equal(ToastKind.Success, withoutNote.Kind);
+        Assert.Equal("Saved a blurred.png · Blurred 2 faces · Next to the original", withoutNote.Detail);
     }
 
     [Fact]

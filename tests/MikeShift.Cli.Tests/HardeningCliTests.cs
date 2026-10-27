@@ -43,6 +43,13 @@ public class HardeningCliTests
             { "empty.pdf", "", "PNG" },
             { "empty.docx", "", "TXT" },
             { "empty.mp4", "", "GIF" },
+            { "truncated.png", Half(png), "Read QR code" },
+            { "random.png", Noise(), "Read QR code" },
+            { "empty.png", "", "Read QR code" },
+            { "empty.url", "", "QR code" },
+            { "random.url", Noise(), "QR code" },
+            { "empty.txt", "", "QR code" },
+            { "random.txt", Noise(), "QR code" },
         };
     }
 

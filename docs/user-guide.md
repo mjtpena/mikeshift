@@ -119,11 +119,12 @@ The wheel and the right-click menu show only what fits your selection and works 
 
 | You select | Formats (convert to) | Tools |
 |---|---|---|
-| **Pictures** (PNG, JPG, HEIC, TIFF, GIF, WebP, BMP, AVIF …) | PNG, JPG, TIFF, GIF, BMP, WebP, HEIC, ICO, PDF, TXT (the text in the picture) | Compress, Resize, Crop, Strip EXIF, Blur faces, Merge PDF (two or more pictures) |
+| **Pictures** (PNG, JPG, HEIC, TIFF, GIF, WebP, BMP, AVIF …) | PNG, JPG, TIFF, GIF, BMP, WebP, HEIC, ICO, PDF, TXT (the text in the picture) | Compress, Resize, Crop, Strip EXIF, Blur faces, Merge PDF (two or more pictures), Read QR code |
 | **PDF** | PNG or JPG (one image per page), TXT (including scanned pages) | Compress, Split, Merge (two or more PDFs) |
 | **Video** (MP4, MOV, MKV, AVI, WMV, WebM …) | MP4, M4V, WMV, GIF, M4A (audio only), MP3 (audio only) | Compress, Fit 10 MB, Fit 25 MB, Trim |
 | **Audio** (MP3, WAV, M4A, FLAC, AIFF, WMA …) | M4A, WAV, AIFF, FLAC, MP3 | Compress, Trim |
-| **Documents** (DOCX, RTF, ODT, HTML, TXT, Markdown, DOC) | PDF, DOCX, RTF, TXT, HTML, ODT | none |
+| **Documents** (DOCX, RTF, ODT, HTML, TXT, Markdown, DOC) | PDF, DOCX, RTF, TXT, HTML, ODT | QR code (for a TXT file) |
+| **Internet shortcuts** (URL) | none | QR code |
 | **Anything, including folders and mixed selections** | none | Zip |
 
 Select many files of one kind and every one is converted (a batch). A mixed selection, such as a picture and a PDF, offers only **Zip**.
@@ -135,6 +136,12 @@ Select many files of one kind and every one is converted (a batch). A mixed sele
 ### Text from pictures and scans
 
 **TXT** on a picture, such as a screenshot or a photo of a page, writes the text in it to `photo.txt` next to it. **TXT** on a PDF reads the PDF's text, and reads scanned pages too. Both use Windows' own text recognition (OCR) on your PC; nothing is uploaded. Windows reads the languages you have installed (Settings > Time & language > Language & region; a language's options must include **Optical character recognition**, which most include). On a PC with none, the picture TXT tile is hidden, PDF TXT refuses scans, and Settings → Format support says so. Text recognition reads printed text line by line; it does not read handwriting or rebuild columns and tables.
+
+### QR codes
+
+**Read QR code** (a tool, on the Tools page of the wheel) on a screenshot or a photo writes what the QR codes in it say to `photo qr.txt`, one line per code, and the toast shows the first one. Nothing is looked up or opened: you get the text, and can decide what to do with it. A picture with no code says so and writes nothing.
+
+**QR code** on an Internet shortcut (a `.url` file, such as a link dragged from the browser's address bar to the desktop) or on a short text file writes `link qr.png` next to it. The code holds the address or text itself, so unlike many online generators it never goes through someone else's server and does not stop working. It is black on white with a border, at least 1,024 pixels a side, so it is sharp on a poster or a slide. A text file longer than about 2,300 bytes is refused. Everything happens on your PC.
 
 ### HEIC photos from an iPhone
 
@@ -293,6 +300,8 @@ mikeshift --run PNG photo.heic                 # prints the output path, exit co
 mikeshift --run "Resize 50%" a.jpg b.jpg
 mikeshift --run Merge a.pdf b.pdf              # Merged.pdf next to a.pdf
 mikeshift --run TXT screenshot.png scan.pdf    # the text in a picture and in a scanned PDF
+mikeshift --run "Read QR code" screenshot.png   # screenshot qr.txt holds what the code says
+mikeshift --run "QR code" site.url             # site qr.png, a code for the address
 mikeshift --run Trim --range 0:05-0:12.5 clip.mp4
 mikeshift --run "Fit 10 MB" clip.mov            # an MP4 of at most 10 MB
 mikeshift --run Crop --crop 100,50,800,600@400x300 photo.jpg

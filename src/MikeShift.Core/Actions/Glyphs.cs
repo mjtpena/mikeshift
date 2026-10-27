@@ -24,6 +24,9 @@ public static class Glyphs
     public const string MergePdf = Merge;
     public const string Fit = "";       // Attach (a paper clip: small enough to attach)
 
+    public const string QrCode = "\uE71B";     // Link (a chain: the code holds the link itself)
+    public const string ReadQrCode = "\uE721"; // Search (look for a code in the picture)
+
     // Format categories
     public const string Image = "";      // Photo2
     public const string Document = "";   // Page
@@ -35,7 +38,7 @@ public static class Glyphs
     public const string Info = "";
 
     /// <summary>Every tool glyph, for tests.</summary>
-    public static IReadOnlyList<string> All { get; } = [Compress, Resize, Crop, StripExif, BlurFaces, Trim,Split, Merge, Zip, Fit];
+    public static IReadOnlyList<string> All { get; } = [Compress, Resize, Crop, StripExif, BlurFaces, Trim, Split, Merge, Zip, Fit, QrCode, ReadQrCode];
 
     /// <summary>Every glyph the wheel can draw (tool, category and info glyphs), for the font-coverage test.</summary>
     public static IReadOnlyList<string> Everything { get; } = [.. All, Image, Document, Pdf, Video, Audio, Info];

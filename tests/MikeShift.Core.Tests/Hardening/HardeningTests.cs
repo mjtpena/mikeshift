@@ -35,6 +35,8 @@ public class HardeningTests
             new("good.pdf", Fixtures.PdfText(2)),
             new("good-scan.pdf", Fixtures.PdfScanOfText(Fixtures.OcrLines)), // TXT reads it with text recognition
             new("good-text.png", Fixtures.TextPicture(Fixtures.OcrLines)),
+            new("good-qr.png", Fixtures.QrCodePicture("https://example.com/menu")),
+            new("good.url", "[InternetShortcut]\r\nURL=https://example.com/menu\r\n"u8.ToArray()),
             new("good.docx", Fixtures.DocxSample()),
             new("good.wav", Fixtures.SineWav(0.3)),
         };
@@ -102,7 +104,7 @@ public class HardeningTests
     }
 
     private static IEnumerable<Sample> ZeroBytes() =>
-        new[] { "png", "jpg", "gif", "tiff", "bmp", "webp", "heic", "pdf", "docx", "doc", "odt", "rtf", "html", "txt", "md", "mp4", "mov", "mp3", "wav", "m4a", "flac", "aiff", "ts" }
+        new[] { "png", "jpg", "gif", "tiff", "bmp", "webp", "heic", "pdf", "docx", "doc", "odt", "rtf", "html", "txt", "md", "url", "mp4", "mov", "mp3", "wav", "m4a", "flac", "aiff", "ts" }
             .Select(e => new Sample($"empty.{e}", []));
 
     // ------------------------------------------------------------------ running one input

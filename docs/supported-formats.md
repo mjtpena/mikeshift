@@ -8,11 +8,12 @@ How a file is recognised: by its content and its extension. A PDF is recognised 
 
 | You have | Convert to | Tools |
 |---|---|---|
-| **Pictures**: PNG, JPG, HEIC, TIFF, GIF, WebP, BMP, AVIF, ICO, JPEG XR | PNG, JPG, TIFF, GIF, BMP, WebP, HEIC, ICO, PDF, TXT (the text in the picture) | Compress, Resize, Crop, Strip EXIF, Blur faces, Merge PDF |
+| **Pictures**: PNG, JPG, HEIC, TIFF, GIF, WebP, BMP, AVIF, ICO, JPEG XR | PNG, JPG, TIFF, GIF, BMP, WebP, HEIC, ICO, PDF, TXT (the text in the picture) | Compress, Resize, Crop, Strip EXIF, Blur faces, Merge PDF, Read QR code |
 | **PDF** | Page images (PNG or JPG), TXT | Compress, Split, Merge |
 | **Video**: MP4, M4V, MOV, AVI, WMV, MKV, WebM, MPEG, 3GP, TS and others | MP4, M4V, WMV, GIF, or just the audio (M4A, MP3) | Compress, Fit 10 MB, Fit 25 MB, Trim |
 | **Audio**: MP3, WAV, M4A, AAC, FLAC, AIFF, WMA, ALAC | M4A, WAV, AIFF, FLAC, MP3 | Compress, Trim |
-| **Documents**: DOCX, RTF, ODT, HTML, TXT, Markdown, and DOC (needs Word) | PDF, DOCX, RTF, TXT, HTML, ODT | none |
+| **Documents**: DOCX, RTF, ODT, HTML, TXT, Markdown, and DOC (needs Word) | PDF, DOCX, RTF, TXT, HTML, ODT | QR code (TXT files only) |
+| **Internet shortcuts**: URL | none | QR code |
 | **Anything, including folders** | Zip | none |
 
 A format is not offered for a file that is already in it (a PNG has no "PNG" tile), and a few tools appear only for the right selection:
@@ -26,7 +27,7 @@ A format is not offered for a file that is already in it (a PNG has no "PNG" til
 | Input extensions | `png` `jpg` `jpeg` `jpe` `jfif` `heic` `heif` `tif` `tiff` `gif` `webp` `bmp` `dib` `avif` `ico` `jxr` `wdp` |
 |---|---|
 | Output formats | PNG, JPG, TIFF, GIF, BMP, WebP, HEIC, ICO (a Windows icon), PDF (one picture per PDF), and TXT (the text in the picture) |
-| Tools | **Compress** keeps the format and saves a smaller copy, only when it saves at least 5 percent. **Resize** halves (or quarters, or takes three quarters of) both sides. **Crop** opens the [crop editor](user-guide.md#crop-and-trim). **Strip EXIF** removes the camera, location and other metadata but keeps the picture upright. **Blur faces** covers every face Windows finds with a coarse pixelation and a blur, keeps the format, and writes no metadata or embedded thumbnail. **Merge PDF** puts two or more pictures into one PDF. |
+| Tools | **Compress** keeps the format and saves a smaller copy, only when it saves at least 5 percent. **Resize** halves (or quarters, or takes three quarters of) both sides. **Crop** opens the [crop editor](user-guide.md#crop-and-trim). **Strip EXIF** removes the camera, location and other metadata but keeps the picture upright. **Blur faces** covers every face Windows finds with a coarse pixelation and a blur, keeps the format, and writes no metadata or embedded thumbnail. **Merge PDF** puts two or more pictures into one PDF. **Read QR code** writes the text of the QR codes in the picture to a text file (see [QR codes](#qr-codes)). |
 
 Pictures are converted upright: the camera's rotation is applied, so the result is not sideways. Compress, Resize and Crop refuse animated pictures and multi-page files (such as a multi-page TIFF) instead of silently dropping frames.
 
@@ -71,6 +72,16 @@ MP4 and M4V made from an H.264/AAC source are re-wrapped without re-encoding, wh
 | Output formats | PDF, DOCX, RTF, TXT, HTML, ODT |
 
 A document is converted by MikeShift's own readers and writers. Text, paragraphs, headings, lists, simple tables and basic character formatting carry across. Documents that contain pictures can be converted to TXT only, because pictures do not carry across. PDFs made from documents use MikeShift's own plain layout and do not match Word's pagination; see [limitations](limitations.md#documents).
+
+### QR codes
+
+| Input extensions | **Read QR code**: any picture above. **QR code**: `url` (Internet shortcut) and `txt` |
+|---|---|
+| Output | **Read QR code**: `<name> qr.txt`, UTF-8, one line per code from top to bottom. **QR code**: `<name> qr.png` |
+
+**Read QR code** finds every QR code in a picture (rotated, small in a large screenshot, or light on dark are all read) and writes its text. A picture with no code is refused: "Couldn't find a QR code in this picture." Only QR codes are read, not other barcodes. A code that itself holds several lines (a contact card, Wi-Fi details) keeps them. Only the first frame of an animated picture or a multi-page TIFF is looked at.
+
+**QR code** puts the text itself in the code, so it needs no website and does not expire. For a `.url` shortcut the address on its `URL=` line is used, not the whole file; a shortcut without one is refused. For a `.txt` file the whole text is used (without its closing line breaks); the file may be UTF-8 or UTF-16 text. The picture is black on white with the four-module quiet border the QR standard asks for, error correction level M, and at least 1,024 pixels on each side, drawn with whole pixels per square so the edges stay sharp. Text over about 2,300 bytes does not fit even the biggest code and is refused before anything is written ("This is N bytes, which is too much for a QR code. The most one can hold is about 2,331."). Colours and logos inside the code are not offered.
 
 ### Zip
 
