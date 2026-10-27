@@ -87,13 +87,13 @@ The full walkthrough is the [user guide](docs/user-guide.md): every action by fi
 
 ## Supported formats
 
-41 actions in all; the wheel and the right-click menu show only the ones that fit your selection and your PC.
+43 actions in all; the wheel and the right-click menu show only the ones that fit your selection and your PC.
 
 | You have | Convert to | Tools |
 |---|---|---|
 | **Pictures**: PNG, JPG, HEIC, TIFF, GIF, WebP, BMP, AVIF | PNG, JPG, TIFF, GIF, BMP, WebP, HEIC, PDF | Compress, Resize, Crop, Strip EXIF, Merge PDF |
 | **PDF** | PNG or JPG (pages), TXT | Compress, Split, Merge |
-| **Video**: MP4, MOV, MKV, AVI, WMV, WebM and others | MP4, M4V, WMV, GIF, or audio only (M4A, MP3) | Compress, Trim |
+| **Video**: MP4, MOV, MKV, AVI, WMV, WebM and others | MP4, M4V, WMV, GIF, or audio only (M4A, MP3) | Compress, Fit 10 MB, Fit 25 MB, Trim |
 | **Audio**: MP3, WAV, M4A, FLAC, AIFF, WMA, AAC | M4A, WAV, AIFF, FLAC, MP3 | Compress, Trim |
 | **Documents**: DOCX, RTF, ODT, HTML, TXT, Markdown, DOC (needs Word) | PDF, DOCX, RTF, TXT, HTML, ODT | none |
 | **Anything, including folders** | Zip | none |

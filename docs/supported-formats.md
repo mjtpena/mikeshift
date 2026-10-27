@@ -10,7 +10,7 @@ How a file is recognised: by its content and its extension. A PDF is recognised 
 |---|---|---|
 | **Pictures**: PNG, JPG, HEIC, TIFF, GIF, WebP, BMP, AVIF, ICO, JPEG XR | PNG, JPG, TIFF, GIF, BMP, WebP, HEIC, PDF | Compress, Resize, Crop, Strip EXIF, Merge PDF |
 | **PDF** | Page images (PNG or JPG), TXT | Compress, Split, Merge |
-| **Video**: MP4, M4V, MOV, AVI, WMV, MKV, WebM, MPEG, 3GP, TS and others | MP4, M4V, WMV, GIF, or just the audio (M4A, MP3) | Compress, Trim |
+| **Video**: MP4, M4V, MOV, AVI, WMV, MKV, WebM, MPEG, 3GP, TS and others | MP4, M4V, WMV, GIF, or just the audio (M4A, MP3) | Compress, Fit 10 MB, Fit 25 MB, Trim |
 | **Audio**: MP3, WAV, M4A, AAC, FLAC, AIFF, WMA, ALAC | M4A, WAV, AIFF, FLAC, MP3 | Compress, Trim |
 | **Documents**: DOCX, RTF, ODT, HTML, TXT, Markdown, and DOC (needs Word) | PDF, DOCX, RTF, TXT, HTML, ODT | none |
 | **Anything, including folders** | Zip | none |
@@ -47,9 +47,11 @@ Encrypted PDFs are refused (see [limitations](limitations.md#pdf)).
 | Input extensions | `mp4` `m4v` `mov` `avi` `wmv` `asf` `mkv` `webm` `mpg` `mpeg` `3gp` `3g2` `ts` `mts` `m2ts` |
 |---|---|
 | Output formats | MP4, M4V, WMV, GIF, M4A (audio only), MP3 (audio only) |
-| Tools | **Compress** makes a 720p H.264/AAC MP4, only if smaller. **Trim** cuts a range and re-encodes it (see the [trim dialog](user-guide.md#crop-and-trim)). |
+| Tools | **Compress** makes a 720p H.264/AAC MP4, only if smaller. **Fit 10 MB** and **Fit 25 MB** make an H.264/AAC MP4 that is at most that size (see below). **Trim** cuts a range and re-encodes it (see the [trim dialog](user-guide.md#crop-and-trim)). |
 
 MP4 and M4V made from an H.264/AAC source are re-wrapped without re-encoding, which is fast and lossless. Everything else is transcoded.
+
+**Fit 10 MB and Fit 25 MB** are for upload limits (chat apps and mail servers). A megabyte here is 1,000,000 bytes, so the file fits whichever way a site counts (File Explorer shows a 10 MB result as about 9.5 MB). The bitrate is worked out from the length of the video, 95 percent of the size going to picture and sound (AAC at 96 or 128 kbps) and the rest left for the MP4 container; the picture is 1080p, 720p, 480p or 360p depending on that bitrate, and never larger than the original. The result is measured: if it is over the limit it is encoded once more at a proportionally lower bitrate, and if that is still over, nothing is saved. A video that would need less than 200 kbps of picture is too long to stay watchable and is refused before anything is encoded (about 4 minutes fit in 10 MB and 10 minutes in 25 MB). A video that is already under the size is copied into MP4 without re-encoding when it is H.264/AAC; other small videos are encoded at no more than their own bitrate. Both tools need Windows' H.264 and AAC encoders.
 
 ### Audio
 
@@ -90,7 +92,8 @@ MikeShift checks at start-up what Windows on this PC can do, and hides tiles tha
 
 * **MOV and AVIF output.** Windows has no QuickTime or AVIF writer. MOV files can be read; they convert to MP4, M4V, WMV, GIF, M4A or MP3. AVIF files can be read when the AV1 extension is installed.
 * **OCR, PDF editing and PDF forms.** MikeShift converts, merges, splits and compresses PDFs; it does not edit them or read scanned text.
-* **Presets, custom sizes and per-format options.** Settings has [five conversion choices](user-guide.md#conversions); there is no custom percentage, pixel size, bitrate or naming template.
+* **Presets, custom sizes and per-format options.** Settings has [five conversion choices](user-guide.md#conversions); there is no custom percentage, pixel size, bitrate or naming template. Video Fit offers 10 MB and 25 MB; other sizes are for the command line only (`--max-size`).
+* **Size targets for audio.** Fit is for video; audio has Compress.
 * **Lossless video trim.** Video Trim always re-encodes, so the cut is exact to the frame.
 * **Dithered GIFs.** GIFs use at most 256 colours per frame, 10 frames a second and 480 pixels on the long side.
 * **Archives other than Zip,** and any conversion between archive types.

@@ -1,5 +1,6 @@
 using System.Globalization;
 using MikeShift.Core.Actions;
+using MikeShift.Core.Feedback;
 
 namespace MikeShift.Core.Cli;
 
@@ -10,7 +11,7 @@ namespace MikeShift.Core.Cli;
 /// mikeshift [--use-word] --run TITLE [--range m:ss-m:ss] [--crop X,Y,W,H[@OWxOH]] FILES...   prints each output path, exit 0
 /// </code>
 /// Both accept the conversion options <c>--quality N</c> (50-100), <c>--compress light|medium|strong</c>, <c>--resize 25|50|75</c>,
-/// <c>--gif-seconds 5|10|15|30</c> and <c>--out DIR</c> (an existing folder); each defaults to <see cref="ConversionOptions.Default"/> (the command line
+/// <c>--gif-seconds 5|10|15|30</c>, <c>--max-size MB</c> (1-2000, the size the video Fit tool aims for) and <c>--out DIR</c> (an existing folder); each defaults to <see cref="ConversionOptions.Default"/> (the command line
 /// never reads the Settings window's choices, so a script gives the same result on every PC). A bad value is a usage error (exit 2).
 /// MikeShift is fully local: without <c>--use-word</c> the CLI never starts Microsoft Word (so legacy .doc is not offered and DOCX to
 /// PDF uses the built-in converter). <c>--use-word</c> opts in for that run; Word may then connect to Microsoft on its own.
@@ -37,6 +38,8 @@ public static class CliRunner
         "  --compress LEVEL   how hard Compress squeezes a picture: light, medium or strong (default medium)\n" +
         "  --resize P         the Resize percentage: 25, 50 or 75 (default 50; --run \"Resize 25%\" says the same)\n" +
         "  --gif-seconds N    the longest a GIF made from a video runs: 5, 10, 15 or 30 (default 15)\n" +
+        "  --max-size MB      the size Fit keeps a video under, in whole megabytes from 1 to 2000\n" +
+        "                     (instead of Fit 10 MB and Fit 25 MB; --run \"Fit 8 MB\" says the same)\n" +
         "  --out DIR          put converted files in this existing folder instead of next to the originals\n" +
         "                     (Downloads if it can't be written to)\n";
 
@@ -185,6 +188,7 @@ public static class CliRunner
         var onlyFiles = false;
         var options = ConversionOptions.Default;
         int? resizeFlag = null;
+        int? fitFlag = null;
 
         for (var i = 0; i < args.Length; i++)
         {
@@ -258,6 +262,16 @@ public static class CliRunner
                     }
                     options = options with { GifSeconds = seconds };
                     break;
+                case "--max-size":
+                    if (++i >= args.Length) { error = $"--max-size needs a number of megabytes from {ConversionOptions.MinFitMegabytes} to {ConversionOptions.MaxFitMegabytes}"; return false; }
+                    if (!ConversionOptions.TryParseFitMegabytes(args[i], out var megabytes))
+                    {
+                        error = $"--max-size must be a whole number of megabytes from {ConversionOptions.MinFitMegabytes} to {ConversionOptions.MaxFitMegabytes}, not \"{args[i]}\"";
+                        return false;
+                    }
+                    fitFlag = megabytes;
+                    options = options with { FitMegabytes = megabytes };
+                    break;
                 case "--out":
                     if (++i >= args.Length) { error = "--out needs a folder"; return false; }
                     if (!TryResolveFolder(args[i], out var folder, out var folderError))
@@ -286,6 +300,22 @@ public static class CliRunner
                 return false;
             }
             options = options with { ResizePercent = titled };
+        }
+
+        // Likewise --run "Fit 8 MB" names the size; a --max-size that says another one is a mistake, not a choice between them.
+        if (mode == Mode.Run && SizeTargetCopy.MegabytesIn(title!) is { } fitTitled)
+        {
+            if (fitFlag is { } flagged && flagged != fitTitled)
+            {
+                error = $"\"{title}\" and --max-size {flagged} disagree";
+                return false;
+            }
+            if (fitTitled is < ConversionOptions.MinFitMegabytes or > ConversionOptions.MaxFitMegabytes)
+            {
+                error = $"\"{title}\": the size must be {ConversionOptions.MinFitMegabytes} to {ConversionOptions.MaxFitMegabytes} MB";
+                return false;
+            }
+            options = options with { FitMegabytes = fitTitled };
         }
 
         cmd = new Command(mode.Value, title, range, crop, files, useWord, options);

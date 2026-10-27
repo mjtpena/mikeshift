@@ -21,6 +21,7 @@ public static class Glyphs
     public const string Merge = "";      // Combine
     public const string Zip = "";        // ZipFolder
     public const string MergePdf = Merge;
+    public const string Fit = "";       // Attach (a paper clip: small enough to attach)
 
     // Format categories
     public const string Image = "";      // Photo2
@@ -33,7 +34,7 @@ public static class Glyphs
     public const string Info = "";
 
     /// <summary>Every tool glyph, for tests.</summary>
-    public static IReadOnlyList<string> All { get; } = [Compress, Resize, Crop, StripExif, Trim, Split, Merge, Zip];
+    public static IReadOnlyList<string> All { get; } = [Compress, Resize, Crop, StripExif, Trim, Split, Merge, Zip, Fit];
 
     /// <summary>Every glyph the wheel can draw (tool, category and info glyphs), for the font-coverage test.</summary>
     public static IReadOnlyList<string> Everything { get; } = [.. All, Image, Document, Pdf, Video, Audio, Info];

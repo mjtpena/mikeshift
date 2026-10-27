@@ -71,7 +71,7 @@ public static partial class ActionCatalog
         {
             Category.Image => ImageActions.WithResize(options.ResizePercent),
             Category.Pdf => PdfActions.All,
-            Category.Video => VideoActions.All,
+            Category.Video => VideoActions.WithFit(options.FitMegabytes),
             Category.Audio => AudioActions.All,
             Category.Document => DocumentActions.All,
             _ => [],

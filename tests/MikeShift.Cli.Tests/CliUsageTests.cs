@@ -16,6 +16,8 @@ public class CliUsageTests
     [InlineData("--run")]
     [InlineData("--run", "Zip")]
     [InlineData("--run", "Zip", "--nonsense", "a.txt")]
+    [InlineData("--run", "Fit 10 MB", "--max-size", "lots", "a.mp4")]
+    [InlineData("--run", "Fit 10 MB", "--max-size", "25", "a.mp4")]
     public void Usage_errors_exit_2_and_print_usage_to_stderr(params string[] args)
     {
         var r = CliProcess.Run(args);

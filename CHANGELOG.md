@@ -4,6 +4,10 @@ All notable changes to MikeShift are listed here. The format follows [Keep a Cha
 
 ## Unreleased
 
+### Added
+
+* **Fit 10 MB and Fit 25 MB for videos.** Two new video tools make a copy that fits under a chat or email upload limit: `clip.mp4` becomes `clip 10 MB.mp4`, an H.264/AAC MP4 that is never larger than 10,000,000 bytes (25,000,000 for Fit 25 MB). MikeShift works out the bitrate from the length of the video, picks 1080p, 720p, 480p or 360p to suit it (never larger than the original), and checks the result: if it comes out over the limit it is encoded once more at a lower bitrate, and nothing is saved rather than a file that does not fit. A video too long to stay watchable at that size is refused straight away, with roughly how long a video can be. A video already under the size is copied into MP4 without re-encoding when it is H.264/AAC, so its quality is untouched. Fit 10 MB is on the right-click menu for videos. On the command line, `--max-size MB` (or a title such as `--run "Fit 8 MB"`) asks for another size.
+
 ### Fixed
 
 * **WebP to PDF, Merge PDF and the crop editor work without the WebP Image Extensions.** On a PC without the free extension (Windows Server, or a PC where it was removed), turning a WebP into a PDF said the picture "could not be read as an image", and the crop editor could not open it. They now read WebP themselves, like every other picture action.

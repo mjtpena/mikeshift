@@ -1,4 +1,5 @@
 using MikeShift.Core.Actions;
+using MikeShift.Core.Feedback;
 using Windows.Media.MediaProperties;
 
 namespace MikeShift.Core.Media;
@@ -108,6 +109,76 @@ public static class VideoConverter
                 "MP4", token, sourceVideoSubtype: info.VideoSubtype).ConfigureAwait(false);
             if (new FileInfo(temp).Length >= originalBytes)
                 throw new ConversionException("This video is already small enough.");
+        }, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Fit into <paramref name="megabytes"/> MB (1 MB = 1,000,000 bytes, so the file is under the limit whichever way a site counts it):
+    /// an MP4 named " 10 MB" that is never larger than the limit.
+    /// </summary>
+    /// <remarks>
+    /// <para>A source already under the limit is re-wrapped into MP4 without re-encoding when it is H.264/AAC (<see cref="StreamCopy"/>), so
+    /// its quality is untouched and the result is still an MP4 that can be attached; anything else is encoded at no more than the usual
+    /// conversion quality.</para>
+    /// <para>Otherwise the video bitrate is worked out from the duration (<see cref="SizeTarget"/>), the picture size from that bitrate, and the
+    /// result is measured: one that came out over the limit is encoded once more at a proportionally lower bitrate. <c>MediaTranscoder</c> has
+    /// no two-pass mode, so this measurement is what guarantees the size. A video too long to fit at a watchable quality is refused before
+    /// anything is written.</para>
+    /// </remarks>
+    public static Task<string> FitAsync(string input, int megabytes, CancellationToken ct) =>
+        FitAsync(input, megabytes, SizeTarget.StreamShare, ct);
+
+    /// <summary>As above; the first encode aims at <paramref name="streamShare"/> of the size (tests raise it above 1 to force the retry).</summary>
+    internal static async Task<string> FitAsync(string input, int megabytes, double streamShare, CancellationToken ct)
+    {
+        var info = await MediaCommon.RequireVideoAsync(input, ct).ConfigureAwait(false);
+        var limit = SizeTarget.Bytes(megabytes);
+        var sourceBytes = new FileInfo(input).Length;
+        var under = sourceBytes <= limit;
+        var split = SizeTarget.Split(limit, info.Duration, info.HasAudio, streamShare);
+
+        // Refuse before CommitAsync creates anything: no encode, no temporary file. (A file already under the size may still be copied.)
+        if (!under && split is not { })
+            throw new ConversionException(SizeTargetCopy.UnknownLength);
+        if (!under && split is { } tight && tight.Video < SizeTarget.MinWatchableVideo)
+            throw new ConversionException(SizeTargetCopy.TooLong(megabytes, SizeTarget.LongestWatchable(limit, info.HasAudio)));
+
+        return await MediaCommon.CommitAsync(input, ".mp4", SizeTargetCopy.Suffix(megabytes), async (temp, token) =>
+        {
+            if (under)
+            {
+                if (await Task.Run(() => StreamCopy.TryRewrapToMp4(input, info, temp, token), token).ConfigureAwait(false)
+                    && new FileInfo(temp).Length <= limit)
+                    return;
+                token.ThrowIfCancellationRequested();
+                File.WriteAllBytes(temp, []);
+            }
+            if (split is not { } budget) throw new ConversionException(SizeTargetCopy.UnknownLength);
+            // A small source that could not be copied: spend no more than it already does, so the file does not grow.
+            var first = under ? budget.AtMost(SizeTarget.AverageBitrate(sourceBytes, info.Duration)) : budget;
+
+            await EncodeAsync(first).ConfigureAwait(false);
+            var size = new FileInfo(temp).Length;
+            if (size <= limit) return;
+
+            // Over the limit (the encoder overshot, or the container cost more than allowed for): once more, proportionally lower.
+            token.ThrowIfCancellationRequested();
+            File.WriteAllBytes(temp, []);
+            await EncodeAsync(first.Scaled((double)limit / size)).ConfigureAwait(false);
+            if (new FileInfo(temp).Length > limit)
+                throw new ConversionException(SizeTargetCopy.CouldNotFit(megabytes));
+
+            Task EncodeAsync(SizeTarget.Bitrates rates)
+            {
+                var profile = MediaTranscode.Mp4(info, SizeTarget.MaxHeightFor(info.Width, info.Height, rates.Video), ConvertBitsPerPixel, rates.Video);
+                profile.Video.Bitrate = Math.Min(profile.Video.Bitrate, rates.Video);
+                if (profile.Audio is not null)
+                {
+                    profile.Audio.Bitrate = rates.Audio;
+                    profile.Audio.ChannelCount = (uint)Math.Clamp(info.AudioChannels, 1, 2);
+                }
+                return MediaTranscode.RunAsync(input, temp, profile, null, "MP4", token, sourceVideoSubtype: info.VideoSubtype);
+            }
         }, ct).ConfigureAwait(false);
     }
 

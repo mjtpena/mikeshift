@@ -13,22 +13,25 @@ public static class Slow
     public const string Reason = "Slow test: set MIKESHIFT_SLOW=1 to run it.";
 }
 
-/// <summary>A <c>[Fact]</c> that runs only when <see cref="Slow.Enabled"/>.</summary>
+/// <summary>
+/// A <c>[Fact]</c> that runs only when <see cref="Slow.Enabled"/>. Capability names, as for <see cref="SkipIfNoCapabilityAttribute"/>, also
+/// skip it on a PC that lacks one: <c>[SlowFact(nameof(Capabilities.H264Encode))]</c>.
+/// </summary>
 [AttributeUsage(AttributeTargets.Method)]
 public sealed class SlowFactAttribute : FactAttribute
 {
-    public SlowFactAttribute()
+    public SlowFactAttribute(params string[] capabilities)
     {
-        if (!Slow.Enabled) Skip = Slow.Reason;
+        Skip = Slow.Enabled ? CapabilityCheck.SkipReason(capabilities) : Slow.Reason;
     }
 }
 
-/// <summary>A <c>[Theory]</c> that runs only when <see cref="Slow.Enabled"/>.</summary>
+/// <summary>A <c>[Theory]</c> that runs only when <see cref="Slow.Enabled"/> (and, like <see cref="SlowFactAttribute"/>, the named capabilities exist).</summary>
 [AttributeUsage(AttributeTargets.Method)]
 public sealed class SlowTheoryAttribute : TheoryAttribute
 {
-    public SlowTheoryAttribute()
+    public SlowTheoryAttribute(params string[] capabilities)
     {
-        if (!Slow.Enabled) Skip = Slow.Reason;
+        Skip = Slow.Enabled ? CapabilityCheck.SkipReason(capabilities) : Slow.Reason;
     }
 }

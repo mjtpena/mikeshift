@@ -58,8 +58,25 @@ public class ActionCatalogTests
     [Fact]
     public void Video_list_and_order()
     {
-        Assert.Equal(["MP4", "M4V", "WMV", "GIF", "M4A", "MP3", "Compress", "Trim", "Zip"], Titles(Full, @"C:\x\a.mov"));
+        Assert.Equal(["MP4", "M4V", "WMV", "GIF", "M4A", "MP3", "Compress", "Fit 10 MB", "Fit 25 MB", "Trim", "Zip"], Titles(Full, @"C:\x\a.mov"));
         Assert.DoesNotContain("MOV", Titles(Full, @"C:\x\a.mp4"));
+    }
+
+    [Fact]
+    public void Video_fit_tools_offer_two_fixed_sizes_and_a_command_line_size_replaces_them()
+    {
+        var mov = new[] { @"C:\x\a.mov" };
+        var fits = ActionCatalog.For(mov, Full, _ => Category.Video).Where(a => a.Id == "Fit").ToList();
+        Assert.Equal(["Fit 10 MB", "Fit 25 MB"], fits.Select(a => a.Title));
+        Assert.All(fits, a => Assert.Equal(WheelPage.Tool, a.Page));
+        Assert.All(fits, a => Assert.Equal(Glyphs.Fit, a.Glyph));
+
+        var eight = ConversionOptions.Default with { FitMegabytes = 8 };
+        Assert.Equal(["MP4", "M4V", "WMV", "GIF", "M4A", "MP3", "Compress", "Fit 8 MB", "Trim", "Zip"],
+            ActionCatalog.For(mov, Full, _ => Category.Video, eight).Select(a => a.Title));
+        // The stable id finds whichever size is offered; a title is matched without regard to case.
+        Assert.Equal("Fit 8 MB", ActionCatalog.Find(ActionCatalog.ListFor(Category.Video, eight), "fit")!.Title);
+        Assert.Equal("Fit 25 MB", ActionCatalog.Find(ActionCatalog.ListFor(Category.Video), "fit 25 mb")!.Title);
     }
 
     [Fact]
@@ -223,6 +240,11 @@ public class ActionCatalogTests
         Assert.Contains("MP4", Titles(h264, @"C:\x\a.mov"));
         Assert.Contains("M4V", Titles(h264, @"C:\x\a.mov"));
         Assert.Contains("Compress", Titles(h264, @"C:\x\a.mov"));
+        Assert.Contains("Fit 10 MB", Titles(h264, @"C:\x\a.mov"));
+        Assert.Contains("Fit 25 MB", Titles(h264, @"C:\x\a.mov"));
+        // Fit encodes H.264 with AAC sound: either encoder missing hides both sizes.
+        Assert.DoesNotContain("Fit 10 MB", Titles(Full with { H264Encode = false }, @"C:\x\a.mov"));
+        Assert.DoesNotContain("Fit 25 MB", Titles(Full with { AacEncode = false }, @"C:\x\a.mov"));
         Assert.Contains("M4A", Titles(h264, @"C:\x\a.mov"));
         Assert.DoesNotContain("MP3", Titles(h264, @"C:\x\a.mov"));
         Assert.Contains("MP3", Titles(h264 with { Mp3Encode = true }, @"C:\x\a.mov"));
