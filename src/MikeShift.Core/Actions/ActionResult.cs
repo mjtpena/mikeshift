@@ -4,7 +4,11 @@ namespace MikeShift.Core.Actions;
 /// <param name="Input">The input path this output came from (for batch actions such as Merge/Zip: the first input).</param>
 /// <param name="Path">The output path (a folder for " pages" / " split" outputs).</param>
 /// <param name="UsedDownloadsFallback">The output directory differs from the input's directory because it was not writable.</param>
-public sealed record ActionOutput(string Input, string Path, bool UsedDownloadsFallback);
+public sealed record ActionOutput(string Input, string Path, bool UsedDownloadsFallback)
+{
+    /// <summary>A short piece of what was written that the toast shows next to the file name (the first QR code read), or null.</summary>
+    public string? Preview { get; init; }
+}
 
 /// <summary>One input that could not be converted.</summary>
 /// <param name="Input">The input path.</param>

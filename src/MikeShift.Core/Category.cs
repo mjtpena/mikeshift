@@ -15,6 +15,8 @@ public enum Category
     Pdf,
     /// <summary>A text-like document: DOCX, DOC, RTF, ODT, HTML, TXT, MD.</summary>
     Document,
+    /// <summary>An Internet shortcut (<c>.url</c>): the address inside it is what the QR code action encodes.</summary>
+    Link,
     /// <summary>Anything else, including every directory. Only Zip is offered.</summary>
     Other,
 }

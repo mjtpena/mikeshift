@@ -48,6 +48,7 @@ public static class ContextMenuPlanner
         [Category.Video] = ["MP4", "MP3", "GIF", "Compress", "Fit", "WMV", "M4A", "M4V", "Trim"],
         [Category.Audio] = ["MP3", "M4A", "WAV", "Compress", "FLAC", "AIFF", "Trim"],
         [Category.Document] = ["PDF", "DOCX", "TXT", "HTML", "RTF", "ODT"],
+        [Category.Link] = ["QR code"],
     };
 
     /// <summary>The submenu label of an action: "Convert to JPG" for a format, the title for a tool, a few tools worded for a menu.</summary>
@@ -105,7 +106,7 @@ public static class ContextMenuPlanner
     /// </summary>
     private static bool IsVisible(ActionDef action, Category category, IReadOnlyList<string> paths, Capabilities caps)
     {
-        if (category != Category.Document) return action.IsVisibleFor(paths, caps);
+        if (category != Category.Document || action.Page == WheelPage.Tool) return action.IsVisibleFor(paths, caps);
         if (action.Requires is not null && !action.Requires(caps)) return false;
         if (!caps.WordCom && paths.Any(p => Kind.ExtensionOf(p) == "doc")) return false;
         return action.HideFor.Count == 0 || !paths.All(p => action.HideFor.Contains(Kind.ExtensionOf(p)));

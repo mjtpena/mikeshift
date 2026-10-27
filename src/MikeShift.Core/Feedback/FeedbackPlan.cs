@@ -67,7 +67,14 @@ public sealed record FeedbackPlan(ToastContent? Toast, DialogContent? Dialog, bo
         var kind = ToastKind.Success;
         string? reveal = result.Outputs.Count > 0 ? result.Outputs[0].Path : null;
 
-        if (result.Outputs.Count > 0 && result.Failures.Count == 0)
+        if (result.Outputs.Count == 1 && result.Failures.Count == 0 && result.Outputs[0].Preview is { Length: > 0 } preview)
+        {
+            // Read QR code: what the code says is the answer, the file it was saved to is the detail.
+            title = preview.Length > MaxPreview ? preview[..MaxPreview] + "…" : preview;
+            details.Add("Saved " + System.IO.Path.GetFileName(result.Outputs[0].Path));
+            details.Add(LocationText(result));
+        }
+        else if (result.Outputs.Count > 0 && result.Failures.Count == 0)
         {
             title = result.Outputs.Count == 1
                 ? "Saved " + System.IO.Path.GetFileName(result.Outputs[0].Path.TrimEnd('\\', '/'))
@@ -114,6 +121,9 @@ public sealed record FeedbackPlan(ToastContent? Toast, DialogContent? Dialog, bo
         var detail = string.Join(" · ", details.Where(d => d.Length > 0));
         return new ToastContent(title, detail.Length == 0 ? null : detail, kind, reveal);
     }
+
+    /// <summary>Longest first line of a QR code the toast shows before cutting it.</summary>
+    private const int MaxPreview = 80;
 
     private static string AlreadyTitle(ActionResult r) =>
         r.AlreadyLabel is null

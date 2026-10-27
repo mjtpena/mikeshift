@@ -134,7 +134,7 @@ public class CliRunnerTests
         Assert.Equal(1, exit);
         Assert.Equal("", stdout);
         Assert.Contains("unknown action \"Frobnicate\"", stderr);
-        Assert.Contains("Available: PDF, DOCX, RTF, HTML, ODT, Zip", stderr); // TXT hidden: the file is already .txt
+        Assert.Contains("Available: PDF, DOCX, RTF, HTML, ODT, QR code, Zip", stderr); // TXT hidden: the file is already .txt
     }
 
     [Fact]

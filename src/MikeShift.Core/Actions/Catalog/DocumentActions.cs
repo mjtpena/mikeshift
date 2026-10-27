@@ -1,10 +1,11 @@
 using MikeShift.Core.Documents;
+using MikeShift.Core.Images;
 
 namespace MikeShift.Core.Actions.Catalog;
 
 /// <summary>
 /// The Document category's actions, in wheel order.
-/// There are no tools for documents (only Zip, which the catalog appends). Whether a given format is offered for a
+/// The only tool for documents is QR code, for text files (besides Zip, which the catalog appends). Whether a given format is offered for a
 /// concrete selection (pictures allow TXT only, legacy .doc needs Word) is decided by <see cref="DocumentProbe.CanConvertTo"/>.
 /// Titles are unique within the list and double as CLI names.
 /// </summary>
@@ -18,6 +19,12 @@ public static class DocumentActions
         Doc("TXT", DocFormat.Txt, "txt"),
         Doc("HTML", DocFormat.Html, "html", "htm"),
         Doc("ODT", DocFormat.Odt, "odt"),
+
+        // The one document tool: only for plain text files (a .txt that fits in a code).
+        ActionDef.PerFile("QR code", WheelPage.Tool,
+            (input, _, ct) => QrCodes.WriteAsync(input, ct),
+            glyph: Glyphs.QrCode,
+            appliesTo: (paths, _) => paths.All(p => Kind.ExtensionOf(p) == "txt")),
     ];
 
     private static ActionDef Doc(string title, DocFormat format, params string[] hideFor) =>
