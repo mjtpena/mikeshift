@@ -8,8 +8,8 @@ How a file is recognised: by its content and its extension. A PDF is recognised 
 
 | You have | Convert to | Tools |
 |---|---|---|
-| **Pictures**: PNG, JPG, HEIC, TIFF, GIF, WebP, BMP, AVIF, ICO, JPEG XR | PNG, JPG, TIFF, GIF, BMP, WebP, HEIC, PDF, TXT (the text in the picture) | Compress, Resize, Crop, Strip EXIF, Merge PDF |
-| **PDF** | Page images (PNG or JPG), TXT | Compress, Split, Merge |
+| **Pictures**: PNG, JPG, HEIC, TIFF, GIF, WebP, BMP, AVIF, ICO, JPEG XR | PNG, JPG, TIFF, GIF, BMP, WebP, HEIC, PDF, Searchable PDF, TXT (the text in the picture) | Compress, Resize, Crop, Strip EXIF, Merge PDF, Merge searchable PDF |
+| **PDF** | Page images (PNG or JPG), TXT | Compress, Split, Merge, Searchable PDF (for scans) |
 | **Video**: MP4, M4V, MOV, AVI, WMV, MKV, WebM, MPEG, 3GP, TS and others | MP4, M4V, WMV, GIF, or just the audio (M4A, MP3) | Compress, Fit 10 MB, Fit 25 MB, Trim |
 | **Audio**: MP3, WAV, M4A, AAC, FLAC, AIFF, WMA, ALAC | M4A, WAV, AIFF, FLAC, MP3 | Compress, Trim |
 | **Documents**: DOCX, RTF, ODT, HTML, TXT, Markdown, and DOC (needs Word) | PDF, DOCX, RTF, TXT, HTML, ODT | none |
@@ -17,7 +17,8 @@ How a file is recognised: by its content and its extension. A PDF is recognised 
 
 A format is not offered for a file that is already in it (a PNG has no "PNG" tile), and a few tools appear only for the right selection:
 
-* **Merge PDF** (for pictures) and **Merge** (for PDFs) need at least two files.
+* **Merge PDF** and **Merge searchable PDF** (for pictures) and **Merge** (for PDFs) need at least two files.
+* **Searchable PDF** and **Merge searchable PDF** need text recognition, like TXT, and are hidden on a PC without a language for it.
 * **Resize** is named for your setting: **Resize 25%**, **Resize 50%** (the default) or **Resize 75%**.
 * **Compress** is hidden for HEIC photos on a PC that cannot write HEIC, because it would have nothing to save the result as.
 
@@ -26,11 +27,13 @@ A format is not offered for a file that is already in it (a PNG has no "PNG" til
 | Input extensions | `png` `jpg` `jpeg` `jpe` `jfif` `heic` `heif` `tif` `tiff` `gif` `webp` `bmp` `dib` `avif` `ico` `jxr` `wdp` |
 |---|---|
 | Output formats | PNG, JPG, TIFF, GIF, BMP, WebP, HEIC, PDF (one picture per PDF), and TXT (the text in the picture) |
-| Tools | **Compress** keeps the format and saves a smaller copy, only when it saves at least 5 percent. **Resize** halves (or quarters, or takes three quarters of) both sides. **Crop** opens the [crop editor](user-guide.md#crop-and-trim). **Strip EXIF** removes the camera, location and other metadata but keeps the picture upright. **Merge PDF** puts two or more pictures into one PDF. |
+| Tools | **Compress** keeps the format and saves a smaller copy, only when it saves at least 5 percent. **Resize** halves (or quarters, or takes three quarters of) both sides. **Crop** opens the [crop editor](user-guide.md#crop-and-trim). **Strip EXIF** removes the camera, location and other metadata but keeps the picture upright. **Merge PDF** puts two or more pictures into one PDF. **Merge searchable PDF** does the same and adds the text layer described next. |
 
 Pictures are converted upright: the camera's rotation is applied, so the result is not sideways. Compress, Resize and Crop refuse animated pictures and multi-page files (such as a multi-page TIFF) instead of silently dropping frames.
 
 **TXT** reads the text in a picture (a screenshot, a photo of a document) with Windows' own text recognition (OCR), on your PC, and writes it to `<name>.txt`: UTF-8 plain text, one line per recognised line. It reads the languages Windows has text recognition for, which come with the language packs of your Windows languages; the tile is hidden on a PC that has none (see [What depends on your PC](#what-depends-on-your-pc)). It reads printed text, not handwriting, and does not rebuild columns or tables. A multi-page TIFF is refused: convert it to PDF first, then use TXT on the PDF.
+
+**Searchable PDF** (a format tile next to PDF) makes the same one-picture-per-page PDF as **PDF**, with the text found in the picture laid over it as an invisible text layer, so the PDF can be searched and its text copied. The file is `<name> searchable.pdf`; a multi-page TIFF gets one page per frame. A picture with no readable text is refused and nothing is written.
 
 ### PDF
 
@@ -41,6 +44,7 @@ Pictures are converted upright: the camera's rotation is applied, so the result 
 | Compress | A copy with the pictures inside recompressed, only if it comes out smaller. |
 | Split | One PDF per page, in a new folder named `<name> split`. |
 | Merge | `Merged.pdf`, from two or more PDFs, in the order they are listed. |
+| Searchable PDF | `<name> searchable.pdf`: a scanned PDF with an invisible text layer on top of its original pages, so it can be searched and its text copied. Pages are kept as they are, not re-rendered. Pages that already have text are left alone. A PDF with text on every page is refused as already searchable. Needs text recognition (hidden without it). The text is set in an installed Windows font (Arial for Latin, Greek, Cyrillic, Hebrew and Arabic; the CJK, Hangul, Indic, Thai and Myanmar fonts of Windows for those scripts); words in a script with no installed font are left out. |
 
 Encrypted PDFs are refused (see [limitations](limitations.md#pdf)).
 

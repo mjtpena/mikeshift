@@ -119,8 +119,8 @@ The wheel and the right-click menu show only what fits your selection and works 
 
 | You select | Formats (convert to) | Tools |
 |---|---|---|
-| **Pictures** (PNG, JPG, HEIC, TIFF, GIF, WebP, BMP, AVIF …) | PNG, JPG, TIFF, GIF, BMP, WebP, HEIC, PDF, TXT (the text in the picture) | Compress, Resize, Crop, Strip EXIF, Merge PDF (two or more pictures) |
-| **PDF** | PNG or JPG (one image per page), TXT (including scanned pages) | Compress, Split, Merge (two or more PDFs) |
+| **Pictures** (PNG, JPG, HEIC, TIFF, GIF, WebP, BMP, AVIF …) | PNG, JPG, TIFF, GIF, BMP, WebP, HEIC, PDF, Searchable PDF, TXT (the text in the picture) | Compress, Resize, Crop, Strip EXIF, Merge PDF and Merge searchable PDF (two or more pictures) |
+| **PDF** | PNG or JPG (one image per page), TXT (including scanned pages) | Compress, Split, Merge (two or more PDFs), Searchable PDF (scans) |
 | **Video** (MP4, MOV, MKV, AVI, WMV, WebM …) | MP4, M4V, WMV, GIF, M4A (audio only), MP3 (audio only) | Compress, Fit 10 MB, Fit 25 MB, Trim |
 | **Audio** (MP3, WAV, M4A, FLAC, AIFF, WMA …) | M4A, WAV, AIFF, FLAC, MP3 | Compress, Trim |
 | **Documents** (DOCX, RTF, ODT, HTML, TXT, Markdown, DOC) | PDF, DOCX, RTF, TXT, HTML, ODT | none |
@@ -131,6 +131,8 @@ Select many files of one kind and every one is converted (a batch). A mixed sele
 ### Text from pictures and scans
 
 **TXT** on a picture, such as a screenshot or a photo of a page, writes the text in it to `photo.txt` next to it. **TXT** on a PDF reads the PDF's text, and reads scanned pages too. Both use Windows' own text recognition (OCR) on your PC; nothing is uploaded. Windows reads the languages you have installed (Settings > Time & language > Language & region; a language's options must include **Optical character recognition**, which most include). On a PC with none, the picture TXT tile is hidden, PDF TXT refuses scans, and Settings → Format support says so. Text recognition reads printed text line by line; it does not read handwriting or rebuild columns and tables.
+
+To keep the page and get text you can search and copy, use **Searchable PDF**: on a scanned PDF it is a tool that writes `scan searchable.pdf`, on a picture it is a format tile next to **PDF**. The result looks exactly like the original, with an invisible text layer on top. A PDF that already has text on every page is refused ("This PDF is already searchable").
 
 ### HEIC photos from an iPhone
 
@@ -156,7 +158,9 @@ Tools appear on the wheel's second page (and on the right-click menu where they 
 | **Fit 10 MB**, **Fit 25 MB** | Video | Makes an MP4 small enough to attach: at most 10 MB (or 25 MB), never over it. A video already under the size is copied into MP4 without re-encoding where possible. A video too long to stay watchable at that size is refused, with roughly how long one can be. See [supported formats](supported-formats.md#video). | `clip 10 MB.mp4` |
 | **Trim** | Video, audio | Opens the trim dialog; see below. | `clip trimmed.mp4` |
 | **Merge PDF** | Two or more pictures | Puts them into one PDF, in the order listed. | `Merged.pdf` |
+| **Merge searchable PDF** | Two or more pictures | As Merge PDF, with a text layer you can search and copy from. | `Merged searchable.pdf` |
 | **Merge** | Two or more PDFs | Joins them into one PDF. | `Merged.pdf` |
+| **Searchable PDF** | PDF | Adds an invisible text layer to the pages that have no text (scans), so the PDF can be searched and its text copied. The pages look exactly as before. Pictures have a **Searchable PDF** format tile that does the same while making the PDF. | `scan searchable.pdf` |
 | **Split** | PDF | One PDF per page, in a new folder. | `report split` (folder) |
 | **Zip** | Anything | Puts the files and folders into a zip archive. One item becomes `<name>.zip`; several become `Archive.zip`. | `photo.zip`, `Archive.zip` |
 
@@ -288,6 +292,7 @@ mikeshift --run PNG photo.heic                 # prints the output path, exit co
 mikeshift --run "Resize 50%" a.jpg b.jpg
 mikeshift --run Merge a.pdf b.pdf              # Merged.pdf next to a.pdf
 mikeshift --run TXT screenshot.png scan.pdf    # the text in a picture and in a scanned PDF
+mikeshift --run "Searchable PDF" scan.pdf       # scan searchable.pdf, with text you can search
 mikeshift --run Trim --range 0:05-0:12.5 clip.mp4
 mikeshift --run "Fit 10 MB" clip.mov            # an MP4 of at most 10 MB
 mikeshift --run Crop --crop 100,50,800,600@400x300 photo.jpg
