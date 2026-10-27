@@ -84,8 +84,7 @@ internal static class PdfImageSource
     {
         var (raster, orientation) = PdfPixels.DecodeSkia(path, MaxLongSide, MaxPixels)
             ?? throw new ConversionException($"{Path.GetFileName(path)} could not be read as an image.");
-        raster = PdfPixels.ApplyOrientation(raster, orientation);
-        PdfPixels.FlattenOnWhite(raster.Data);
+        raster = PdfPixels.ApplyOrientation(raster, orientation); // already flattened on white
         var jpeg = await PdfPixels.EncodeJpegAsync(raster, JpegQuality);
         return new PageImage(jpeg, raster.Width, raster.Height);
     }

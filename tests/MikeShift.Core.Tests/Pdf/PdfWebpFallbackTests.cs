@@ -13,6 +13,15 @@ public class PdfWebpFallbackTests
         return bmp.GetPixel(x, y);
     }
 
+    /// <summary>Lossless WebP of raw BGRA bytes, tagged with <paramref name="colorSpace"/> (written as an ICC profile when not sRGB).</summary>
+    private static byte[] EncodeWebp(byte[] bgra, int w, int h, SKAlphaType alpha, SKColorSpace? colorSpace)
+    {
+        using var bmp = new SKBitmap(new SKImageInfo(w, h, SKColorType.Bgra8888, alpha, colorSpace));
+        System.Runtime.InteropServices.Marshal.Copy(bgra, 0, bmp.GetPixels(), bgra.Length);
+        using var data = bmp.PeekPixels().Encode(new SKWebpEncoderOptions(SKWebpEncoderCompression.Lossless, 100))!;
+        return data.ToArray();
+    }
+
     private static bool Near(SKColor c, int r, int g, int b, int tolerance = 24) =>
         Math.Abs(c.Red - r) <= tolerance && Math.Abs(c.Green - g) <= tolerance && Math.Abs(c.Blue - b) <= tolerance;
 
@@ -51,6 +60,54 @@ public class PdfWebpFallbackTests
         var page = await PdfImageSource.LoadWithSkiaAsync(path);
 
         Assert.InRange(PageColour(page, 16, 16).Red, 110, 145);
+    }
+
+    [Fact]
+    public async Task A_downscaled_picture_with_transparency_gets_no_dark_edges()
+    {
+        // Opaque red up to just past the middle, fully transparent black after it: scaling straight-alpha pixels before flattening would
+        // blend the transparent black into the red at the seam. (One column past the middle, so the seam does not fall exactly on a
+        // boundary of the 8000 -> 3508 box filter.)
+        const int w = 8000, h = 400;
+        var bgra = new byte[w * h * 4];
+        for (var y0 = 0; y0 < h; y0++)
+            for (var x0 = 0; x0 <= w / 2; x0++)
+            {
+                bgra[(y0 * w + x0) * 4 + 2] = 255; // R
+                bgra[(y0 * w + x0) * 4 + 3] = 255; // A
+            }
+        // PNG, not WebP: libwebp may rewrite the colour hidden under alpha 0, which would hide the bug. The SkiaSharp path reads both alike.
+        using var bmp = new SKBitmap(new SKImageInfo(w, h, SKColorType.Bgra8888, SKAlphaType.Unpremul));
+        System.Runtime.InteropServices.Marshal.Copy(bgra, 0, bmp.GetPixels(), bgra.Length);
+        using var png = bmp.PeekPixels().Encode(SKPngEncoderOptions.Default)!;
+        using var tmp = new TempDir();
+        var path = tmp.WriteFile("seam.png", png.ToArray());
+
+        // The pixels before JPEG encoding (whose chroma subsampling blurs any red edge): red and white both have R = 255, so every
+        // pixel of a row must too; transparent black scaled in first would pull the seam down to about 191.
+        var (raster, _) = PdfPixels.DecodeSkia(path, PdfImageSource.MaxLongSide, 200_000_000)!.Value;
+        Assert.Equal(PdfImageSource.MaxLongSide, raster.Width);
+        var row = raster.Height / 2 * raster.Width * 4;
+        for (var x = 0; x < raster.Width; x++)
+            Assert.True(raster.Data[row + x * 4 + 2] == 255, $"dark seam at x={x}: R={raster.Data[row + x * 4 + 2]}");
+    }
+
+    [Fact]
+    public async Task A_webp_with_an_icc_profile_is_converted_to_srgb()
+    {
+        // Grey 128 in a linear-light profile is about 188 in sRGB; copying the channel values unconverted would give 128.
+        using var linear = SKColorSpace.CreateRgb(SKColorSpaceTransferFn.Linear, SKColorSpaceXyz.Srgb);
+        var grey = new byte[32 * 32 * 4];
+        Array.Fill(grey, (byte)128);
+        for (var i = 3; i < grey.Length; i += 4) grey[i] = 255;
+        var bytes = EncodeWebp(grey, 32, 32, SKAlphaType.Opaque, linear);
+        Assert.Contains("ICCP", ImageBytes.WebpChunks(bytes)); // the fixture really carries the profile
+        using var tmp = new TempDir();
+        var path = tmp.WriteFile("linear.webp", bytes);
+
+        var page = await PdfImageSource.LoadWithSkiaAsync(path);
+
+        Assert.InRange(PageColour(page, 16, 16).Red, 180, 196);
     }
 
     [Theory]

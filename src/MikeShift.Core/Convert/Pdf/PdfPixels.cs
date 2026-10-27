@@ -49,8 +49,9 @@ internal static class PdfPixels
 
     /// <summary>
     /// SkiaSharp decode of the first frame, for files WIC has no decoder for (WebP when the free WebP Image Extension is missing,
-    /// which Windows Server never has): BGRA scaled (box filter) so its long side is at most <paramref name="maxLongSide"/>, and the
-    /// EXIF orientation (1-8) still to apply. Null when SkiaSharp cannot read the file either.
+    /// which Windows Server lacks): opaque BGRA in sRGB (an embedded ICC profile is converted, as the WIC path does), flattened on white
+    /// and then scaled (box filter) so its long side is at most <paramref name="maxLongSide"/>, and the EXIF orientation (1-8) still to
+    /// apply. Null when SkiaSharp cannot read the file either.
     /// </summary>
     public static (Raster Pixels, int Orientation)? DecodeSkia(string path, int maxLongSide, long maxPixels)
     {
@@ -59,7 +60,7 @@ internal static class PdfPixels
         if ((long)codec.Info.Width * codec.Info.Height > maxPixels)
             throw new ConversionException($"{Path.GetFileName(path)} is too large to convert (over {maxPixels / 1_000_000} megapixels).");
 
-        var info = new SKImageInfo(codec.Info.Width, codec.Info.Height, SKColorType.Bgra8888, SKAlphaType.Unpremul);
+        var info = new SKImageInfo(codec.Info.Width, codec.Info.Height, SKColorType.Bgra8888, SKAlphaType.Unpremul, SKColorSpace.CreateSrgb());
         var bgra = new byte[info.BytesSize];
         var handle = System.Runtime.InteropServices.GCHandle.Alloc(bgra, System.Runtime.InteropServices.GCHandleType.Pinned);
         try
@@ -71,6 +72,8 @@ internal static class PdfPixels
             handle.Free();
         }
 
+        // Flatten before scaling: averaging straight-alpha pixels would let the colour of transparent ones darken the edges.
+        FlattenOnWhite(bgra);
         var raster = new Raster(bgra, info.Width, info.Height, 4);
         var (nw, nh) = FitLongSide(info.Width, info.Height, maxLongSide);
         // SKEncodedOrigin uses the EXIF orientation numbers (TopLeft = 1 ... LeftBottom = 8).
