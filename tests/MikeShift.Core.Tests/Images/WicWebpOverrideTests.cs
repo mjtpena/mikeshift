@@ -30,6 +30,17 @@ public sealed class WicWebpOverrideTests : IDisposable
     }
 
     [Fact]
+    public void With_the_switch_on_unreadable_paths_are_still_answered_without_throwing()
+    {
+        using var tmp = new TempDir();
+        CapabilityOverrides.Apply("no-wic-webp");
+
+        Assert.False(CapabilityOverrides.HidesWicDecoder(tmp.Combine("missing.webp")));
+        Assert.False(CapabilityOverrides.HidesWicDecoder(tmp.CreateDir("folder.webp")));
+        Assert.False(ImageCodec.CanDecodeHeader(tmp.Combine("missing.webp")));
+    }
+
+    [Fact]
     public void Without_the_switch_text_the_decoder_stays_visible()
     {
         using var tmp = new TempDir();

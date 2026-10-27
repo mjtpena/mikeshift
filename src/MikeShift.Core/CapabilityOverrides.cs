@@ -23,10 +23,21 @@ public static class CapabilityOverrides
 
     /// <summary>
     /// True while <c>no-wic-webp</c> is on and <paramref name="path"/> is a WebP file: callers then skip Windows' own decoder, exactly as on a PC
-    /// without the WebP Image Extension, and use the SkiaSharp fallback.
+    /// without the WebP Image Extension, and use the SkiaSharp fallback. Never throws: a file that cannot be read is left to the caller.
     /// </summary>
-    public static bool HidesWicDecoder(string path) =>
-        _noWicWebp && Images.ImageCodec.SniffFile(path) == Images.ImageContainer.Webp;
+    public static bool HidesWicDecoder(string path) => _noWicWebp && IsWebp(path);
+
+    private static bool IsWebp(string path)
+    {
+        try
+        {
+            return Images.ImageCodec.SniffFile(path) == Images.ImageContainer.Webp;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return false;
+        }
+    }
 
     private static bool HasName(string? spec, string name) =>
         !string.IsNullOrWhiteSpace(spec)
