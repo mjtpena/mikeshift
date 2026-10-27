@@ -181,6 +181,29 @@ Five settings, deliberately few: MikeShift does not try to be a format zoo with 
 * **Signing:** the manifest Identity is the Microsoft Store identity from Partner Center, and the Store signs Store packages; for sideloading, `packaging/make-dev-cert.ps1` creates a self-signed certificate whose subject is the manifest Publisher ([creating a signing certificate](https://learn.microsoft.com/en-us/windows/msix/package/create-certificate-package-signing)). Long paths are enabled by the application manifests.
 * **CI:** `.github/workflows/ci.yml` builds and tests on `windows-latest`, then runs `scripts/release.ps1 -Flavor all` (clean trimmed builds of both flavours and both architectures) and uploads the unsigned `.msix` files, bundles and `SHA256SUMS.txt`.
 
+### 7.1 Spike: Windows AI imaging (Remove background, Upscale 2x)
+
+Decision for issues #6 and #7, measured on the 2.5.x line: **not implemented yet**. The stable Windows App SDK has no hint-free foreground extractor.
+
+* **What the stable `Microsoft.WindowsAppSDK.AI` 2.5.5 offers** in `Microsoft.Windows.AI.Imaging` (checked in its `.winmd` and XML docs): `ImageObjectExtractor` (needs an `ImageObjectExtractorHint` with rectangles and include/exclude points, so it would need a UI to pick the object), `ImageObjectRemover`, `ImageScaler` (`ScaleSoftwareBitmap`/`ScaleImageBuffer(width, height)`, `MaxSupportedScaleFactor`), `ImageDescriptionGenerator` and `TextRecognizer`. 2.6.4 (the newest stable at the time of writing) has the same set.
+* **The hint-free API exists, but only as experimental.** `ImageForegroundExtractor` (`GetMaskFromSoftwareBitmap`/`GetMaskFromImageBuffer`, greyscale-8 mask, 0 = background, 255 = foreground) is in `Microsoft.WindowsAppSDK.AI` 2.5.4-experimental and is marked `[Experimental]`; it is absent from 2.5.5 and 2.6.4. A Store package should not ship an experimental Windows App SDK, and the framework package the store flavour depends on (`Microsoft.WindowsAppRuntime.2`) is the stable one. Passing a rectangle that covers the whole picture to `ImageObjectExtractor` is not a substitute: it selects one object, not the foreground, and nothing in the docs promises otherwise.
+* **Ready state.** Every one of these classes has `GetReadyState()` (`AIFeatureReadyState`: `Ready`, `NotReady`, `DisabledByUser`, `NotSupportedOnCurrentSystem`) and `EnsureReadyAsync()`. The tile would show only on `Ready` (and on `NotReady` only if the user is told about the download first). The packaged app also needs the `systemAIModels` capability (`systemai` namespace) and a `MaxVersionTested` of at least 10.0.26226.0 in the manifest.
+* **Component and size.** `Microsoft.WindowsAppSDK.AI` (depends only on Base and Foundation; no ONNX Runtime or DirectML). Re-enabling it (removing `ExcludeAssets="all"` from that one reference, nothing else changed) and building with `scripts/release.ps1 -Flavor all`:
+
+| Package | Before | With AI component | Change |
+|---|---|---|---|
+| sideload x64 `.msix` | 45.18 MB | 49.10 MB | +3.92 MB |
+| sideload ARM64 `.msix` | 43.89 MB | 47.59 MB | +3.70 MB |
+| sideload `.msixbundle` | 89.08 MB | 96.69 MB | +7.61 MB |
+| store x64 `.msix` | 23.66 MB | 23.66 MB | 0 |
+| store ARM64 `.msix` | 22.85 MB | 22.85 MB | 0 |
+| store `.msixbundle` | 46.51 MB | 46.51 MB | 0 |
+
+  The store flavour does not change: the native files (`Microsoft.Windows.AI.Imaging.dll`, `Microsoft.Windows.Workloads.dll`, `NPUDetect.dll`, `PerceptiveStreaming.dll`, the workload JSON files, about 4 MB compressed) come from the shared framework package. In the sideload flavour they sit in the package. `onnxruntime.dll` and `DirectML.dll` did not reappear in either flavour. Size would not have blocked the work (store +0 MB, under the 5 MB limit); the missing stable hint-free API does.
+* **Hardware.** The imaging APIs need a Copilot+ PC with an NPU (Microsoft's documentation: Image Super Resolution, Image Foreground Extraction and Object Erase currently require one). The development PC (Core Ultra 9 275HX with an "Intel(R) AI Boost" NPU) is not a Copilot+ PC, so the APIs were not run here; everything above about their behaviour is read from the metadata and the documentation, not measured.
+* **Model download.** The model is not in the package. If `GetReadyState()` is `NotReady`, `EnsureReadyAsync()` has Windows install it in the background (progress shows in Settings, Windows Update). The app opens no connection of its own, but `docs/privacy.md` would have to say in plain words that Windows may download the model through Windows Update when the feature is first used, and that Windows does it, not MikeShift.
+* **What this means for #7.** `ImageScaler` is in the stable 2.5.5 line and costs the same (store +0 MB, sideload about +3.9 MB x64), so Upscale 2x is not blocked by size or by an experimental API; it has the same Copilot+ and model-download conditions. #6 should wait for `ImageForegroundExtractor` in a stable release; the same component and numbers then apply (re-measure).
+
 ## 8. Developer switches
 
 The tray app has a set of switches that exist for the drag harness, the screenshot scripts and manual testing. Some of them weaken the product (`MIKESHIFT_ACCEPT_INJECTED` lets any program's `SendInput` drive the wheel), so they are all read through one class, `MikeShift.App/DevSwitches.cs`, and honoured only when **`DevSwitchPolicy.IsEnabled`** says so:
