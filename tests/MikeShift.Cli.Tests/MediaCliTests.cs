@@ -40,6 +40,43 @@ public class MediaCliTests
         Assert.True(info.HasVideo);
     }
 
+    [SkipIfNoCapability(nameof(Capabilities.H264Encode), nameof(Capabilities.AacEncode))]
+    public void Fit_10_mb_prints_an_mp4_named_for_the_size_and_at_most_that_big()
+    {
+        using var tmp = new TempDir();
+        var mp4 = CopyMp4(tmp);
+        using var guard = OriginalsGuard.Watch(mp4);
+
+        var r = CliProcess.Run("--run", "Fit 10 MB", mp4);
+
+        Assert.Equal(0, r.ExitCode);
+        Assert.Equal("", r.Stderr);
+        var output = Assert.Single(r.StdoutLines);
+        Assert.Equal(tmp.Combine("clip 10 MB.mp4"), output);
+        Assert.InRange(new FileInfo(output).Length, 1, 10_000_000);
+        var info = MediaInfo.TryRead(output);
+        Assert.NotNull(info);
+        Assert.True(info.IsH264);
+        Assert.InRange(info.Duration.TotalSeconds, 1.8, 2.4);
+    }
+
+    [SkipIfNoCapability(nameof(Capabilities.H264Encode), nameof(Capabilities.AacEncode))]
+    public void Max_size_offers_and_runs_one_fit_size()
+    {
+        using var tmp = new TempDir();
+        var mp4 = CopyMp4(tmp);
+
+        var list = CliProcess.Run("--list", "--max-size", "4", mp4);
+        var run = CliProcess.Run("--run", "Fit", "--max-size", "4", mp4);
+
+        Assert.Equal(0, list.ExitCode);
+        Assert.Contains("Fit 4 MB", list.Stdout);
+        Assert.DoesNotContain("Fit 10 MB", list.Stdout);
+        Assert.Equal(0, run.ExitCode);
+        Assert.Equal(tmp.Combine("clip 4 MB.mp4"), Assert.Single(run.StdoutLines));
+        Assert.InRange(new FileInfo(run.StdoutLines[0]).Length, 1, 4_000_000);
+    }
+
     [Fact]
     public void Aiff_from_a_wav_prints_the_new_file_and_leaves_the_original_alone()
     {

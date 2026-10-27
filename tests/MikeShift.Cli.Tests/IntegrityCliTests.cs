@@ -106,7 +106,7 @@ public class IntegrityCliTests
         using var tmp = new TempDir();
         var input = tmp.Combine("clip.mp4");
         await VideoCheck.WriteMp4Async(input);
-        await RunEvery(input, tmp, ["M4V", "WMV", "GIF", "M4A", "MP3", "Compress", "Trim", "Zip"]);
+        await RunEvery(input, tmp, ["M4V", "WMV", "GIF", "M4A", "MP3", "Compress", "Fit 10 MB", "Fit 25 MB", "Trim", "Zip"]);
     }
 
     [Fact]

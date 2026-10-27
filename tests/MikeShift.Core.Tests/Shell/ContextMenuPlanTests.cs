@@ -73,7 +73,8 @@ public class ContextMenuPlanTests
     {
         Assert.Equal(["Compress", "Convert to PNG", "Convert to JPG", "Split pages", "Convert to TXT", "Zip"], Labels(Full, @"C:\x\a.pdf"));
         Assert.Equal(["Merge PDFs", "Compress", "Convert to PNG", "Convert to JPG", "Split pages", "Zip"], Labels(Full, @"C:\x\a.pdf", @"C:\x\b.pdf"));
-        Assert.Equal(["Convert to MP3", "Convert to GIF", "Compress", "Convert to WMV", "Convert to M4A", "Zip"], Labels(Full, @"C:\x\a.mp4"));
+        Assert.Equal(["Convert to MP3", "Convert to GIF", "Compress", "Fit 10 MB", "Convert to WMV", "Zip"], Labels(Full, @"C:\x\a.mp4"));
+        Assert.Equal(["MP4", "MP3", "GIF", "Compress", "Fit 10 MB", "Zip"], Plan(Full, @"C:\x\a.mov").Entries.Select(e => e.ActionTitle));
         Assert.Equal(["Convert to M4A", "Convert to WAV", "Compress", "Convert to FLAC", "Convert to AIFF", "Zip"], Labels(Full, @"C:\x\a.mp3"));
         Assert.Equal(["Convert to PDF", "Convert to DOCX", "Convert to TXT", "Convert to HTML", "Convert to RTF", "Zip"], Labels(Full, @"C:\x\a.odt"));
     }
@@ -88,6 +89,7 @@ public class ContextMenuPlanTests
         var video = Labels(noEncoders, @"C:\x\a.avi");
         Assert.DoesNotContain("Compress", video);
         Assert.DoesNotContain("Convert to MP4", video);
+        Assert.DoesNotContain("Fit 10 MB", video);
         Assert.Contains("Convert to MP3", video);
         // Nothing optional at all (a fresh PC before the probe): still something useful, never an empty submenu.
         Assert.NotEmpty(Plan(Capabilities.None, @"C:\x\a.heic").Entries);

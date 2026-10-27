@@ -26,7 +26,7 @@ Tests that need a codec the machine lacks (HEIC and HEVC encoders and the like) 
 
 ### Fast and slow tests
 
-The slow part (the Media Foundation matrix, video transcodes, Microsoft Word) is written with `[SlowFact]` / `[SlowTheory]` and `[Trait("Category", "Slow")]`. Without `MIKESHIFT_SLOW=1` those tests are reported as skipped, so a plain `dotnet test MikeShift.sln` is the fast suite. Run everything with:
+The slow part (the Media Foundation matrix, video transcodes such as the 60 s Fit 10 MB / Fit 25 MB size checks, Microsoft Word) is written with `[SlowFact]` / `[SlowTheory]` and `[Trait("Category", "Slow")]`; capability names passed to them (`[SlowFact(nameof(Capabilities.H264Encode))]`) also skip the test on a PC without that encoder. Without `MIKESHIFT_SLOW=1` those tests are reported as skipped, so a plain `dotnet test MikeShift.sln` is the fast suite. Run everything with:
 
 ```powershell
 $env:MIKESHIFT_SLOW = '1'; dotnet test MikeShift.sln
