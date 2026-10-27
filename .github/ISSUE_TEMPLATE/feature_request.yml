@@ -76,7 +76,7 @@ body:
     id: where
     attributes:
       label: Where it goes
-      description: The files or folders that would change, if you know them. See the [architecture](https://github.com/mjtpe/mikeshift/blob/main/docs/developer/architecture.md).
+      description: The files or folders that would change, if you know them. See the [architecture](https://github.com/mjtpena/mikeshift/blob/main/docs/developer/architecture.md).
       placeholder: |
         - `src/MikeShift.Core/Convert/Images/`
         - `src/MikeShift.Core/Actions/Catalog/ImageActions.cs`
@@ -98,7 +98,7 @@ body:
     id: standard-checks
     attributes:
       label: Standard checks for a new action
-      description: These apply to every new action ([CONTRIBUTING](https://github.com/mjtpe/mikeshift/blob/main/CONTRIBUTING.md#coding-conventions)). Leave them as they are, or clear the box if the request is not a new action.
+      description: These apply to every new action ([CONTRIBUTING](https://github.com/mjtpena/mikeshift/blob/main/CONTRIBUTING.md#coding-conventions)). Leave them as they are, or clear the box if the request is not a new action.
       value: |
         - [ ] Defined in `src/MikeShift.Core/Actions/Catalog/` and gated through `Capabilities`, so the tile is hidden on PCs where it cannot work (the same way `HeifEncode` hides HEIC)
         - [ ] Works from the wheel, the right-click submenu (`src/MikeShift.Core/Shell/ContextMenuPlan.cs` ranking, if it should be one of the five lines), the Explorer hotkey and `mikeshift --run "<title>"`
