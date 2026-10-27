@@ -43,7 +43,7 @@ The issue's first guess (host: `Interaction/`, `Shell/`, `Hotkeys/`, `Hosting/`,
 
 ## 2. How a product plugs in
 
-Runtime plugin loading is out. The package is IL-trimmed with `TrimMode=full` (`Trimming.props`), the trimmer cannot see types loaded by name, and the app avoids reflection on purpose (architecture §7, "How the hazards were handled"). The classic COM interop in the wheel also depends on `MikeShift` and `MikeShift.Core` being trim roots (`TrimmerRootAssembly` in `MikeShift.App.csproj`).
+Runtime plugin loading is out. The package is IL-trimmed with `TrimMode=full` (`Trimming.props`), the trimmer cannot see types loaded by name, and the app avoids reflection on purpose (architecture §7, "How the hazards were handled"). The classic COM interop in the wheel is kept working by two things: `MikeShift` and `MikeShift.Core` are trim roots (`TrimmerRootAssembly` in `MikeShift.App.csproj`), and `Trimming.props` runs `tools/ComInterfaceScan.cs` over every linker input to keep each `[ComImport]` interface that is used whole. A host assembly would therefore not automatically need to be a root; that is a choice to review when the time comes.
 
 So a product would be **its own app that links the host at build time** and hands it three things in code:
 
@@ -66,7 +66,7 @@ Each product is a separate MSIX with its own Store listing. What has to be diffe
 |---|---|---|
 | Package identity | `Identity Name`, `Publisher` in `Package.appxmanifest` (Partner Center values) | Own identity per product |
 | Explorer command CLSID | `ShellIds.CommandClsid`, repeated in the manifest in `com:Class` and in two `desktop5:Verb` entries; `ManifestTests` checks them | New GUID. Two products sharing a CLSID would make one shadow the other |
-| Pipe name | `ShellIds.PipeNameFor` gives `mikeshift-shell-<SID>` | Different prefix. With the same name the second tray app to start cannot listen, and the other product's right-click would send its files to the wrong app |
+| Pipe name | `ShellIds.PipeNameFor` gives `mikeshift-shell-<SID>` | Different prefix. `ShellBridge.ListenAsync` creates the pipe with `MaxAllowedServerInstances`, so two tray apps of the same user can both listen on one name; the second does not fail, it makes routing ambiguous, and a right-click may reach the other product's app. The name is not an exclusive lock |
 | Single-instance key | `Program.InstanceKey` ("mikeshift") | Own key |
 | Data folder | `AppDataPaths.FolderName`, `ShellNames.DataFolder` | Own folder name (the cache files `shell-capabilities.txt` and `shell-options.txt` live there) |
 | Startup task, alias, display names | `MikeShiftStartup`, `mikeshift.exe` alias, `MikeShift` strings in the manifest | Own |
@@ -75,7 +75,7 @@ Each product is a separate MSIX with its own Store listing. What has to be diffe
 
 What stays the same in each: the shape of the manifest (an `App` entry, a `com:ExeServer` started with `-Embedding`, `windows.fileExplorerContextMenus`, optionally a console alias), the trimmed self-contained build, and the two flavours (sideload and store) from `scripts/release.ps1`.
 
-Two build details a second product has to repeat or generalise. `BundleMikeShiftCli` and the related verify targets in `MikeShift.App.csproj` are written for one app plus one CLI sharing a runtime and one trim run; `Trimming.props` is already product-neutral. And every product ships its own copy of .NET and the Windows App SDK (self-contained, as MSIX cannot depend on a machine-wide .NET), so a user with two products pays that size twice and has two resident tray processes.
+Two build details a second product has to repeat or generalise. `BundleMikeShiftCli` and the related verify targets in `MikeShift.App.csproj` are written for one app plus one CLI sharing a runtime and one trim run; `Trimming.props` is already product-neutral. And every product ships its own copy of .NET (an MSIX cannot depend on a machine-wide .NET). The Windows App SDK is duplicated only in the sideload flavour; the store flavour uses the shared `Microsoft.WindowsAppRuntime.2` framework package (`WindowsAppSDKSelfContained=false` in `scripts/release.ps1`). So a user with two Store products pays for .NET twice, not the Windows App SDK, and in both flavours has two resident tray processes.
 
 ## 4. Cost to MikeShift
 
@@ -83,7 +83,7 @@ What would get worse if MikeShift were split into host plus product, even with a
 
 * **Churn without a customer.** The cut goes through `ActionDef`, `ActionContext`, `ActionCatalog`, `ContextMenuPlanner`, `DragSession`/`WheelModel`, `JobRunner`, `FeedbackPlan` and `CliRunner`, which are among the most edited and most tested files. The tests that exercise them (`tests/MikeShift.Core.Tests`, `tests/MikeShift.Cli.Tests`, the drag and context menu harnesses) would all need to follow.
 * **Changes that span two projects.** A wheel change that needs a new tile field today touches `ActionDef` and the renderer; afterwards it would touch a host interface, the host and MikeShift's implementation. A Windows App SDK bump touches the host and the product.
-* **The trimming rules get harder.** `TrimmerRootAssembly` lists `MikeShift` and `MikeShift.Core`; a new assembly holding COM interfaces has to be added or its vtables can shift (architecture §7). `tools/ComInterfaceScan.cs` already protects every `[ComImport]` interface it finds, but the root list and the CLI-bundling targets have to be kept right by hand.
+* **The trimming rules need review.** `TrimmerRootAssembly` lists `MikeShift` and `MikeShift.Core`. `tools/ComInterfaceScan.cs` already preserves every used `[ComImport]` interface whole in any linker input, so a new assembly holding them does not by itself need to be a root (making it one would keep code nothing uses). What has to be reviewed by hand is which native entry points and existing roots still hold after the move, and the CLI-bundling targets, which assume one app.
 * **Speed and size are the things to defend.** The wheel appears about 30 ms after Shift (budget 100 ms) and the package is about 45 MB (sideload) / 23 MB (store). Replacing static calls with an interface on the `DragEnter` path is cheap, but it is on the path the budget measures, so it needs the drag harness before and after. Size should not change if the cut is clean, because the trimmer already removes what is unused; a cut that leaves the converter packages reachable from the host would not be clean.
 * **Wording.** Every user-visible string that says "MikeShift" would have to come from the product, or it stays wrong in the second product.
 
@@ -116,7 +116,7 @@ If a split ever happens, shared projects in this repo is the least bad. Copying 
 **If it starts, in this order:**
 
 1. **A host spike first, with one real sibling.** Build the sibling's right-click entry, pipe, `Naming`, toast and CLI against copies, and write down which of the section 1 types it actually needed. This is the cheapest way to find the real interface.
-2. **Cut `MikeShift.Core` into a converter-free project and the converters.** `Interaction/` (with `WheelPage` and a generic tile type), `Hotkeys/`, `Hosting/`, `Shell/` (with the identity values passed in), `Naming`, `JobLedger` and the generic parts of `Feedback/` go to the first; `Convert/`, `Capabilities`, `Kind`, `ConversionOptions`, `CodecHelp` and the catalog stay. Run the existing tests after each move.
+2. **Cut `MikeShift.Core` into a converter-free project and the converters.** `Interaction/` except `WheelText`, `Hotkeys/`, `Hosting/`, `Shell/` except `ContextMenuPlanner`, `CapabilityCache` and `OptionsCache` (with `WheelPage` and a generic tile type, and the identity values passed in), `Naming`, `JobLedger` and the generic parts of `Feedback/` go to the first (the three product-specific items stay on the product side until their product behaviour is separated); `WheelText` (it uses `Kind`, `Category`, `ActionCatalog` and Word wording), `ContextMenuPlanner`, the two caches (they use `Capabilities` and `ConversionOptions`), `Convert/`, `Capabilities`, `Kind`, `ConversionOptions`, `CodecHelp` and the catalog stay. Run the existing tests after each move.
 3. **Then the app side**, keeping the drag wheel and hotkey in MikeShift only.
 4. **Shared projects in this repo**, with the release script building more than one package.
 
