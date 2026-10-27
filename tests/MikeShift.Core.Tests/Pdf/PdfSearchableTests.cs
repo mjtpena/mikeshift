@@ -118,24 +118,53 @@ public class PdfSearchableTests
         Assert.True(before[1].AsSpan().SequenceEqual(after[1]));
     }
 
-    [SkipIfNoCapability(nameof(Capabilities.Ocr))]
-    public async Task A_rotated_scan_gets_its_text_where_the_viewer_shows_it()
+    /// <summary>
+    /// Turned pages, with and without a crop box. The scan is a picture stored turned so that the page's <c>/Rotate</c> shows it upright; the
+    /// word "Account" is found by text recognition in the rendered input (where the viewer shows it) and in the output's text layer (PdfPig,
+    /// in unrotated page coordinates measured from the crop box's corner), and the two must be the same place.
+    /// </summary>
+    [SkipIfNoCapabilityTheory(nameof(Capabilities.Ocr))]
+    [InlineData(0, false)]
+    [InlineData(90, false)]
+    [InlineData(180, false)]
+    [InlineData(270, false)]
+    [InlineData(0, true)]
+    [InlineData(90, true)]
+    [InlineData(180, true)]
+    [InlineData(270, true)]
+    public async Task A_turned_scan_gets_its_words_where_the_viewer_shows_them(int rotation, bool cropped)
     {
         using var tmp = new TempDir();
-        var path = tmp.WriteFile("turned.pdf", Fixtures.PdfOfPages(PdfFixturePage.Blank(SidewaysPicture(Page1))));
-        // The picture is stored turned a quarter turn; the page's /Rotate turns it upright again.
+        var path = tmp.WriteFile("turned.pdf", Fixtures.PdfOfPages(PdfFixturePage.Blank(TurnedPicture(Page1, rotation))));
+        double pageWidth = 595.276, pageHeight = 841.89; // A4 points, as the fixture writes it
         using (var doc = PdfReader.Open(path, PdfDocumentOpenMode.Modify))
         {
-            doc.Pages[0].Rotate = 90;
+            doc.Pages[0].Rotate = rotation;
+            if (cropped)
+            {
+                doc.Pages[0].CropBox = new PdfSharp.Pdf.PdfRectangle(new PdfSharp.Drawing.XPoint(30, 60), new PdfSharp.Drawing.XPoint(560, 840));
+                (pageWidth, pageHeight) = (530, 780);
+            }
             doc.Save(path);
         }
 
         var output = await PdfConverter.MakeSearchableAsync(path, default);
 
-        using var read = PigDocument.Open(output);
-        var words = read.GetPage(1).GetWords().Select(w => w.Text).ToList();
-        Assert.Contains("Scanned", words);
-        Assert.Contains("5532", words);
+        // Where the viewer shows the word: text recognition on the rendered input, pixels of a 300 dpi render to points.
+        var rendered = await PdfRender.OpenAsync(File.ReadAllBytes(path));
+        var raster = await PdfRender.RenderPageForTextAsync(rendered, 0);
+        var read = await MikeShift.Core.Images.TextRecognition.RecognizeAsync(raster, default);
+        var seen = read.Lines.SelectMany(l => l.Words).First(w => w.Text == "Account");
+        var shown = (X: (seen.X + seen.Width / 2) * 72 / 300, Y: (seen.Y + seen.Height / 2) * 72 / 300);
+
+        // Where the text layer puts it: PdfPig reports the page as shown (turned, from the crop box's corner, origin bottom-left).
+        using var read2 = PigDocument.Open(output);
+        var box = read2.GetPage(1).GetWords().First(w => w.Text == "Account").BoundingBox;
+        var shownHeight = rotation is 90 or 270 ? pageWidth : pageHeight;
+        var placed = (X: (box.Left + box.Right) / 2, Y: shownHeight - (box.Top + box.Bottom) / 2);
+
+        Assert.InRange(Math.Abs(placed.X - shown.X), 0, 8);
+        Assert.InRange(Math.Abs(placed.Y - shown.Y), 0, 8);
         var before = await Renders(path);
         var after = await Renders(output);
         Assert.True(before[0].AsSpan().SequenceEqual(after[0]));
@@ -166,18 +195,50 @@ public class PdfSearchableTests
         Assert.InRange(Math.Abs(wa.Bottom - (wb.Bottom + 400)), 0, 6);
     }
 
-    /// <summary>A page-shaped picture of <paramref name="lines"/> turned a quarter turn anticlockwise, so a page turned clockwise shows it upright.</summary>
-    private static byte[] SidewaysPicture(string[] lines)
+    /// <summary>A page-shaped picture of <paramref name="lines"/> turned anticlockwise by <paramref name="rotation"/>, so a page turned clockwise by it shows the text upright.</summary>
+    private static byte[] TurnedPicture(string[] lines, int rotation)
     {
         using var text = SKImage.FromEncodedData(Fixtures.TextPicture(lines, fontSize: 48));
         using var surface = SKSurface.Create(new SKImageInfo(1240, 1754, SKColorType.Bgra8888, SKAlphaType.Premul));
         surface.Canvas.Clear(SKColors.White);
-        surface.Canvas.Translate(0, 1754);
-        surface.Canvas.RotateDegrees(-90);
+        switch (rotation)
+        {
+            case 90: surface.Canvas.Translate(0, 1754); surface.Canvas.RotateDegrees(-90); break;
+            case 180: surface.Canvas.Translate(1240, 1754); surface.Canvas.RotateDegrees(180); break;
+            case 270: surface.Canvas.Translate(1240, 0); surface.Canvas.RotateDegrees(90); break;
+        }
         surface.Canvas.DrawImage(text, 40, 40, new SKSamplingOptions());
         using var image = surface.Snapshot();
         using var data = image.Encode(SKEncodedImageFormat.Png, 100);
         return data.ToArray();
+    }
+
+    // Right-to-left lines: the words go into the layer in reading order and read back in it (no text recognition needed: the words are given).
+    [Theory]
+    [InlineData("שלום", "עולם")]
+    [InlineData("مرحبا", "بالعالم")]
+    public void Right_to_left_words_read_back_in_reading_order_from_the_text_layer(string first, string second)
+    {
+        if (!PdfFonts.IsInstalled("Arial")) return;
+        using var tmp = new TempDir();
+        var bytes = Fixtures.PdfOfPages(PdfFixturePage.Text("x"));
+        using var doc = PdfReader.Open(new MemoryStream(bytes), PdfDocumentOpenMode.Modify);
+        var page = doc.Pages[0];
+        // One line, as text recognition reports a right-to-left line: the first word is the rightmost.
+        var words = new List<MikeShift.Core.Images.RecognizedWord>
+        {
+            new(first, 400, 100, 90, 30),
+            new(second, 250, 100, 90, 30),
+        };
+        var text = new MikeShift.Core.Images.RecognizedText(600, 800, [new MikeShift.Core.Images.RecognizedLine(first + " " + second, words)]);
+
+        var added = PdfSearchable.AddInvisibleText(page, text, new PdfSharp.Drawing.XRect(0, 0, 600, 800));
+        var path = tmp.Combine("rtl.pdf");
+        doc.Save(path);
+
+        Assert.Equal(2, added);
+        var extracted = PdfText.ExtractPages(File.ReadAllBytes(path), default)[0];
+        Assert.EndsWith(first + " " + second, extracted.Replace("\r\n", "\n").Split('\n').Last());
     }
 
     [Fact]

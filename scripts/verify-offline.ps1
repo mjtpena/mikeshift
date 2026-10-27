@@ -273,8 +273,13 @@ try {
     }
   }
   foreach ($set in @(@('Merge', (Get-ChildItem (Join-Path $samples 'pdf') -Filter *.pdf)), @('Merge PDF', (Get-ChildItem (Join-Path $samples 'images') -Include *.png, *.jpg -Recurse)), @('Merge searchable PDF', (Get-ChildItem (Join-Path $samples 'images') -Include *.png, *.jpg -Recurse)))) {
-    $r = Invoke-Cli (@('--run', $set[0]) + @($set[1] | Select-Object -First 3 | ForEach-Object FullName)); $cliRuns++
+    $inputs = @($set[1] | Select-Object -First 3 | ForEach-Object FullName)
+    # Offered only when this PC can do it (Merge searchable PDF needs text recognition): skip the run when --list does not offer it.
+    $offered = Invoke-Cli (@('--list') + $inputs); $cliRuns++
+    if ($offered.Exit -eq 0 -and @($offered.Out.Trim() -split ', ') -notcontains $set[0]) { continue }
+    $r = Invoke-Cli (@('--run', $set[0]) + $inputs); $cliRuns++
     $key = "exit $($r.Exit)"; $exitCodes[$key] = 1 + [int]$exitCodes[$key]
+    if ($r.Exit -ne 0 -and $r.Err -notmatch 'find any text') { $failures.Add("$($set[0]) : exit $($r.Exit): $($r.Err.Trim())") }
   }
   $zipFolder = Join-Path $samples 'folder\Project'
   $r = Invoke-Cli @('--run', 'Zip', $zipFolder); $cliRuns++

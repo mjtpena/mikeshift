@@ -1,4 +1,5 @@
 using System.Text;
+using MikeShift.Core.Images;
 using UglyToad.PdfPig;
 using UglyToad.PdfPig.Content;
 using UglyToad.PdfPig.Exceptions;
@@ -77,9 +78,23 @@ internal static class PdfText
         foreach (var line in lines)
         {
             if (sb.Length > 0) sb.AppendLine();
-            sb.AppendJoin(' ', line.OrderBy(w => w.BoundingBox.Left).Select(w => w.Text));
+            sb.AppendJoin(' ', InReadingOrder(line));
         }
         return sb.ToString().Trim();
+    }
+
+    /// <summary>
+    /// The words of one line in reading order: left to right, except on a right-to-left line (Hebrew, Arabic), which reads from its right edge
+    /// with left-to-right runs (a name, a number) kept in their own order, the rule <see cref="TextRecognition"/> applies to recognised lines.
+    /// </summary>
+    private static IEnumerable<string> InReadingOrder(List<Word> line)
+    {
+        var leftToRight = line.OrderBy(w => w.BoundingBox.Left).ToList();
+        var boxes = leftToRight
+            .Select(w => new RecognizedWord(w.Text, w.BoundingBox.Left, w.BoundingBox.Bottom, w.BoundingBox.Width, w.BoundingBox.Height)).ToList();
+        return TextRecognition.IsRightToLeftLine(boxes)
+            ? TextRecognition.RightToLeftReadingOrder(boxes).Select(w => w.Text)
+            : leftToRight.Select(w => w.Text);
     }
 
     // ------------------------------------------------------------------ Hebrew

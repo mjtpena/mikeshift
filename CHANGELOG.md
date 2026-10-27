@@ -13,6 +13,7 @@ All notable changes to MikeShift are listed here. The format follows [Keep a Cha
 
 ### Fixed
 
+* **PDF to TXT keeps the word order of Hebrew and Arabic lines.** The words of a right-to-left line were written from left to right, which put them in reverse order; they are now read from the right.
 * **WebP to PDF, Merge PDF and the crop editor work without the WebP Image Extensions.** On a PC without the free extension (Windows Server, or a PC where it was removed), turning a WebP into a PDF said the picture "could not be read as an image", and the crop editor could not open it. They now read WebP themselves, like every other picture action.
 
 ## 1.0.0 (2026-10-26)
