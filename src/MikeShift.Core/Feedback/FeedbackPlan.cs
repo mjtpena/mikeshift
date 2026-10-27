@@ -78,6 +78,7 @@ public sealed record FeedbackPlan(ToastContent? Toast, DialogContent? Dialog, bo
         else if (result.Outputs.Count > 0)
         {
             title = $"Saved {result.Outputs.Count} of {Math.Max(result.Total, result.Outputs.Count + result.Failures.Count)}";
+            if (result.Summary is not null) details.Add(result.Summary);
             details.Add(result.Failures.Count == 1 ? "1 couldn't be converted" : $"{result.Failures.Count} couldn't be converted");
             kind = ToastKind.Warning;
         }

@@ -56,9 +56,7 @@ internal static class FaceDetection
             var detector = await FaceDetector.CreateAsync().AsTask(ct).ConfigureAwait(false);
             var faces = await detector.DetectFacesAsync(input).AsTask(ct).ConfigureAwait(false);
 
-            return faces.Select(f => new RectPx(
-                (int)Math.Floor(f.FaceBox.X * scaleX), (int)Math.Floor(f.FaceBox.Y * scaleY),
-                (int)Math.Ceiling(f.FaceBox.Width * scaleX), (int)Math.Ceiling(f.FaceBox.Height * scaleY))).ToList();
+            return faces.Select(f => MapBox(f.FaceBox.X, f.FaceBox.Y, f.FaceBox.Width, f.FaceBox.Height, scaleX, scaleY)).ToList();
         }
         catch (Exception ex) when (ex is COMException or ArgumentException or InvalidOperationException or OutOfMemoryException or NotSupportedException)
         {
@@ -66,13 +64,24 @@ internal static class FaceDetection
         }
     }
 
+    /// <summary>A box found in the reduced copy, in the pixels of the full picture (rounded outwards, so the face is never cut short).</summary>
+    internal static RectPx MapBox(double x, double y, double width, double height, double scaleX, double scaleY) =>
+        new((int)Math.Floor(x * scaleX), (int)Math.Floor(y * scaleY), (int)Math.Ceiling(width * scaleX), (int)Math.Ceiling(height * scaleY));
+
+    /// <summary>The size of the copy the detector reads: the picture itself up to <paramref name="maxSide"/> on the long side, otherwise shrunk to fit.</summary>
+    internal static (int Width, int Height) ReducedSize(int width, int height, int maxSide)
+    {
+        var longSide = Math.Max(width, height);
+        if (longSide <= maxSide) return (width, height);
+        var s = (double)maxSide / longSide;
+        return (Math.Clamp((int)Math.Floor(width * s), 1, maxSide), Math.Clamp((int)Math.Floor(height * s), 1, maxSide));
+    }
+
     private static Raster FitWithin(Raster pixels, int maxSide)
     {
-        var longSide = Math.Max(pixels.Width, pixels.Height);
-        if (longSide <= maxSide) return pixels;
-        var s = (double)maxSide / longSide;
-        var w = Math.Clamp((int)Math.Floor(pixels.Width * s), 1, maxSide);
-        var h = Math.Clamp((int)Math.Floor(pixels.Height * s), 1, maxSide);
-        return pixels.CropScale(new RectPx(0, 0, pixels.Width, pixels.Height), w, h);
+        var (w, h) = ReducedSize(pixels.Width, pixels.Height, maxSide);
+        return w == pixels.Width && h == pixels.Height
+            ? pixels
+            : pixels.CropScale(new RectPx(0, 0, pixels.Width, pixels.Height), w, h);
     }
 }

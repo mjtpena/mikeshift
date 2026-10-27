@@ -235,7 +235,7 @@ public static class ImageConverter
         var boxes = FaceBlur.Cover(await find(img.Pixels, ct).ConfigureAwait(false), img.Width, img.Height);
         if (boxes.Count == 0) throw new ConversionException(Feedback.FaceBlurCopy.NoFaces);
 
-        var pixels = FaceBlur.Apply(img.Pixels, boxes);
+        var pixels = FaceBlur.Apply(img.Pixels, boxes, ct);
         var format = SameFormat(img, caps);
         var bytes = await EncodeAsync(img, pixels, format, options.QualityFraction, keepExif: false, ct).ConfigureAwait(false);
         if (format == ImageFormat.Jpg && JpegMeta.HasMetadataSegments(bytes))

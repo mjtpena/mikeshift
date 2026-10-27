@@ -228,6 +228,87 @@ public class BlurFacesTests
         Assert.Equal(["party.png"], FileNames(tmp));
     }
 
+    // ------------------------------------------------------------------ memory, cancellation, mapping
+
+    [Fact]
+    public void A_box_covering_a_large_picture_needs_little_more_than_the_copy_of_the_picture()
+    {
+        var source = new Raster(4000, 3000, new byte[4000 * 3000 * 4]);
+        var before = GC.GetAllocatedBytesForCurrentThread();
+
+        var blurred = FaceBlur.Apply(source, [new RectPx(0, 0, 4000, 3000)]);
+
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        Assert.Equal(source.Bgra.Length, blurred.Bgra.Length);
+        Assert.True(allocated < source.Bgra.Length * 1.1, $"{allocated:N0} bytes allocated for a {source.Bgra.Length:N0}-byte picture");
+    }
+
+    [Fact]
+    public void Blurring_observes_the_cancellation_token()
+    {
+        var source = Checkerboard(200, 200);
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        Assert.Throws<OperationCanceledException>(() => FaceBlur.Apply(source, [new RectPx(10, 10, 100, 100)], cts.Token));
+    }
+
+    [Fact]
+    public async Task Cancelling_after_the_faces_are_found_writes_nothing()
+    {
+        using var tmp = new TempDir();
+        var input = tmp.WriteFile("party.png", Fixtures.PngRgb(64, 48));
+        using var cts = new CancellationTokenSource();
+        FaceFinder cancelsAfterFinding = (_, _) =>
+        {
+            cts.Cancel();
+            return Task.FromResult<IReadOnlyList<RectPx>>([new RectPx(5, 5, 20, 20)]);
+        };
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            ImageConverter.BlurFacesAsync(input, Caps, ConversionOptions.Default, cancelsAfterFinding, cts.Token));
+
+        Assert.Equal(["party.png"], FileNames(tmp));
+    }
+
+    [Theory]
+    [InlineData(4000, 3000, 1600, 1200)]
+    [InlineData(3000, 4000, 1200, 1600)]
+    [InlineData(1600, 900, 1600, 900)]
+    [InlineData(800, 600, 800, 600)]
+    [InlineData(20000, 10, 1600, 1)]
+    public void The_detector_reads_a_copy_of_at_most_1600_pixels_on_the_long_side(int w, int h, int expectedW, int expectedH) =>
+        Assert.Equal((expectedW, expectedH), FaceDetection.ReducedSize(w, h, FaceDetection.DetectLongSide));
+
+    [Fact]
+    public void A_box_found_in_the_reduced_copy_is_mapped_back_to_the_full_picture_and_then_grown_and_clamped()
+    {
+        // 4000 x 3000 is read as 1600 x 1200, so every coordinate is multiplied by 2.5.
+        var (rw, rh) = FaceDetection.ReducedSize(4000, 3000, FaceDetection.DetectLongSide);
+        double scaleX = 4000.0 / rw, scaleY = 3000.0 / rh;
+
+        var box = FaceDetection.MapBox(100.5, 40, 200, 220.2, scaleX, scaleY);
+
+        Assert.Equal(new RectPx(251, 100, 500, 551), box); // rounded outwards: floor of the corner, ceiling of the size
+        Assert.Equal(new RectPx(176, 17, 650, 717), FaceBlur.Cover([box], 4000, 3000).Single());
+        // a face at the edge of the reduced copy ends at the edge of the picture after growing
+        var edge = FaceDetection.MapBox(1500, 1100, 100, 100, scaleX, scaleY);
+        var covered = FaceBlur.Cover([edge], 4000, 3000).Single();
+        Assert.Equal(4000, covered.X + covered.W);
+        Assert.Equal(3000, covered.Y + covered.H);
+    }
+
+    [SkipIfNoCapability(nameof(Capabilities.FaceDetect))]
+    public async Task The_real_detector_reads_a_picture_over_1600_pixels_without_failing()
+    {
+        // No face photo can be checked in (no binary fixtures), so this only shows the reduce-and-map path runs on the real API.
+        var pixels = new Raster(4000, 3000, Enumerable.Repeat((byte)200, 4000 * 3000 * 4).ToArray());
+
+        var boxes = await FaceDetection.FindAsync(pixels, default);
+
+        Assert.All(boxes, b => Assert.True(b.X >= 0 && b.Y >= 0 && b.X + b.W <= 4001 && b.Y + b.H <= 3001));
+    }
+
     // ------------------------------------------------------------------ the tile
 
     [Fact]
@@ -280,6 +361,24 @@ public class BlurFacesTests
         Assert.Equal(tmp.Combine("a blurred.png"), Assert.Single(result.Outputs).Path);
         Assert.Equal(FaceBlurCopy.NoFaces, Assert.Single(result.Failures).Message);
         Assert.Equal(["a blurred.png", "a.png", "b.png"], FileNames(tmp));
+    }
+
+    [Fact]
+    public void A_partly_successful_batch_still_shows_how_many_faces_were_blurred()
+    {
+        var result = new ActionResult
+        {
+            Total = 2,
+            Outputs = [new ActionOutput(@"C:.png", @"C: blurred.png", false)],
+            Failures = [new ActionFailure(@"C:.png", FaceBlurCopy.NoFaces)],
+            Summary = FaceBlurCopy.Blurred(2),
+        };
+
+        var toast = FeedbackPlan.ToastFor(result);
+
+        Assert.Equal("Saved 1 of 2", toast.Title);
+        Assert.Equal("Blurred 2 faces · 1 couldn't be converted", toast.Detail);
+        Assert.Equal(ToastKind.Warning, toast.Kind);
     }
 
     [Fact]
