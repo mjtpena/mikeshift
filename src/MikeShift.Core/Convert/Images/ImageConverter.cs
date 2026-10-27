@@ -55,6 +55,18 @@ public static class ImageConverter
         return await CommitAsync(input, ExtensionFor(format, null), "", bytes, ct).ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// Writes a Windows icon with 16, 24, 32, 48, 64, 128 and 256 px images (see <see cref="IcoWriter"/>); output <c>name.ico</c>, uniquified.
+    /// <c>Soft</c> is true when the source is under 256 px on its longer side, so the larger sizes are enlarged and will look soft.
+    /// </summary>
+    public static async Task<(string Path, bool Soft)> ToIcoAsync(string input, CancellationToken ct)
+    {
+        var img = await ImageCodec.DecodeAsync(input, ImageCodec.MaxPixels, ct).ConfigureAwait(false);
+        var bytes = await IcoWriter.WriteAsync(img.Pixels, ct).ConfigureAwait(false);
+        var path = await CommitAsync(input, ".ico", "", bytes, ct).ConfigureAwait(false);
+        return (path, IcoWriter.IsSoft(img.Pixels));
+    }
+
     // ------------------------------------------------------------------ Tool page
 
     /// <summary>Compress at the default (Medium) strength: long side to 3000 px, quality 0.6, " compressed"; keep only if at least 5 % smaller.</summary>

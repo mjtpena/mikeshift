@@ -131,6 +131,20 @@ public class ImageCliTests
     }
 
     [Fact]
+    public void Run_ico_writes_an_icon_and_says_when_the_picture_is_small()
+    {
+        using var tmp = new TempDir();
+        var r = CliProcess.Run("--run", "ICO", tmp.WriteFile("logo.png", Fixtures.PngRgb()));
+        Assert.Equal(0, r.ExitCode);
+        var output = Assert.Single(r.StdoutLines);
+        Assert.Equal(tmp.Combine("logo.ico"), output);
+        var head = File.ReadAllBytes(output);
+        Assert.Equal(new byte[] { 0, 0, 1, 0, 7, 0 }, head[..6]);
+        Assert.Contains("note: ", r.Stderr);
+        Assert.Contains("256 px", r.Stderr);
+    }
+
+    [Fact]
     public void Run_every_image_fixture_through_png_or_jpg()
     {
         using var tmp = new TempDir();
