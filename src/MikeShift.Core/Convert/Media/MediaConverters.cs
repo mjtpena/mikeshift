@@ -118,8 +118,8 @@ public static class VideoConverter
     /// </summary>
     /// <remarks>
     /// <para>A source already under the limit is re-wrapped into MP4 without re-encoding when it is H.264/AAC (<see cref="StreamCopy"/>), so
-    /// its quality is untouched and the result is still an MP4 that can be attached; anything else is encoded at no more than the usual
-    /// conversion quality.</para>
+    /// its quality is untouched and the result is still an MP4 that can be attached; anything else is encoded at no more than its own bitrate
+    /// (<see cref="SizeTarget.Bitrates.AtMost"/>) and the usual conversion quality.</para>
     /// <para>Otherwise the video bitrate is worked out from the duration (<see cref="SizeTarget"/>), the picture size from that bitrate, and the
     /// result is measured: one that came out over the limit is encoded once more at a proportionally lower bitrate. <c>MediaTranscoder</c> has
     /// no two-pass mode, so this measurement is what guarantees the size. A video too long to fit at a watchable quality is refused before
@@ -136,24 +136,25 @@ public static class VideoConverter
         var sourceBytes = new FileInfo(input).Length;
         var under = sourceBytes <= limit;
         var split = SizeTarget.Split(limit, info.Duration, info.HasAudio, streamShare);
+        // Only a source already under the size that can be copied as it is skips the checks below; everything else will be encoded.
+        var copy = under && StreamCopy.CanCopy(info);
 
-        // Refuse before CommitAsync creates anything: no encode, no temporary file. (A file already under the size may still be copied.)
-        if (!under && split is not { })
-            throw new ConversionException(SizeTargetCopy.UnknownLength);
-        if (!under && split is { } tight && tight.Video < SizeTarget.MinWatchableVideo)
-            throw new ConversionException(SizeTargetCopy.TooLong(megabytes, SizeTarget.LongestWatchable(limit, info.HasAudio)));
+        // Refuse before CommitAsync creates anything: no encode, no temporary file.
+        if (!copy) RequireEncodable();
 
         return await MediaCommon.CommitAsync(input, ".mp4", SizeTargetCopy.Suffix(megabytes), async (temp, token) =>
         {
-            if (under)
+            if (copy)
             {
                 if (await Task.Run(() => StreamCopy.TryRewrapToMp4(input, info, temp, token), token).ConfigureAwait(false)
                     && new FileInfo(temp).Length <= limit)
                     return;
                 token.ThrowIfCancellationRequested();
                 File.WriteAllBytes(temp, []);
+                // The copy did not work out: the same checks as for any other encode, before encoding.
+                RequireEncodable();
             }
-            if (split is not { } budget) throw new ConversionException(SizeTargetCopy.UnknownLength);
+            var budget = split!.Value;
             // A small source that could not be copied: spend no more than it already does, so the file does not grow.
             var first = under ? budget.AtMost(SizeTarget.AverageBitrate(sourceBytes, info.Duration)) : budget;
 
@@ -180,6 +181,14 @@ public static class VideoConverter
                 return MediaTranscode.RunAsync(input, temp, profile, null, "MP4", token, sourceVideoSubtype: info.VideoSubtype);
             }
         }, ct).ConfigureAwait(false);
+
+        void RequireEncodable()
+        {
+            if (split is not { } budget)
+                throw new ConversionException(SizeTargetCopy.UnknownLength);
+            if (budget.Video < SizeTarget.MinWatchableVideo)
+                throw new ConversionException(SizeTargetCopy.TooLong(megabytes, SizeTarget.LongestWatchable(limit, info.HasAudio)));
+        }
     }
 
     /// <summary>Trim to <paramref name="range"/>, " trimmed" (re-encoded: MP4, or WMV for WMV sources).</summary>

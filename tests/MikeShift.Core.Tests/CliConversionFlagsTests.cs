@@ -183,11 +183,18 @@ public class CliConversionFlagsTests
         var viaTitle = await Run("--run", "Fit 3 MB", mp4);
         var fixedSize = await Run("--run", "fit 10 mb", mp4);
         var viaBoth = await Run("--run", "Fit 25 MB", "--max-size", "25MB", mp4);
+        // Any spelling the size is read from names the same tile.
+        var squeezed = await Run("--run", "Fit 4MB", mp4);
+        var spaced = await Run("--run", "fit  5 mb", mp4);
+        var padded = await Run("--run", "Fit 006 MB", mp4);
 
         Assert.Equal(tmp.Combine("clip 8 MB.mp4"), viaFlag.Out.Trim());
         Assert.Equal(tmp.Combine("clip 3 MB.mp4"), viaTitle.Out.Trim());
         Assert.Equal(tmp.Combine("clip 10 MB.mp4"), fixedSize.Out.Trim());
         Assert.Equal(tmp.Combine("clip 25 MB.mp4"), viaBoth.Out.Trim());
+        Assert.Equal(tmp.Combine("clip 4 MB.mp4"), squeezed.Out.Trim());
+        Assert.Equal(tmp.Combine("clip 5 MB.mp4"), spaced.Out.Trim());
+        Assert.Equal(tmp.Combine("clip 6 MB.mp4"), padded.Out.Trim());
         Assert.InRange(Size(viaTitle.Out.Trim()), 1, 3_000_000);
     }
 

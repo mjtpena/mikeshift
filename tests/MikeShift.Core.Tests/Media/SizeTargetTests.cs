@@ -108,10 +108,30 @@ public class SizeTargetTests
     public void A_small_source_that_is_encoded_spends_no_more_than_it_already_does()
     {
         var budget = new SizeTarget.Bitrates(5_000_000, 128_000);
-        Assert.Equal(new SizeTarget.Bitrates(672_000, 128_000), budget.AtMost(800_000));
+        // Under 1 Mbps of picture the sound drops to 96 kbps, as in Split.
+        Assert.Equal(new SizeTarget.Bitrates(704_000, 96_000), budget.AtMost(800_000));
+        Assert.Equal(new SizeTarget.Bitrates(1_072_000, 128_000), budget.AtMost(1_200_000));
         Assert.Equal(budget, budget.AtMost(9_000_000));
         Assert.Equal(budget, budget.AtMost(0)); // unknown: unchanged
         Assert.Equal(800_000, SizeTarget.AverageBitrate(6_000_000, Minute));
+    }
+
+    [Theory]
+    [InlineData(250_000u, true)]
+    [InlineData(196_000u, true)]  // exactly the floor
+    [InlineData(150_000u, true)]  // below it
+    [InlineData(60_000u, false)]
+    [InlineData(100_000u, false)]
+    public void A_low_bitrate_source_is_asked_for_its_own_bitrate_or_the_encoder_floor_never_more(uint sourceBps, bool hasAudio)
+    {
+        var budget = new SizeTarget.Bitrates(5_000_000, hasAudio ? 128_000u : 0u);
+
+        var capped = budget.AtMost(sourceBps);
+
+        var total = capped.Video + capped.Audio;
+        Assert.Equal(Math.Max(sourceBps, SizeTarget.Bitrates.Floor(hasAudio)), total);
+        Assert.True(capped.Video >= SizeTarget.MinRetryVideo);
+        Assert.Equal(hasAudio ? SizeTarget.LowAudio : 0u, capped.Audio);
     }
 
     // ------------------------------------------------------------------ words

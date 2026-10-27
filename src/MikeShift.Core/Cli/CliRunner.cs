@@ -316,6 +316,8 @@ public static class CliRunner
                 return false;
             }
             options = options with { FitMegabytes = fitTitled };
+            // "Fit 8MB", "fit  8 mb" and "Fit 008 MB" all name the tile the catalog calls "Fit 8 MB".
+            title = SizeTargetCopy.Title(fitTitled);
         }
 
         cmd = new Command(mode.Value, title, range, crop, files, useWord, options);

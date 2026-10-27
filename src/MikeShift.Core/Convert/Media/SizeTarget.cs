@@ -38,11 +38,20 @@ internal static class SizeTarget
             return this with { Video = (uint)Math.Max(MinRetryVideo, total - Audio) };
         }
 
-        /// <summary>These bitrates, with the video lowered so the whole stays within <paramref name="totalBps"/> (unchanged when that is unknown).</summary>
-        public Bitrates AtMost(double totalBps) =>
-            totalBps > 0 && Video + (double)Audio > totalBps
-                ? this with { Video = (uint)Math.Max(MinRetryVideo, totalBps - Audio) }
-                : this;
+        /// <summary>
+        /// These bitrates lowered so the whole stays within <paramref name="totalBps"/> (unchanged when that is unknown): the sound drops to
+        /// <see cref="LowAudio"/> unless the picture keeps <see cref="HighAudioFrom"/>, and the picture gets the rest. The one exception is a
+        /// source below <see cref="Floor"/>, which is asked for the floor: the encoders ignore anything lower.
+        /// </summary>
+        public Bitrates AtMost(double totalBps)
+        {
+            if (totalBps <= 0 || Video + (double)Audio <= totalBps) return this;
+            var audio = Audio == 0 || totalBps - Audio >= HighAudioFrom ? Audio : Math.Min(Audio, LowAudio);
+            return new Bitrates((uint)Math.Max(MinRetryVideo, totalBps - audio), audio);
+        }
+
+        /// <summary>The least an encode with (<paramref name="hasAudio"/>) or without sound is ever asked for.</summary>
+        public static uint Floor(bool hasAudio) => MinRetryVideo + (hasAudio ? LowAudio : 0);
     }
 
     /// <summary>A size in bytes: 1 MB is 1,000,000 bytes, the smaller of the two ways sizes are counted, so the result fits either way.</summary>

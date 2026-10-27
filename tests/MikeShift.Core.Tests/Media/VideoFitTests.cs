@@ -158,6 +158,50 @@ public class VideoFitTests
         Assert.True(Info(output).IsH264);
     }
 
+    [SkipIfNoCapability(nameof(Capabilities.H264Encode), nameof(Capabilities.AacEncode))]
+    public async Task A_small_video_that_cannot_be_copied_is_refused_before_encoding_when_the_budget_is_unwatchable()
+    {
+        using var tmp = new TempDir();
+        var wmv = tmp.Combine("small.wmv");
+        await Integrity.VideoCheck.WriteWmvAsync(CopyMp4(tmp, "fixture.mp4"), wmv);
+        File.Delete(tmp.Combine("fixture.mp4"));
+        using var guard = OriginalsGuard.Watch(wmv);
+
+        // A tiny share of the size stands in for a long video: the WMV is under the size but cannot be copied, so it would be encoded.
+        var ex = await Assert.ThrowsAsync<ConversionException>(() => VideoConverter.FitAsync(wmv, 10, streamShare: 0.0001, NoCancel));
+
+        Assert.StartsWith("This video is too long to fit in 10 MB", ex.Message);
+        Assert.Equal(["small.wmv"], Everything(tmp.Path));
+    }
+
+    [SkipIfNoCapability(nameof(Capabilities.H264Encode), nameof(Capabilities.AacEncode))]
+    public async Task A_small_video_that_can_be_copied_is_copied_whatever_the_budget()
+    {
+        using var tmp = new TempDir();
+        var mp4 = tmp.Combine("small.mp4");
+        await Integrity.VideoCheck.WriteCleanMp4Async(CopyMp4(tmp, "fixture.mp4"), mp4);
+        File.Delete(tmp.Combine("fixture.mp4"));
+
+        var output = await VideoConverter.FitAsync(mp4, 10, streamShare: 0.0001, NoCancel);
+
+        Assert.Equal(tmp.Combine("small 10 MB.mp4"), output);
+        Assert.InRange((double)new FileInfo(output).Length / new FileInfo(mp4).Length, 0.9, 1.1);
+    }
+
+    [SkipIfNoCapability(nameof(Capabilities.H264Encode), nameof(Capabilities.AacEncode))]
+    public async Task A_copy_that_does_not_work_out_is_checked_again_before_encoding()
+    {
+        using var tmp = new TempDir();
+        // H.264/AAC, so a copy is tried, but the MediaComposition fixture repeats time stamps and the MP4 sink refuses to copy it.
+        var mp4 = CopyMp4(tmp);
+        using var guard = OriginalsGuard.Watch(mp4);
+
+        var ex = await Assert.ThrowsAsync<ConversionException>(() => VideoConverter.FitAsync(mp4, 10, streamShare: 0.0001, NoCancel));
+
+        Assert.StartsWith("This video is too long to fit in 10 MB", ex.Message);
+        Assert.Equal(["clip.mp4"], Everything(tmp.Path));
+    }
+
     // ------------------------------------------------------------------ through the catalog
 
     [SkipIfNoCapability(nameof(Capabilities.H264Encode), nameof(Capabilities.AacEncode))]
