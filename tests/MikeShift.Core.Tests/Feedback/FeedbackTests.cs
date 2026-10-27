@@ -316,7 +316,7 @@ public class FileTypeFilterTests
         Assert.Equal(new FileTypeFilter("All files", "*.*"), all[^1]);
 
         var patterns = all[0].Spec.Split(';').ToHashSet(StringComparer.Ordinal);
-        foreach (var ext in Kind.ImageExtensions.Concat(Kind.VideoExtensions).Concat(Kind.AudioExtensions).Concat(Kind.DocumentExtensions).Append(Kind.PdfExtension))
+        foreach (var ext in Kind.ImageExtensions.Concat(Kind.VideoExtensions).Concat(Kind.AudioExtensions).Concat(Kind.DocumentExtensions).Append(Kind.PdfExtension).Append(Kind.LinkExtension))
             Assert.Contains("*." + ext, patterns);
         Assert.DoesNotContain("*.*", patterns);
     }
@@ -324,7 +324,7 @@ public class FileTypeFilterTests
     [Fact]
     public void Each_kind_has_its_own_entry_and_specs_are_well_formed()
     {
-        Assert.Equal(["Supported files", "Images", "Videos", "Audio", "PDF and documents", "All files"], FileTypeFilters.All.Select(f => f.Name));
+        Assert.Equal(["Supported files", "Images", "Videos", "Audio", "PDF and documents", "Internet shortcuts", "All files"], FileTypeFilters.All.Select(f => f.Name));
         Assert.All(FileTypeFilters.All, f =>
         {
             Assert.False(string.IsNullOrWhiteSpace(f.Spec));

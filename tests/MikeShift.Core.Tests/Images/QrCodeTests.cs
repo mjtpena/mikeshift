@@ -144,6 +144,18 @@ public class QrCodeTests
     }
 
     [Fact]
+    public async Task A_file_of_NUL_characters_is_not_text()
+    {
+        using var tmp = new TempDir();
+        var txt = tmp.WriteFile("blank.txt", new byte[128]);
+
+        var ex = await Assert.ThrowsAsync<ConversionException>(() => QrCodes.WriteAsync(txt, default));
+
+        Assert.Equal(QrCopy.NotText, ex.Message);
+        Assert.Equal(["blank.txt"], FileNames(tmp));
+    }
+
+    [Fact]
     public async Task A_file_that_is_not_text_is_refused()
     {
         using var tmp = new TempDir();
@@ -252,6 +264,44 @@ public class QrCodeTests
         Assert.Equal(tmp.Combine("poster qr.txt"), output);
         Assert.Equal(["https://example.com/one", "https://example.com/two"], Lines(output));
         Assert.Equal("https://example.com/one", firstLine);
+    }
+
+    [Fact]
+    public async Task Reading_order_follows_the_picture_even_when_it_is_turned_around()
+    {
+        var one = await QrCodes.EncodePngAsync("https://example.com/one", default);
+        var two = await QrCodes.EncodePngAsync("https://example.com/two", default);
+        var raster = await DecodeAsync(Poster(two, one));
+        var turned = new byte[raster.Bgra.Length];
+        var pixels = raster.Width * raster.Height;
+        for (var i = 0; i < pixels; i++)
+            Array.Copy(raster.Bgra, i * 4, turned, (pixels - 1 - i) * 4, 4);
+
+        // Upside down, "two" is now the upper code.
+        Assert.Equal(["https://example.com/two", "https://example.com/one"], QrCodes.Decode(new Raster(raster.Width, raster.Height, turned), default));
+    }
+
+    [Fact]
+    public async Task Two_separate_codes_with_the_same_text_are_two_lines()
+    {
+        using var tmp = new TempDir();
+        var code = await QrCodes.EncodePngAsync(Link, default);
+        var poster = tmp.WriteFile("twice.png", Poster(code, code));
+
+        var (output, _) = await QrCodes.ReadAsync(poster, default);
+
+        Assert.Equal([Link, Link], Lines(output));
+    }
+
+    [Fact]
+    public void The_same_code_reported_twice_in_one_place_counts_once_but_a_code_elsewhere_does_not()
+    {
+        var here = new QrCodes.Found("x", new QrCodes.Box(100, 100, 200, 200));
+        Assert.True(QrCodes.SameCode(here, new QrCodes.Found("x", new QrCodes.Box(105, 98, 205, 203))));
+        Assert.True(QrCodes.SameCode(here, new QrCodes.Found("x", new QrCodes.Box(120, 120, 180, 180))));
+        Assert.False(QrCodes.SameCode(here, new QrCodes.Found("x", new QrCodes.Box(400, 100, 500, 200))));
+        Assert.False(QrCodes.SameCode(here, new QrCodes.Found("y", new QrCodes.Box(105, 98, 205, 203))));
+        Assert.False(QrCodes.SameCode(here, new QrCodes.Found("x", null)));
     }
 
     [Fact]

@@ -59,13 +59,38 @@ internal static class QrCodes
             found = reader.Decode(source) is { } one ? [one] : [];
         }
 
-        return found
+        // Reading order is by each code's bounding box (a single finder point depends on how the code is turned). Separate codes with the
+        // same text stay separate; only a code found twice in the same place (same text, boxes that overlap) is counted once.
+        var boxes = found
             .Where(r => !string.IsNullOrEmpty(r.Text))
-            .OrderBy(r => r.ResultPoints is { Length: > 0 } p ? Math.Round(p[0].Y / 20) : 0)
-            .ThenBy(r => r.ResultPoints is { Length: > 0 } p ? p[0].X : 0)
-            .Select(r => r.Text)
-            .Distinct(StringComparer.Ordinal)
+            .Select(r => new Found(r.Text, BoxOf(r)))
+            .OrderBy(f => f.Box is { } b ? Math.Round(b.Top / 20) : 0)
+            .ThenBy(f => f.Box is { } b ? b.Left : 0)
             .ToList();
+        var kept = new List<Found>();
+        foreach (var f in boxes)
+            if (!kept.Any(k => SameCode(k, f))) kept.Add(f);
+        return kept.Select(f => f.Text).ToList();
+    }
+
+    internal readonly record struct Box(float Left, float Top, float Right, float Bottom);
+
+    internal sealed record Found(string Text, Box? Box);
+
+    private static Box? BoxOf(Result r)
+    {
+        if (r.ResultPoints is not { Length: > 0 } p) return null;
+        return new Box(p.Min(x => x.X), p.Min(x => x.Y), p.Max(x => x.X), p.Max(x => x.Y));
+    }
+
+    /// <summary>The same physical code reported twice: equal text and the centre of one inside the other's box.</summary>
+    internal static bool SameCode(Found a, Found b)
+    {
+        if (!string.Equals(a.Text, b.Text, StringComparison.Ordinal)) return false;
+        if (a.Box is not { } x || b.Box is not { } y) return false;
+        bool Inside(Box o, Box i) => (i.Left + i.Right) / 2 >= o.Left && (i.Left + i.Right) / 2 <= o.Right
+                                  && (i.Top + i.Bottom) / 2 >= o.Top && (i.Top + i.Bottom) / 2 <= o.Bottom;
+        return Inside(x, y) || Inside(y, x);
     }
 
     private static string FirstLine(string text)
@@ -103,6 +128,7 @@ internal static class QrCodes
             return address.Length > 0 ? address : throw new ConversionException(QrCopy.NoAddress);
         }
 
+        if (text.Contains('\0')) throw new ConversionException(QrCopy.NotText); // binary data that happens to be valid Unicode
         text = text.TrimEnd('\r', '\n');
         return text.Trim().Length > 0 ? text : throw new ConversionException(QrCopy.NothingToEncode);
     }
