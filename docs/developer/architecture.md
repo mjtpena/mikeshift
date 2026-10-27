@@ -202,7 +202,7 @@ So an installed MikeShift ignores every `MIKESHIFT_*` variable and every dev fla
 | `MIKESHIFT_THEME=light\|dark\|hc` | force the theme (`hc` only for the wheel) |
 | `MIKESHIFT_ANIMATIONS=0` | behave as if animation effects were off |
 | `MIKESHIFT_DPI_SCALE=1.5`, `MIKESHIFT_TEXT_SCALE=1.4` | pretend every monitor's scale, or the OS text size |
-| `MIKESHIFT_CAPS=no-heif,no-hevc,no-av1,no-webp` | pretend those Windows extensions are missing (`Capabilities.Override`, remove-only): shows the "Get HEIF" tile and the welcome codec card on a PC that has them |
+| `MIKESHIFT_CAPS=no-heif,no-hevc,no-av1,no-webp` | pretend those Windows extensions are missing (`Capabilities.Override`, remove-only): shows the "Get HEIF" tile and the welcome codec card on a PC that has them. `no-wic-webp` (via `CapabilityOverrides.Apply`) makes every product WIC decode of a WebP behave as if Windows had no WebP decoder, so the SkiaSharp fallbacks (image converters, Image to PDF, crop editor) run on a PC that has the WebP Image Extension |
 | `MIKESHIFT_TRIM_MS` | how long the wheel idles before it releases its graphics device (default 15000) |
 | `--scene <name>` | show one canned UI state (`DevScenes.cs`) |
 | `--show-welcome`, `--show-settings` | open that window at start |

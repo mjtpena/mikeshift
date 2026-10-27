@@ -25,6 +25,13 @@ internal static class OutputCheck
         var ext = Path.GetExtension(path).TrimStart('.').ToLowerInvariant();
         switch (ext)
         {
+            case "webp" when !PixDecode.WicReads(path):
+            {
+                // No WIC WebP decoder (Windows Server without the WebP Image Extension): libwebp reads it instead.
+                var skia = PixDecode.Skia(path);
+                Assert.NotNull(skia);
+                return $"{skia.W}x{skia.H} image";
+            }
             case "png" or "jpg" or "jpeg" or "bmp" or "tif" or "tiff" or "webp" or "heic":
             {
                 var wic = await PixDecode.WicAsync(path);

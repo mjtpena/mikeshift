@@ -22,7 +22,7 @@ A healthy checkout builds with **0 warnings** (warnings are errors) and passes e
 | `tests/MikeShift.Core.Tests` | Naming and collision handling, `Kind.Of` / `Kind.CommonOf`, `ActionCatalog.For`, capability gating with fake `Capabilities`, every picture, PDF, video, audio, document and Zip converter (round trips, size guards, "already small"), the crop and trim models, feedback wording (`FeedbackPlan`, `JobLedger`), `DragSession`, `ModifierTracker`, wheel geometry, placement, model and animation, easing, the hotkey parser and conflict list, conversion settings, the Explorer context-menu planner, the CLI runner in-process, and hardening (below) | In-process xUnit. Fixtures are generated at test time (`Infrastructure/Fixtures*.cs`); nothing binary is checked in. `OriginalsGuard` hashes every input before and after each converter test and fails if an original changed. |
 | `tests/MikeShift.Cli.Tests` | The real `MikeShift.Cli.exe` run as a child process on fixtures: exit codes, printed output paths, usage errors, Zip, picture, PDF, media and document commands, corrupt-input cases, the conversion flags | Exercises WIC and Media Foundation on CI machines too. Set `MIKESHIFT_CLI_EXE` to test another build of the executable (for example the one inside an unpacked package). |
 
-Tests that need a codec the machine lacks (HEIC and HEVC encoders and the like) skip themselves with `[SkipIfNoCapability]` rather than failing, so skipped counts differ between machines. On a fully equipped PC, the default suite is 2,463 Core tests (12 skipped) and 88 CLI tests (3 skipped), and with every slow test enabled 2,517 and 91 with none skipped. These counts change as tests are added; the rule is zero failures and zero warnings.
+Tests that need a codec the machine lacks (HEIC and HEVC encoders and the like) skip themselves with `[SkipIfNoCapability]` rather than failing, and the one test that needs a WIC WebP decoder skips itself with `[SkipIfNoWicDecoder]` (see the [integrity suite](#integrity-suite)), so skipped counts differ between machines. On a fully equipped PC, the default suite is 2,507 Core tests (12 skipped) and 93 CLI tests (3 skipped), and with every slow test enabled 2,550 and 93 with none skipped. These counts change as tests are added; the rule is zero failures and zero warnings.
 
 ### Fast and slow tests
 
@@ -46,6 +46,8 @@ $env:MIKESHIFT_SLOW = '1'; dotnet test MikeShift.sln
 ### Integrity suite
 
 `Core.Tests/Integrity/**` and `Cli.Tests/IntegrityCliTests.cs` run every action the catalog offers for every kind of file, and judge the output with decoders that are **not** the code that wrote it: SkiaSharp and WIC for pictures; PdfPig and Windows.Data.Pdf for PDF; hand-written WAV/AIFF/FLAC/MP3/MP4 parsers plus a Media Foundation decode and cross-correlation for audio and video; the Open XML SDK with `OpenXmlValidator`, System.Xml and small RTF and HTML tokenizers for documents; System.IO.Compression and Windows' `tar.exe` for Zip. Lossless outputs must be pixel- or sample-exact, lossy ones must reach a PSNR or correlation floor, originals must hash the same afterwards, and no `.mikeshift-tmp` may remain.
+
+WIC reads WebP only when the free WebP Image Extension is installed and working, which a desktop PC usually has. On the CI runner (Windows Server) a WebP decoder is listed but fails, so the tests decode a tiny WebP once to find out. Without a working decoder, WebP files are judged by SkiaSharp's libwebp alone, and the check that WIC and SkiaSharp read the WebP fixture the same way is reported as skipped (`[SkipIfNoWicDecoder(".webp")]`). The app itself never needs that decoder: it reads WebP with SkiaSharp when WIC cannot.
 
 `MIKESHIFT_INTEGRITY_MATRIX=<file>` makes every integrity test append a row (category, input, action, validator, result, metric) to that file, which is how a results matrix is produced.
 
@@ -132,6 +134,8 @@ Scenarios of the synthetic source: `copy`, `tools`, `shiftfirst`, `multi`, `esc`
 | Touches your files | `desktop` converts a file on your real Desktop and deletes it afterwards; run it deliberately, not as part of `all` on a machine you care about |
 
 Every scenario also asserts that the originals are byte-identical and in place, that the app log has no `[ERROR]`, and that the wheel is hidden at the end. The scenario IDs map to the manual checklist below. The missing-HEIF tile cannot be reproduced on a PC that has the extension, so it is checked three ways: unit tests with fake capabilities (`CodecHelpTests`), the developer capability override `MIKESHIFT_CAPS=no-heif,no-hevc`, and offscreen renders (`MikeShift.exe --dev --render-wheel heic-missing-drag-dark`; `--render-wheel list` lists the scenarios).
+
+The same switch takes `no-wic-webp` (`MIKESHIFT_CAPS=no-wic-webp`, unpackaged `--dev` or Debug only): every WIC decode of a WebP behaves as if Windows had no WebP decoder, so the SkiaSharp fallbacks of the image converters, Image to PDF and the crop editor can be tried in the real app on a PC that has the WebP Image Extension. `WicWebpOverrideTests` covers it in Core.
 
 ### Context-menu harness (`tools/ContextMenuHarness`)
 

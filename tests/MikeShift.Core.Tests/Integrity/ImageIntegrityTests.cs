@@ -72,8 +72,22 @@ public class ImageIntegrityTests
 
     // ------------------------------------------------------------------ the oracle is sound
 
-    [Theory, MemberData(nameof(PdfCases))]
-    public async Task Fixtures_decode_the_same_in_wic_and_skia(string id)
+    /// <summary>Every fixture except WebP, whose WIC decoder is optional and is checked by its own test below.</summary>
+    public static TheoryData<string> OracleCases()
+    {
+        var data = new TheoryData<string>();
+        foreach (var id in ImgSource.Ids)
+            if (Available(id, null) && id != "webp") data.Add(id);
+        return data;
+    }
+
+    [Theory, MemberData(nameof(OracleCases))]
+    public Task Fixtures_decode_the_same_in_wic_and_skia(string id) => AssertWicAndSkiaAgree(id);
+
+    [SkipIfNoWicDecoder(".webp")]
+    public Task The_webp_fixture_decodes_the_same_in_wic_and_skia() => AssertWicAndSkiaAgree("webp");
+
+    private static async Task AssertWicAndSkiaAgree(string id)
     {
         var src = ImgSource.Get(id);
         using var tmp = new TempDir();
@@ -176,12 +190,14 @@ public class ImageIntegrityTests
 
     /// <summary>
     /// Decodes with WIC and SkiaSharp and checks they agree: exactly for lossless, closely for lossy (their IDCT and chroma
-    /// upsampling differ). HEIC has no Skia decoder, so WIC alone.
+    /// upsampling differ). HEIC has no Skia decoder, so WIC alone; WebP on a PC without a WIC WebP decoder (Windows Server) is
+    /// judged by libwebp alone.
     /// </summary>
     internal static async Task<Px> DecodeBoth(string path, bool lossy)
     {
-        var wic = await PixDecode.WicAsync(path);
         var skia = PixDecode.Skia(path);
+        if (skia is not null && !PixDecode.WicReads(path)) return skia;
+        var wic = await PixDecode.WicAsync(path);
         if (skia is null) return wic;
         Assert.Equal((skia.W, skia.H), (wic.W, wic.H));
         if (lossy)
@@ -375,7 +391,10 @@ public class ImageIntegrityTests
         }
     }
 
-    /// <summary>No Exif, GPS, XMP or Photoshop data in the output (raw bytes for JPEG, WIC properties for everything), and it still decodes upright.</summary>
+    /// <summary>
+    /// No Exif, GPS, XMP or Photoshop data in the output (raw bytes for JPEG and WebP, WIC properties for everything WIC can read), and it
+    /// still decodes upright.
+    /// </summary>
     private static async Task<string> AssertNoMetadata(string output)
     {
         var bytes = await File.ReadAllBytesAsync(output);
@@ -386,6 +405,13 @@ public class ImageIntegrityTests
             Assert.DoesNotContain(markers, m => m.Marker == 0xED);   // APP13: Photoshop / IPTC
             Assert.False(ImageBytes.Contains(bytes, "Exif\0\0"u8), "Exif block present");
             Assert.False(ImageBytes.Contains(bytes, "http://ns.adobe.com/xap"u8), "XMP packet present");
+        }
+        if (ImageBytes.Sniff(output) == "webp")
+        {
+            var chunks = ImageBytes.WebpChunks(bytes);
+            Assert.DoesNotContain("EXIF", chunks);
+            Assert.DoesNotContain("XMP ", chunks);
+            if (!PixDecode.WicReads(output)) return "no EXIF/XMP chunks (no WIC WebP decoder to read properties)";
         }
         var props = await PixDecode.WicPropertiesAsync(output,
             "System.GPS.LatitudeNumerator", "System.GPS.LongitudeNumerator", "System.GPS.Latitude", "System.GPS.Longitude",
