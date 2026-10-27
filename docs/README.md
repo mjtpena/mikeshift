@@ -18,6 +18,7 @@ What MikeShift is and how to install it: the [project README](../README.md).
 |---|---|
 | [Contributing](../CONTRIBUTING.md) | Prerequisites, build and test, conventions, how to run the UI harnesses, pull requests. |
 | [Architecture](developer/architecture.md) | Projects, threading, drag detection, the wheel, conversion settings, packaging, the Explorer right-click entry. |
+| [Host design](developer/host-design.md) | Whether to split a reusable host from MikeShift for sibling tools: boundary, plug-in model, packaging, cost, repo shape, and the recommendation. |
 | [Testing](developer/testing.md) | The test suites, offline verification, coverage, the UI harnesses and the manual release checklist. |
 | [Releasing](developer/releasing.md) | Flavours, `scripts/release.ps1`, signing, and the Microsoft Store submission steps. |
 | [Security policy](../SECURITY.md) | How to report a vulnerability. |
