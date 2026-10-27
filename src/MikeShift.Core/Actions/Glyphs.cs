@@ -22,7 +22,7 @@ public static class Glyphs
     public const string Merge = "";      // Combine
     public const string Zip = "";        // ZipFolder
     public const string MergePdf = Merge;
-    public const string Searchable = ""; // Search
+    public const string Searchable = ""; // ZoomIn (a magnifier: the PDF becomes searchable)
     public const string Fit = "";       // Attach (a paper clip: small enough to attach)
 
     public const string QrCode = "\uE71B";     // Link (a chain: the code holds the link itself)
