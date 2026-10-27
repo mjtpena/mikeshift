@@ -13,7 +13,7 @@ public class DocumentProbeTests
     public void Plain_documents_offer_every_other_format()
     {
         using var tmp = new TempDir();
-        Assert.Equal(["PDF", "DOCX", "RTF", "HTML", "ODT", "Zip"], Titles(Capabilities.None, tmp.WriteFile("a.txt", "x")));
+        Assert.Equal(["PDF", "DOCX", "RTF", "HTML", "ODT", "QR code", "Zip"], Titles(Capabilities.None, tmp.WriteFile("a.txt", "x")));
         Assert.Equal(["PDF", "RTF", "TXT", "HTML", "ODT", "Zip"], Titles(Capabilities.None, tmp.WriteFile("a.docx", Fixtures.DocxSample())));
         Assert.Equal(["PDF", "DOCX", "RTF", "TXT", "HTML", "Zip"], Titles(Capabilities.None, tmp.WriteFile("a.odt", Fixtures.OdtSample())));
         Assert.Equal(["PDF", "DOCX", "TXT", "HTML", "ODT", "Zip"], Titles(Capabilities.None, tmp.WriteFile("a.rtf", Encoding.ASCII.GetBytes(Fixtures.RtfSample()))));
@@ -143,8 +143,8 @@ public class DocumentProbeTests
     [Fact]
     public void Document_actions_have_the_documented_order_and_hide_the_same_extension()
     {
-        Assert.Equal(["PDF", "DOCX", "RTF", "TXT", "HTML", "ODT"], DocumentActions().Select(a => a.Title).ToArray());
-        Assert.All(DocumentActions(), a => Assert.Equal(WheelPage.Format, a.Page));
+        Assert.Equal(["PDF", "DOCX", "RTF", "TXT", "HTML", "ODT", "QR code"], DocumentActions().Select(a => a.Title).ToArray());
+        Assert.All(DocumentActions().Where(a => a.Title != "QR code"), a => Assert.Equal(WheelPage.Format, a.Page)); // QR code is the one tool, for .txt files
         Assert.Contains("htm", DocumentActions().Single(a => a.Title == "HTML").HideFor);
         Assert.DoesNotContain(DocumentActions(), a => a.Title == "PDF" && a.HideFor.Count > 0);
     }

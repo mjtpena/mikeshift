@@ -9,7 +9,7 @@ namespace MikeShift.Core;
 /// </summary>
 /// <remarks>
 /// Order of evaluation: directory -> Other; cloud placeholder (extension verdict only, never reads content);
-/// <c>%PDF</c> magic (also for misnamed files); extension lists; <c>.ts/.mts/.m2ts</c> need MPEG-TS sync bytes;
+/// <c>%PDF</c> magic (also for misnamed files); extension lists (<c>.url</c> shortcuts are <see cref="Category.Link"/>); <c>.ts/.mts/.m2ts</c> need MPEG-TS sync bytes;
 /// images must pass <see cref="ImageProbe.CanDecode"/>; audio/video must pass <see cref="MediaProbe.CanOpen"/>.
 /// Verdicts are cached per (path, size, mtime) for the life of the process; call <see cref="ClearCache"/> when a
 /// drag session ends.
@@ -37,6 +37,9 @@ public static class Kind
     /// <summary>Document extensions (lower case, no dot).</summary>
     public static IReadOnlySet<string> DocumentExtensions { get; } = Set(
         "docx", "doc", "rtf", "odt", "html", "htm", "txt", "md", "markdown");
+
+    /// <summary>Internet shortcut extension (lower case, no dot).</summary>
+    public const string LinkExtension = "url";
 
     /// <summary>PDF extension (lower case, no dot). A PDF is only a PDF if the <c>%PDF</c> magic is present.</summary>
     public const string PdfExtension = "pdf";
@@ -191,6 +194,9 @@ public static class Kind
         if (DocumentExtensions.Contains(ext))
             return Category.Document;
 
+        if (ext == LinkExtension)
+            return Category.Link;
+
         return Category.Other;
     }
 
@@ -210,11 +216,12 @@ public static class Kind
         if (VideoExtensions.Contains(ext)) return Category.Video;
         if (AudioExtensions.Contains(ext)) return Category.Audio;
         if (DocumentExtensions.Contains(ext)) return Category.Document;
+        if (ext == LinkExtension) return Category.Link;
         return Category.Other;
     }
 
     // Documents we never need to sniff for a PDF header (saves a read for the common text files).
-    private static bool IsKnownTextOnlyExtension(string ext) => ext is "txt" or "md" or "markdown" or "html" or "htm";
+    private static bool IsKnownTextOnlyExtension(string ext) => ext is "txt" or "md" or "markdown" or "html" or "htm" or LinkExtension;
 
     /// <summary>True/false for the <c>%PDF</c> magic at offset 0; null if the file could not be read.</summary>
     private static bool? StartsWithPdfMagic(string path)

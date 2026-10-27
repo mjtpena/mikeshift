@@ -30,6 +30,15 @@ public class KindTests
     [Theory, MemberData(nameof(DocExt))]
     public void Document_extensions_are_documents(string ext) => Assert.Equal(Category.Document, OfFile($"x.{ext}", Fixtures.Noise(64)));
 
+    [Theory]
+    [InlineData("site.url")]
+    [InlineData("SITE.URL")]
+    public void Internet_shortcuts_are_links(string name)
+    {
+        Assert.Equal(Category.Link, OfFile(name, "[InternetShortcut]\r\nURL=https://example.com/\r\n"u8.ToArray()));
+        Assert.Equal(Category.Link, Kind.ByExtension(name));
+    }
+
     [Fact]
     public void Matrix_extensions_from_the_plan_are_all_covered()
     {

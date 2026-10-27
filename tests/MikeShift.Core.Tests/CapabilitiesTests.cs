@@ -150,7 +150,7 @@ public class CapabilitiesTests
     [Fact]
     public void Every_tool_action_has_a_glyph_and_no_format_action_does()
     {
-        foreach (var c in new[] { Category.Image, Category.Pdf, Category.Video, Category.Audio, Category.Document })
+        foreach (var c in new[] { Category.Image, Category.Pdf, Category.Video, Category.Audio, Category.Document, Category.Link })
             foreach (var a in ActionCatalog.ListFor(c))
                 Assert.Equal(a.Page == WheelPage.Tool, !string.IsNullOrEmpty(a.Glyph));
         Assert.False(string.IsNullOrEmpty(ZipAction.Def.Glyph));

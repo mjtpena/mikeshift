@@ -74,6 +74,7 @@ public static partial class ActionCatalog
             Category.Video => VideoActions.WithFit(options.FitMegabytes),
             Category.Audio => AudioActions.All,
             Category.Document => DocumentActions.All,
+            Category.Link => LinkActions.All,
             _ => [],
         };
     }

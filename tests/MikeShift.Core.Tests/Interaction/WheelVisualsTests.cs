@@ -307,7 +307,7 @@ public class WheelVisualsTests
     [Fact]
     public void EveryRealActionHasAVerbFirstNameAndADescription()
     {
-        foreach (var category in new[] { Category.Image, Category.Pdf, Category.Video, Category.Audio, Category.Document })
+        foreach (var category in new[] { Category.Image, Category.Pdf, Category.Video, Category.Audio, Category.Document, Category.Link })
             foreach (var action in ActionCatalog.ListFor(category))
             {
                 var name = WheelText.AutomationName(action);

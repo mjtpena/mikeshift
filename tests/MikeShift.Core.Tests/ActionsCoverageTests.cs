@@ -166,7 +166,7 @@ public class ActionsCoverageTests
     public void ListFor_other_is_empty_and_the_others_are_not()
     {
         Assert.Empty(ActionCatalog.ListFor(Category.Other));
-        foreach (var c in new[] { Category.Image, Category.Pdf, Category.Video, Category.Audio, Category.Document })
+        foreach (var c in new[] { Category.Image, Category.Pdf, Category.Video, Category.Audio, Category.Document, Category.Link })
             Assert.NotEmpty(ActionCatalog.ListFor(c));
     }
 
