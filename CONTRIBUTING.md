@@ -8,7 +8,7 @@ For what the app does, read the [user guide](docs/user-guide.md). For how it is 
 
 * **A bug or a file that will not convert:** [open an issue](https://github.com/mjtpena/mikeshift/issues) with your Windows version and architecture, what you did, the message you saw (it is plain words, so copy it), and the file type. The log (Settings → About → **Open the log folder**) never contains file contents and often says what happened. Please do not attach files you would not want public.
 * **A security problem:** do not open a public issue; see [SECURITY.md](SECURITY.md).
-* **A feature:** open an issue first and describe the job you are trying to do. The scope is deliberate (see [known limitations](docs/limitations.md#not-offered)): MikeShift is not a format zoo with presets, and anything that needs the network is out of scope.
+* **A feature:** open an issue first with the [feature request form](https://github.com/mjtpena/mikeshift/issues/new?template=feature_request.yml) and describe the job you are trying to do. The scope is deliberate (see [known limitations](docs/limitations.md#not-offered)): MikeShift is not a format zoo with presets, and anything that needs the network is out of scope.
 
 ## Prerequisites
 
