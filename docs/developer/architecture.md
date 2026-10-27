@@ -1,6 +1,6 @@
 # Architecture
 
-How MikeShift is put together: the projects, the threads, how the wheel works, how conversions are written, how the package is built, and how the Explorer right-click entry works. For how it is tested see [testing.md](testing.md); for how a release is made see [releasing.md](releasing.md); for what users can expect see [the limitations](../limitations.md).
+How MikeShift is put together: the projects, the threads, how the wheel works, how conversions are written, how the package is built, and how the Explorer right-click entry works. For how it is tested see [testing.md](testing.md); for how a release is made see [releasing.md](releasing.md); for what users can expect see [the limitations](../limitations.md). For which parts other tools could reuse, and why they are not split out yet, see [host-design.md](host-design.md).
 
 ## 1. Solution layout
 
