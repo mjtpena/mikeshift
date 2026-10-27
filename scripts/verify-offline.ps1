@@ -269,10 +269,10 @@ try {
       $args += $f.FullName
       $r = Invoke-Cli $args; $cliRuns++
       $key = "exit $($r.Exit)"; $exitCodes[$key] = 1 + [int]$exitCodes[$key]
-      if ($r.Exit -ne 0 -and $r.Err -notmatch 'already small|Animated images|pages, and only|no audio|probably a scan|find any text|read from an animated|Convert it to PDF first') { $failures.Add("$($f.Name) / $t : exit $($r.Exit): $($r.Err.Trim())") }
+      if ($r.Exit -ne 0 -and $r.Err -notmatch 'already small|Animated images|pages, and only|no audio|probably a scan|find any text|read from an animated|Convert it to PDF first|already searchable') { $failures.Add("$($f.Name) / $t : exit $($r.Exit): $($r.Err.Trim())") }
     }
   }
-  foreach ($set in @(@('Merge', (Get-ChildItem (Join-Path $samples 'pdf') -Filter *.pdf)), @('Merge PDF', (Get-ChildItem (Join-Path $samples 'images') -Include *.png, *.jpg -Recurse)))) {
+  foreach ($set in @(@('Merge', (Get-ChildItem (Join-Path $samples 'pdf') -Filter *.pdf)), @('Merge PDF', (Get-ChildItem (Join-Path $samples 'images') -Include *.png, *.jpg -Recurse)), @('Merge searchable PDF', (Get-ChildItem (Join-Path $samples 'images') -Include *.png, *.jpg -Recurse)))) {
     $r = Invoke-Cli (@('--run', $set[0]) + @($set[1] | Select-Object -First 3 | ForEach-Object FullName)); $cliRuns++
     $key = "exit $($r.Exit)"; $exitCodes[$key] = 1 + [int]$exitCodes[$key]
   }
