@@ -165,7 +165,8 @@ public class ImageTextTests
     {
         var formats = ImageActions.All.Where(a => a.Page == WheelPage.Format).Select(a => a.Title).ToArray();
         Assert.Equal("TXT", formats[^1]);
-        Assert.Equal("PDF", formats[^2]);
+        Assert.Equal("Searchable PDF", formats[^2]);
+        Assert.Equal("PDF", formats[^3]);
     }
 
     [Fact]

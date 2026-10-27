@@ -17,6 +17,12 @@ public static class OcrCopy
     /// <summary>A picture in which nothing readable was recognised.</summary>
     public const string NoTextInPicture = "Couldn't find any text in this picture.";
 
+    /// <summary>Several pictures merged into a searchable PDF, none of which had readable text.</summary>
+    public const string NoTextInPictures = "Couldn't find any text in these pictures.";
+
+    /// <summary>Searchable PDF on a PDF that already has text on every page: there is nothing to add.</summary>
+    public const string AlreadySearchable = "This PDF is already searchable: every page has text you can select and search.";
+
     /// <summary>A PDF without a text layer in which nothing readable was recognised either.</summary>
     public const string NoTextInPdf = "Couldn't find any text in this PDF, even on its scanned pages.";
 

@@ -161,8 +161,24 @@ public static partial class Fixtures
         var page = doc.AddPage();
         using (var gfx = XGraphics.FromPdfPage(page))
         {
-            var text = reversed ? Reverse(HebrewLogicalText) : HebrewLogicalText;
-            gfx.DrawString(text, new XFont("Arial", 16), XBrushes.Black, 60, 100);
+            var font = new XFont("Arial", 16);
+            if (reversed)
+            {
+                gfx.DrawString(Reverse(HebrewLogicalText), font, XBrushes.Black, 60, 100);
+            }
+            else
+            {
+                // Logical order as a Hebrew producer lays it out: each word on its own, the first one at the right.
+                var words = HebrewLogicalText.Split(' ');
+                var space = gfx.MeasureString(" ", font).Width;
+                var x = 60 + words.Sum(w => gfx.MeasureString(w, font).Width) + space * (words.Length - 1);
+                foreach (var word in words)
+                {
+                    x -= gfx.MeasureString(word, font).Width;
+                    gfx.DrawString(word, font, XBrushes.Black, x, 100);
+                    x -= space;
+                }
+            }
         }
         return Save(doc);
     }

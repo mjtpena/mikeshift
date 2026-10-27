@@ -22,6 +22,7 @@ public static class Glyphs
     public const string Merge = "";      // Combine
     public const string Zip = "";        // ZipFolder
     public const string MergePdf = Merge;
+    public const string Searchable = ""; // ZoomIn (a magnifier: the PDF becomes searchable)
     public const string Fit = "";       // Attach (a paper clip: small enough to attach)
 
     public const string QrCode = "\uE71B";     // Link (a chain: the code holds the link itself)
@@ -38,7 +39,7 @@ public static class Glyphs
     public const string Info = "";
 
     /// <summary>Every tool glyph, for tests.</summary>
-    public static IReadOnlyList<string> All { get; } = [Compress, Resize, Crop, StripExif, BlurFaces, Trim, Split, Merge, Zip, Fit, QrCode, ReadQrCode];
+    public static IReadOnlyList<string> All { get; } = [Compress, Resize, Crop, StripExif, BlurFaces, Trim, Split, Merge, Zip, Fit, QrCode, ReadQrCode, Searchable];
 
     /// <summary>Every glyph the wheel can draw (tool, category and info glyphs), for the font-coverage test.</summary>
     public static IReadOnlyList<string> Everything { get; } = [.. All, Image, Document, Pdf, Video, Audio, Info];
@@ -51,7 +52,7 @@ public static class Glyphs
     public static string ForFormat(string title) => title.ToUpperInvariant() switch
     {
         "PNG" or "JPG" or "JPEG" or "TIFF" or "TIF" or "GIF" or "BMP" or "HEIC" or "WEBP" or "ICO" => Image,
-        "PDF" => Pdf,
+        "PDF" or "SEARCHABLE PDF" => Pdf,
         "MP4" or "M4V" or "WMV" or "MOV" or "WEBM" => Video,
         "MP3" or "M4A" or "WAV" or "FLAC" or "AIFF" or "AAC" => Audio,
         _ => Document,

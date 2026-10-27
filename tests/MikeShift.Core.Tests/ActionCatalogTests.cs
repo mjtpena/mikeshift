@@ -32,7 +32,7 @@ public class ActionCatalogTests
     {
         // A single .ico: nothing is hidden by extension and there is no Merge PDF.
         Assert.Equal(
-            ["PNG", "JPG", "TIFF", "GIF", "BMP", "HEIC", "WebP", "PDF", "TXT", "Compress", "Resize 50%", "Crop", "Strip EXIF", "Blur faces", "Read QR code", "Zip"],
+            ["PNG", "JPG", "TIFF", "GIF", "BMP", "HEIC", "WebP", "PDF", "Searchable PDF", "TXT", "Compress", "Resize 50%", "Crop", "Strip EXIF", "Blur faces", "Read QR code", "Zip"],
             Titles(Full, @"C:\x\a.ico"));
     }
 
@@ -42,8 +42,8 @@ public class ActionCatalogTests
         var all = For(Full, @"C:\x\a.ico", @"C:\x\b.avif");
         var formats = all.Where(a => a.Page == WheelPage.Format).Select(a => a.Title).ToArray();
         var tools = all.Where(a => a.Page == WheelPage.Tool).Select(a => a.Title).ToArray();
-        Assert.Equal(["PNG", "JPG", "TIFF", "GIF", "BMP", "HEIC", "WebP", "ICO", "PDF", "TXT"], formats);
-        Assert.Equal(["Compress", "Resize 50%", "Crop", "Strip EXIF", "Blur faces", "Merge PDF", "Read QR code", "Zip"], tools);
+        Assert.Equal(["PNG", "JPG", "TIFF", "GIF", "BMP", "HEIC", "WebP", "ICO", "PDF", "Searchable PDF", "TXT"], formats);
+        Assert.Equal(["Compress", "Resize 50%", "Crop", "Strip EXIF", "Blur faces", "Merge PDF", "Merge searchable PDF", "Read QR code", "Zip"], tools);
         Assert.All(all.Where(a => a.Page == WheelPage.Tool), a => Assert.False(string.IsNullOrEmpty(a.Glyph)));
         Assert.All(all.Where(a => a.Page == WheelPage.Format), a => Assert.Null(a.Glyph));
         Assert.Single(all.Where(a => a.Interactive), a => a.Title == "Crop");
@@ -52,8 +52,8 @@ public class ActionCatalogTests
     [Fact]
     public void Pdf_list_and_order()
     {
-        Assert.Equal(["PNG", "JPG", "TXT", "Compress", "Split", "Zip"], Titles(Full, @"C:\x\a.pdf"));
-        Assert.Equal(["PNG", "JPG", "TXT", "Compress", "Split", "Merge", "Zip"], Titles(Full, @"C:\x\a.pdf", @"C:\x\b.pdf"));
+        Assert.Equal(["PNG", "JPG", "TXT", "Compress", "Split", "Searchable PDF", "Zip"], Titles(Full, @"C:\x\a.pdf"));
+        Assert.Equal(["PNG", "JPG", "TXT", "Compress", "Split", "Merge", "Searchable PDF", "Zip"], Titles(Full, @"C:\x\a.pdf", @"C:\x\b.pdf"));
     }
 
     [Fact]

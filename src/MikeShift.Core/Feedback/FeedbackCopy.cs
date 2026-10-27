@@ -76,7 +76,8 @@ public static partial class FeedbackCopy
         "Blur faces" => withObject ? "Blurring faces" : "Blurring",
         "Trim" => "Trimming",
         "Split" => "Splitting",
-        "Merge" or "Merge PDF" => "Merging",
+        "Merge" or "Merge PDF" or "Merge searchable PDF" => "Merging",
+        "Searchable PDF" => withObject ? "Making searchable" : "Reading",
         "Zip" => "Zipping",
         _ => title,
     };

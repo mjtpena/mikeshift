@@ -56,6 +56,8 @@ public static class WheelText
             "Split" => "Save each page as its own PDF",
             "Merge" => "Combine the files into one PDF",
             "Merge PDF" => "Combine the pictures into one PDF",
+            "Merge searchable PDF" => "Combine the pictures into one PDF you can search",
+            "Searchable PDF" => "Save a copy with text you can select and search",
             "Read QR code" => "Save the text of the QR codes in the picture to a text file",
             "QR code" => "Save a QR code picture that holds the link or text",
             "Zip" => "Put the files in a zip archive",

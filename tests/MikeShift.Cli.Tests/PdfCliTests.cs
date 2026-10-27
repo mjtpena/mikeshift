@@ -14,7 +14,7 @@ public class PdfCliTests
         var r = CliProcess.Run("--list", pdf);
 
         Assert.Equal(0, r.ExitCode);
-        Assert.Equal("PNG, JPG, TXT, Compress, Split, Zip", r.Stdout.Trim());
+        Assert.Equal(Capabilities.Current.Ocr ? "PNG, JPG, TXT, Compress, Split, Searchable PDF, Zip" : "PNG, JPG, TXT, Compress, Split, Zip", r.Stdout.Trim());
     }
 
     [Fact]
@@ -27,7 +27,7 @@ public class PdfCliTests
         var r = CliProcess.Run("--list", a, b);
 
         Assert.Equal(0, r.ExitCode);
-        Assert.Equal("PNG, JPG, TXT, Compress, Split, Merge, Zip", r.Stdout.Trim());
+        Assert.Equal(Capabilities.Current.Ocr ? "PNG, JPG, TXT, Compress, Split, Merge, Searchable PDF, Zip" : "PNG, JPG, TXT, Compress, Split, Merge, Zip", r.Stdout.Trim());
     }
 
     [Fact]
