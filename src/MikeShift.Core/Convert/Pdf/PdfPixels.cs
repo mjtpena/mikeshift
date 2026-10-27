@@ -47,6 +47,39 @@ internal static class PdfPixels
         return channels == 1 ? new Raster(ToGray(bgra), nw, nh, 1) : new Raster(bgra, nw, nh, 4);
     }
 
+    /// <summary>
+    /// SkiaSharp decode of the first frame, for files WIC has no decoder for (WebP when the free WebP Image Extension is missing,
+    /// which Windows Server lacks): opaque BGRA in sRGB (an embedded ICC profile is converted, as the WIC path does), flattened on white
+    /// and then scaled (box filter) so its long side is at most <paramref name="maxLongSide"/>, and the EXIF orientation (1-8) still to
+    /// apply. Null when SkiaSharp cannot read the file either.
+    /// </summary>
+    public static (Raster Pixels, int Orientation)? DecodeSkia(string path, int maxLongSide, long maxPixels)
+    {
+        using var codec = SKCodec.Create(path);
+        if (codec is null) return null;
+        if ((long)codec.Info.Width * codec.Info.Height > maxPixels)
+            throw new ConversionException($"{Path.GetFileName(path)} is too large to convert (over {maxPixels / 1_000_000} megapixels).");
+
+        var info = new SKImageInfo(codec.Info.Width, codec.Info.Height, SKColorType.Bgra8888, SKAlphaType.Unpremul, SKColorSpace.CreateSrgb());
+        var bgra = new byte[info.BytesSize];
+        var handle = System.Runtime.InteropServices.GCHandle.Alloc(bgra, System.Runtime.InteropServices.GCHandleType.Pinned);
+        try
+        {
+            if (codec.GetPixels(info, handle.AddrOfPinnedObject()) != SKCodecResult.Success) return null;
+        }
+        finally
+        {
+            handle.Free();
+        }
+
+        // Flatten before scaling: averaging straight-alpha pixels would let the colour of transparent ones darken the edges.
+        FlattenOnWhite(bgra);
+        var raster = new Raster(bgra, info.Width, info.Height, 4);
+        var (nw, nh) = FitLongSide(info.Width, info.Height, maxLongSide);
+        // SKEncodedOrigin uses the EXIF orientation numbers (TopLeft = 1 ... LeftBottom = 8).
+        return (Downscale(raster, nw, nh), (int)codec.EncodedOrigin);
+    }
+
     /// <summary>BGRA to one-channel luma (alpha ignored); equal colour channels map to themselves exactly.</summary>
     internal static byte[] ToGray(byte[] bgra)
     {

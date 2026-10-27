@@ -171,6 +171,41 @@ internal static class PixDecode
         return codec is null ? 0 : Math.Max(1, codec.FrameCount);
     }
 
+    private static readonly Lazy<HashSet<string>> s_wicExtensions = new(() => BitmapDecoder.GetDecoderInformationEnumerator()
+        .SelectMany(d => d.FileExtensions).ToHashSet(StringComparer.OrdinalIgnoreCase));
+
+    // A listed decoder is not proof: the windows-latest runner lists a WebP decoder whose CreateAsync then throws an empty COMException.
+    private static readonly Lazy<bool> s_wicDecodesWebp = new(() =>
+    {
+        try
+        {
+            using var ms = new InMemoryRandomAccessStream();
+            ms.WriteAsync(Fixtures.Webp(4, 4).AsBuffer()).AsTask().GetAwaiter().GetResult();
+            ms.Seek(0);
+            var decoder = BitmapDecoder.CreateAsync(ms).AsTask().GetAwaiter().GetResult();
+            using var bitmap = decoder.GetSoftwareBitmapAsync().AsTask().GetAwaiter().GetResult();
+            return bitmap.PixelWidth == 4;
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+    });
+
+    /// <summary>
+    /// True when WIC really decodes <paramref name="extension"/> (".webp"): a decoder is listed for it and, for WebP, a tiny WebP
+    /// actually decodes. WebP needs the free WebP Image Extension, which a desktop PC usually has; on the CI runner (Windows Server)
+    /// it is missing or listed but not working.
+    /// </summary>
+    public static bool WicDecodes(string extension) =>
+        s_wicExtensions.Value.Contains(extension) && (!extension.Equals(".webp", StringComparison.OrdinalIgnoreCase) || s_wicDecodesWebp.Value);
+
+    /// <summary>
+    /// True when WIC can read the file at <paramref name="path"/>, judged by what it really is (its magic numbers). Only WebP can be
+    /// missing; every other format these tests write has a decoder built into Windows.
+    /// </summary>
+    public static bool WicReads(string path) => ImageBytes.Sniff(path) != "webp" || WicDecodes(".webp");
+
     /// <summary>WIC (via the WinRT <c>BitmapDecoder</c>): upright pixels of frame <paramref name="frame"/>, no colour management, EXIF orientation applied.</summary>
     public static async Task<Px> WicAsync(string path, int frame = 0)
     {
@@ -226,12 +261,13 @@ internal static class PixDecode
     /// <summary>
     /// Decodes with both libraries and asserts they agree (within <paramref name="tolerance"/> per channel, which is 0 for
     /// lossless formats and a few levels for JPEG whose IDCT differs between libraries), returning the Skia pixels.
-    /// WIC-only formats (HEIC) return the WIC pixels.
+    /// WIC-only formats (HEIC) return the WIC pixels; WebP on a PC without a WIC WebP decoder returns the Skia pixels alone.
     /// </summary>
     public static async Task<Px> BothAsync(string path, int tolerance)
     {
-        var wic = await WicAsync(path);
         var skia = Skia(path);
+        if (skia is not null && !WicReads(path)) return skia;
+        var wic = await WicAsync(path);
         if (skia is null) return wic;
         Assert.Equal((skia.W, skia.H), (wic.W, wic.H));
         var diff = PixMetrics.MaxDiff(skia, wic, includeAlpha: true);

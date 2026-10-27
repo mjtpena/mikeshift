@@ -48,4 +48,21 @@ internal static class ImageBytes
     }
 
     public static bool Contains(byte[] haystack, ReadOnlySpan<byte> needle) => haystack.AsSpan().IndexOf(needle) >= 0;
+
+    /// <summary>The FourCCs of a WebP's RIFF chunks in order ("VP8 ", "VP8L", "VP8X", "EXIF", "XMP ", "ICCP"...). Throws if the structure is broken.</summary>
+    public static IReadOnlyList<string> WebpChunks(byte[] webp)
+    {
+        Assert.True(webp.Length >= 12 && webp.AsSpan(0, 4).SequenceEqual("RIFF"u8) && webp.AsSpan(8, 4).SequenceEqual("WEBP"u8), "no RIFF WEBP header");
+        Assert.Equal(webp.Length - 8L, BinaryPrimitives.ReadUInt32LittleEndian(webp.AsSpan(4)));
+        var list = new List<string>();
+        var pos = 12L;
+        while (pos + 8 <= webp.Length)
+        {
+            list.Add(System.Text.Encoding.ASCII.GetString(webp, (int)pos, 4));
+            var size = BinaryPrimitives.ReadUInt32LittleEndian(webp.AsSpan((int)pos + 4));
+            pos += 8 + size + (size & 1);
+        }
+        Assert.Equal(webp.Length, pos);
+        return list;
+    }
 }
