@@ -154,6 +154,14 @@ public class UpscaleTests
         else Assert.Equal(UpscaleCopy.TooLarge(width, height), Assert.Throws<ConversionException>(() => ImageConverter.RequireUpscalable(width, height)).Message);
     }
 
+    [Theory]
+    [InlineData(15_001, 1, "This picture is too large to upscale: its longest side would become 30,002 pixels, and MikeShift handles up to 30,000.")]
+    [InlineData(1, 20_000, "This picture is too large to upscale: its longest side would become 40,000 pixels, and MikeShift handles up to 30,000.")]
+    [InlineData(10_001, 5_000, "This picture is too large to upscale: 50.005 megapixels would become 200.02, and MikeShift handles up to 200.")]
+    [InlineData(8_000, 6_500, "This picture is too large to upscale: 52.0 megapixels would become 208.0, and MikeShift handles up to 200.")]
+    public void The_refusal_names_the_limit_that_was_passed_and_the_numbers_that_show_it(int width, int height, string expected) =>
+        Assert.Equal(expected, UpscaleCopy.TooLarge(width, height));
+
     [Fact]
     public async Task A_picture_whose_result_would_be_too_large_is_refused_before_the_engine_runs_and_writes_nothing()
     {
@@ -164,7 +172,7 @@ public class UpscaleTests
 
         var ex = await Assert.ThrowsAsync<ConversionException>(() => ImageConverter.UpscaleAsync(input, Caps, ConversionOptions.Default, engine, default));
 
-        Assert.Equal("This picture is too large to upscale: 52 megapixels would become 208, and MikeShift handles up to 200.", ex.Message);
+        Assert.Equal("This picture is too large to upscale: 52.0 megapixels would become 208.0, and MikeShift handles up to 200.", ex.Message);
         Assert.Empty(engine.Seen);
         Assert.Equal(["huge.png"], FileNames(tmp));
         guard.AssertUnchanged();
@@ -341,26 +349,6 @@ public class UpscaleTests
     }
 
     [Fact]
-    public void The_override_reaches_every_snapshot_and_is_cleared_with_the_dev_switch_off()
-    {
-        try
-        {
-            CapabilityOverrides.Apply("ai-upscale");
-            Assert.True(Capabilities.Current.AiUpscale);
-            Capabilities.TryGetCurrent(out var snapshot);   // probed or quick, whichever is ready: the override applies to both
-            Assert.True(snapshot.AiUpscale);
-
-            CapabilityOverrides.Apply("no-ai-upscale");
-            Assert.False(Capabilities.Current.AiUpscale);
-        }
-        finally
-        {
-            CapabilityOverrides.Apply(null);
-        }
-        Assert.Null(Capabilities.Override);
-    }
-
-    [Fact]
     public void The_shell_cache_carries_the_flag_and_an_older_file_without_it_means_false()
     {
         Assert.True(CapabilityCache.Parse(CapabilityCache.Serialize(Capabilities.None with { AiUpscale = true })).AiUpscale);
@@ -382,5 +370,63 @@ public class UpscaleTests
         var back = Decode(path);
         Assert.Equal(tmp.Combine("small 2x.png"), path);
         Assert.Equal((192, 128), (back.Width, back.Height));
+    }
+}
+
+/// <summary>
+/// The tests that switch the process-wide capability override. They run alone (the collection disables parallelism), because while the override is
+/// on every <c>Capabilities.Current</c> read builds a new record and would break tests of other classes that compare two reads.
+/// </summary>
+[Collection("no-wic-webp")]
+public class UpscaleOverrideTests
+{
+    [Fact]
+    public void The_override_reaches_every_snapshot_and_is_cleared_with_the_dev_switch_off()
+    {
+        try
+        {
+            CapabilityOverrides.Apply("ai-upscale");
+            Assert.True(Capabilities.Current.AiUpscale);
+            Capabilities.TryGetCurrent(out var snapshot);   // probed or quick, whichever is ready: the override applies to both
+            Assert.True(snapshot.AiUpscale);
+
+            CapabilityOverrides.Apply("no-ai-upscale");
+            Assert.False(Capabilities.Current.AiUpscale);
+        }
+        finally
+        {
+            CapabilityOverrides.Apply(null);
+        }
+        Assert.Null(Capabilities.Override);
+    }
+
+    [Fact]
+    public async Task A_webp_only_SkiaSharp_can_read_is_refused_from_its_header_before_it_is_decoded()
+    {
+        using var tmp = new TempDir();
+        var small = tmp.WriteFile("small.webp", WebpFixtures.Solid(64, 48, SkiaSharp.SKColors.Red));
+        var huge = tmp.WriteFile("huge.webp", WebpFixtures.Solid(7_200, 7_200, SkiaSharp.SKColors.Red)); // 51.84 MP, so 207 MP
+        var engine = new CountingEngine();
+        try
+        {
+            CapabilityOverrides.Apply("no-wic-webp");   // Windows' WebP decoder is hidden, as on a PC without the extension
+
+            Assert.Equal((64, 48), await ImageCodec.HeaderSizeAsync(small, default));
+            var ex = await Assert.ThrowsAsync<ConversionException>(() =>
+                ImageConverter.UpscaleAsync(huge, Capabilities.All, ConversionOptions.Default, engine, default));
+
+            Assert.Equal(UpscaleCopy.TooLarge(7_200, 7_200), ex.Message);
+            Assert.Equal(0, engine.Calls);
+        }
+        finally
+        {
+            CapabilityOverrides.Apply(null);
+        }
+    }
+
+    private sealed class CountingEngine : IUpscaleEngine
+    {
+        public int Calls { get; private set; }
+        public Task<Raster> ScaleAsync(Raster source, CancellationToken ct) { Calls++; throw new InvalidOperationException(); }
     }
 }

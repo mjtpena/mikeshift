@@ -15,7 +15,16 @@ public static class UpscaleCopy
     /// <summary>The engine returned a picture that is not exactly twice the size, so nothing is written.</summary>
     public const string WrongSize = "Couldn't upscale this picture: the result was not twice the size.";
 
-    /// <summary>The output would pass the megapixel limit (200) or a side limit of 30,000 pixels.</summary>
-    public static string TooLarge(long width, long height) =>
-        $"This picture is too large to upscale: {width * height / 1_000_000} megapixels would become {width * 2 * height * 2 / 1_000_000}, and MikeShift handles up to 200.";
+    /// <summary>The output would pass the megapixel limit (200) or a side limit of 30,000 pixels; says which, with the numbers that show why.</summary>
+    public static string TooLarge(long width, long height)
+    {
+        if (Math.Max(width, height) * 2 > SideLimit)
+            return FormattableString.Invariant($"This picture is too large to upscale: its longest side would become {Math.Max(width, height) * 2:N0} pixels, and MikeShift handles up to {SideLimit:N0}.");
+        var before = width * height / 1_000_000.0;
+        var after = width * 2 * height * 2 / 1_000_000.0;
+        return FormattableString.Invariant($"This picture is too large to upscale: {before:0.0##} megapixels would become {after:0.0##}, and MikeShift handles up to 200.");
+    }
+
+    /// <summary>The longest side an output may have.</summary>
+    public const long SideLimit = 30_000;
 }

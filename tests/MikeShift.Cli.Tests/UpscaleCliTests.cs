@@ -116,4 +116,14 @@ public class UpscaleCliTests
         Assert.Matches("error: Couldn't upscale this picture", r.Stderr);
         Assert.Equal(["logo.png"], Directory.GetFiles(tmp.Path).Select(Path.GetFileName));
     }
+
+    [Fact]
+    public void A_file_called_dev_after_the_terminator_is_still_a_file_name()
+    {
+        // Stripped as a flag it would leave "--list --" and succeed with nothing to list; as a file name it is reported missing.
+        var r = CliProcess.Run("--list", "--", "--dev");
+
+        Assert.Equal(1, r.ExitCode);
+        Assert.Contains("error: not found: --dev", r.Stderr);
+    }
 }

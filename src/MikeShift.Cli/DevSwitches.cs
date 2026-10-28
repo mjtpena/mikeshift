@@ -1,4 +1,5 @@
 using MikeShift.Core;
+using MikeShift.Core.Cli;
 using MikeShift.Core.Hosting;
 
 namespace MikeShift.Cli;
@@ -20,9 +21,11 @@ internal static class DevSwitches
     /// <summary>Applies <c>MIKESHIFT_CAPS</c> when dev switches are honoured (and clears any override otherwise); returns the arguments without <c>--dev</c> when it was honoured.</summary>
     public static string[] Apply(string[] args)
     {
-        var enabled = DevSwitchPolicy.IsEnabled(DebugBuild, IsPackaged(), args);
+        // Only an option-position --dev counts: after "--" or as an option's value it is a file name or a title.
+        var stripped = CliRunner.TakeDevFlag(args, out var flagged);
+        var enabled = DevSwitchPolicy.IsEnabled(DebugBuild, IsPackaged(), flagged ? [DevSwitchPolicy.DevFlag] : []);
         CapabilityOverrides.Apply(enabled ? Environment.GetEnvironmentVariable("MIKESHIFT_CAPS") : null);
-        return enabled ? args.Where(a => !string.Equals(a, DevSwitchPolicy.DevFlag, StringComparison.Ordinal)).ToArray() : args;
+        return enabled ? stripped : args;
     }
 
     private static bool IsPackaged()

@@ -281,7 +281,7 @@ public static class ImageConverter
     /// <summary>Throws the "too large" message when twice the width and height would pass the 200-megapixel guard or the side limit.</summary>
     internal static void RequireUpscalable(int width, int height)
     {
-        if ((long)width * 2 * height * 2 > ImageCodec.MaxPixels || Math.Max(width, height) * 2L > MaxOutputSide)
+        if ((long)width * 2 * height * 2 > ImageCodec.MaxPixels || Math.Max(width, height) * 2L > Feedback.UpscaleCopy.SideLimit)
             throw new ConversionException(Feedback.UpscaleCopy.TooLarge(width, height));
     }
 

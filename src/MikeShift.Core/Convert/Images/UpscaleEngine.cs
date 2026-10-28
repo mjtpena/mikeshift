@@ -114,7 +114,7 @@ internal sealed class WindowsUpscaleEngine : IUpscaleEngine
         // The scaler takes BGRA bitmaps. The converter hands over opaque pixels; transparency is rebuilt around the engine, not inside it.
         using var input = SoftwareBitmap.CreateCopyFromBuffer(
             source.Bgra.AsBuffer(), BitmapPixelFormat.Bgra8, source.Width, source.Height, BitmapAlphaMode.Premultiplied);
-        var scaler = ImageScaler.CreateAsync().AsTask().GetAwaiter().GetResult();
+        using var scaler = ImageScaler.CreateAsync().AsTask().GetAwaiter().GetResult();
         using var output = scaler.ScaleSoftwareBitmap(input, width, height);
         using var bgra = output.BitmapPixelFormat == BitmapPixelFormat.Bgra8 ? null : SoftwareBitmap.Convert(output, BitmapPixelFormat.Bgra8);
         var pixels = new byte[checked(output.PixelWidth * output.PixelHeight * 4)];

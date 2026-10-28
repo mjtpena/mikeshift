@@ -172,6 +172,36 @@ public static class CliRunner
 
     // ------------------------------------------------------------------ parsing
 
+    private static readonly HashSet<string> OptionsWithValue = new(StringComparer.Ordinal)
+    {
+        "--run", "--range", "--crop", "--quality", "--compress", "--resize", "--gif-seconds", "--max-size", "--out",
+    };
+
+    /// <summary>
+    /// Takes the developer flag <c>--dev</c> out of <paramref name="args"/>, but only where an option can stand: not after the <c>--</c> terminator
+    /// (there it is a file name) and not as the value of an option such as <c>--run</c> or <c>--out</c>. <paramref name="found"/> says whether a
+    /// flag was removed; everything else, including the terminator, is kept in order.
+    /// </summary>
+    public static string[] TakeDevFlag(string[] args, out bool found)
+    {
+        ArgumentNullException.ThrowIfNull(args);
+        var kept = new List<string>(args.Length);
+        found = false;
+        for (var i = 0; i < args.Length; i++)
+        {
+            var a = args[i];
+            if (a == "--")
+            {
+                kept.AddRange(args.Skip(i));
+                break;
+            }
+            if (a == "--dev") { found = true; continue; }
+            kept.Add(a);
+            if (OptionsWithValue.Contains(a) && i + 1 < args.Length) kept.Add(args[++i]);
+        }
+        return [.. kept];
+    }
+
     private enum Mode { List, Run }
 
     private sealed record Command(Mode Mode, string? Title, string? Range, string? Crop, IReadOnlyList<string> Files, bool UseWord = false,
