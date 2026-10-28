@@ -345,6 +345,42 @@ internal static class ImageCodec
         return (1, false);
     }
 
+    /// <summary>
+    /// The pixel size from the header alone (no pixel decode, orientation not applied), or null when Windows' decoder cannot say. Lets a tool whose
+    /// output is much larger than its input refuse before it decodes a huge picture; the real decode still checks the size.
+    /// </summary>
+    public static async Task<(int Width, int Height)?> HeaderSizeAsync(string path, CancellationToken ct)
+    {
+        if (!CapabilityOverrides.HidesWicDecoder(path))
+        {
+            try
+            {
+                using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete, 4096);
+                using var ras = fs.AsRandomAccessStream();
+                var decoder = await BitmapDecoder.CreateAsync(ras).AsTask(ct).ConfigureAwait(false);
+                if (decoder.PixelWidth > 0 && decoder.PixelHeight > 0) return ((int)decoder.PixelWidth, (int)decoder.PixelHeight);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception)
+            {
+                // try SkiaSharp, which decodes what Windows cannot (WebP without the extension)
+            }
+        }
+
+        try
+        {
+            using var codec = SKCodec.Create(path);
+            return codec is not null && codec.Info.Width > 0 && codec.Info.Height > 0 ? (codec.Info.Width, codec.Info.Height) : null;
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
+
     /// <summary>Header-only check that some decoder accepts the file.</summary>
     public static bool CanDecodeHeader(string path)
     {

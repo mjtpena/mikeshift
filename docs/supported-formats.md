@@ -8,7 +8,7 @@ How a file is recognised: by its content and its extension. A PDF is recognised 
 
 | You have | Convert to | Tools |
 |---|---|---|
-| **Pictures**: PNG, JPG, HEIC, TIFF, GIF, WebP, BMP, AVIF, ICO, JPEG XR | PNG, JPG, TIFF, GIF, BMP, WebP, HEIC, ICO, PDF, Searchable PDF, TXT (the text in the picture) | Compress, Resize, Crop, Strip EXIF, Blur faces, Merge PDF, Merge searchable PDF, Read QR code |
+| **Pictures**: PNG, JPG, HEIC, TIFF, GIF, WebP, BMP, AVIF, ICO, JPEG XR | PNG, JPG, TIFF, GIF, BMP, WebP, HEIC, ICO, PDF, Searchable PDF, TXT (the text in the picture) | Compress, Resize, Crop, Strip EXIF, Blur faces, Upscale 2x (Copilot+ PCs only), Merge PDF, Merge searchable PDF, Read QR code |
 | **PDF** | Page images (PNG or JPG), TXT | Compress, Split, Merge, Searchable PDF (for scans) |
 | **Video**: MP4, M4V, MOV, AVI, WMV, MKV, WebM, MPEG, 3GP, TS and others | MP4, M4V, WMV, GIF, or just the audio (M4A, MP3) | Compress, Fit 10 MB, Fit 25 MB, Trim |
 | **Audio**: MP3, WAV, M4A, AAC, FLAC, AIFF, WMA, ALAC | M4A, WAV, AIFF, FLAC, MP3 | Compress, Trim |
@@ -28,7 +28,7 @@ A format is not offered for a file that is already in it (a PNG has no "PNG" til
 | Input extensions | `png` `jpg` `jpeg` `jpe` `jfif` `heic` `heif` `tif` `tiff` `gif` `webp` `bmp` `dib` `avif` `ico` `jxr` `wdp` |
 |---|---|
 | Output formats | PNG, JPG, TIFF, GIF, BMP, WebP, HEIC, ICO (a Windows icon), PDF (one picture per PDF), and TXT (the text in the picture) |
-| Tools | **Compress** keeps the format and saves a smaller copy, only when it saves at least 5 percent. **Resize** halves (or quarters, or takes three quarters of) both sides. **Crop** opens the [crop editor](user-guide.md#crop-and-trim). **Strip EXIF** removes the camera, location and other metadata but keeps the picture upright. **Blur faces** covers every face Windows finds with a coarse pixelation and a blur, keeps the format, and writes no metadata or embedded thumbnail. **Merge PDF** puts two or more pictures into one PDF. **Merge searchable PDF** does the same and adds the text layer described next. **Read QR code** writes the text of the QR codes in the picture to a text file (see [QR codes](#qr-codes)). |
+| Tools | **Compress** keeps the format and saves a smaller copy, only when it saves at least 5 percent. **Resize** halves (or quarters, or takes three quarters of) both sides. **Crop** opens the [crop editor](user-guide.md#crop-and-trim). **Strip EXIF** removes the camera, location and other metadata but keeps the picture upright. **Blur faces** covers every face Windows finds with a coarse pixelation and a blur, keeps the format, and writes no metadata or embedded thumbnail. **Upscale 2x** makes a copy at exactly twice the width and height with the image upscaler built into Windows, in the same format and with transparency kept; it exists on Copilot+ PCs only and is hidden elsewhere. **Merge PDF** puts two or more pictures into one PDF. **Merge searchable PDF** does the same and adds the text layer described next. **Read QR code** writes the text of the QR codes in the picture to a text file (see [QR codes](#qr-codes)). |
 
 Pictures are converted upright: the camera's rotation is applied, so the result is not sideways. Compress, Resize and Crop refuse animated pictures and multi-page files (such as a multi-page TIFF) instead of silently dropping frames.
 

@@ -30,6 +30,7 @@ public static class ImageConverter
     private const string CroppedSuffix = " cropped";
     private const string CleanSuffix = " clean";
     private const string BlurredSuffix = " blurred";
+    private const string UpscaledSuffix = " 2x";
 
     private const double StripQuality = 0.95;
     private const double CompressMinSaving = 0.05;
@@ -243,6 +244,63 @@ public static class ImageConverter
 
         var path = await CommitAsync(input, ExtensionFor(format, input), BlurredSuffix, bytes, ct).ConfigureAwait(false);
         return new FaceBlurResult(path, boxes.Count);
+    }
+
+    /// <summary>Upscale 2x with the Windows AI image scaler; see the overload below.</summary>
+    public static Task<string> UpscaleAsync(string input, Capabilities caps, ConversionOptions options, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(caps);
+        if (!caps.AiUpscale) throw new ConversionException(Feedback.UpscaleCopy.NotAvailable);
+        return UpscaleAsync(input, caps, options, WindowsUpscaleEngine.Instance, ct);
+    }
+
+    /// <summary>
+    /// Makes the picture exactly twice as wide and high with <paramref name="engine"/> and saves it in its own format as " 2x". The pixels are
+    /// upright first (EXIF orientation applied), so a portrait photo stays a portrait. Refused before the picture is decoded when the result would
+    /// pass the 200-megapixel guard or 30,000 pixels on a side, and refused for animated and multi-page files. Transparency is kept: the engine
+    /// upscales the colour, the alpha channel is enlarged on its own and put back. A result of any other size is an error and no file. Lossy
+    /// formats use <paramref name="options"/>'s quality; the output carries the picture's Exif like Resize does.
+    /// </summary>
+    internal static async Task<string> UpscaleAsync(
+        string input, Capabilities caps, ConversionOptions options, IUpscaleEngine engine, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        await RequireSingleFrameAsync(input, "upscaled", ct).ConfigureAwait(false);
+        if (await ImageCodec.HeaderSizeAsync(input, ct).ConfigureAwait(false) is { } size)
+            RequireUpscalable(size.Width, size.Height);
+        var img = await ImageCodec.DecodeAsync(input, ImageCodec.MaxPixels, ct).ConfigureAwait(false);
+        RequireSingleFrame(img, "upscaled");
+        RequireUpscalable(img.Width, img.Height);
+
+        var pixels = await UpscalePixelsAsync(img.Pixels, engine, ct).ConfigureAwait(false);
+        var format = SameFormat(img, caps);
+        var bytes = await EncodeAsync(img, pixels, format, options.QualityFraction, keepExif: true, ct).ConfigureAwait(false);
+        return await CommitAsync(input, ExtensionFor(format, input), UpscaledSuffix, bytes, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>Throws the "too large" message when twice the width and height would pass the 200-megapixel guard or the side limit.</summary>
+    internal static void RequireUpscalable(int width, int height)
+    {
+        if ((long)width * 2 * height * 2 > ImageCodec.MaxPixels || Math.Max(width, height) * 2L > Feedback.UpscaleCopy.SideLimit)
+            throw new ConversionException(Feedback.UpscaleCopy.TooLarge(width, height));
+    }
+
+    /// <summary>
+    /// The picture at twice the size. Opaque pictures go through the engine as they are. For a picture with transparency the engine sees the
+    /// colour with the alpha dropped, and the alpha channel is enlarged separately (greyscale, high-quality resampling) and written back, so
+    /// the engine never has to understand alpha and the transparency cannot be lost.
+    /// </summary>
+    internal static async Task<Raster> UpscalePixelsAsync(Raster source, IUpscaleEngine engine, CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+        var alpha = source.HasRealAlpha;
+        var scaled = await engine.ScaleAsync(alpha ? source.WithOpaqueAlpha() : source, ct).ConfigureAwait(false);
+        ct.ThrowIfCancellationRequested();
+        if (scaled.Width != source.Width * 2 || scaled.Height != source.Height * 2)
+            throw new ConversionException(Feedback.UpscaleCopy.WrongSize);
+        if (!alpha) return scaled;
+        var grey = source.AlphaAsGrey().CropScale(new RectPx(0, 0, source.Width, source.Height), scaled.Width, scaled.Height);
+        return scaled.WithAlphaOf(grey);
     }
 
     // ------------------------------------------------------------------ helpers

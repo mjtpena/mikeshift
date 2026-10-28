@@ -230,6 +230,7 @@ How to test:
 5. HEIC files need Microsoft's HEIF and HEVC Store extensions. Without them the wheel shows a "Get HEIF" tile that opens the Store page.
 
 Why the runFullTrust capability is declared: MikeShift is a desktop (Win32 / WinUI 3) application. It needs full trust to detect a Shift/Ctrl+drag with a low-level mouse and keyboard hook (it reads only mouse movement, the left button, the scroll wheel and the Shift, Ctrl, Alt and Esc keys, to run the gesture, and stores nothing), to provide the File Explorer context-menu command through an out-of-process COM server, to read and write files the user chooses, and to use Windows Media Foundation and the Windows PDF renderer. The package declares no internet capability.
+The systemAIModels capability is declared for one tool, "Upscale 2x", which calls the image upscaler built into Windows on Copilot+ PCs (Microsoft.Windows.AI.Imaging); Windows installs the model for that itself, and the capability is not a network capability. The tool is hidden on PCs that do not support it.
 The "Open at login" startup task is off by default. The app adds a "mikeshift" command line alias.
 ```
 

@@ -202,4 +202,20 @@ public class CliRunnerTests
     [InlineData("1:2:3:4")]
     [InlineData("x")]
     public void Time_syntax_rejects(string text) => Assert.False(CliRunner.TryParseTime(text, out _));
+
+    [Theory]
+    [InlineData("--dev|--list|a.png", "--list|a.png", true)]
+    [InlineData("--list|--dev|a.png", "--list|a.png", true)]
+    [InlineData("--list|--|--dev", "--list|--|--dev", false)]               // a file called --dev after the terminator
+    [InlineData("--run|--dev|a.png", "--run|--dev|a.png", false)]           // an action title in the value position
+    [InlineData("--out|--dev|--list|a.png", "--out|--dev|--list|a.png", false)]
+    [InlineData("--dev|--list|--|--dev", "--list|--|--dev", true)]
+    [InlineData("--list|a.png", "--list|a.png", false)]
+    public void The_dev_flag_is_taken_out_only_where_an_option_can_stand(string args, string expected, bool found)
+    {
+        var result = CliRunner.TakeDevFlag(args.Split('|'), out var wasFound);
+
+        Assert.Equal(expected.Split('|'), result);
+        Assert.Equal(found, wasFound);
+    }
 }

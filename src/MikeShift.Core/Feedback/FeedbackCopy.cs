@@ -74,6 +74,7 @@ public static partial class FeedbackCopy
         "Crop" => "Cropping",
         "Strip EXIF" => withObject ? "Removing EXIF data" : "Cleaning",
         "Blur faces" => withObject ? "Blurring faces" : "Blurring",
+        "Upscale 2x" => withObject ? "Upscaling to 2x" : "Upscaling",
         "Trim" => "Trimming",
         "Split" => "Splitting",
         "Merge" or "Merge PDF" or "Merge searchable PDF" => "Merging",

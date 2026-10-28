@@ -17,6 +17,7 @@ public static class Glyphs
     public const string Crop = "";       // Crop
     public const string StripExif = "";  // Hide (an eye with a slash)
     public const string BlurFaces = ""; // Contact (a person)
+    public const string Upscale = ""; // FullScreen (arrows pointing outward: the opposite of Resize)
     public const string Trim ="";       // Cut
     public const string Split = "";      // Split page
     public const string Merge = "";      // Combine
@@ -39,7 +40,7 @@ public static class Glyphs
     public const string Info = "";
 
     /// <summary>Every tool glyph, for tests.</summary>
-    public static IReadOnlyList<string> All { get; } = [Compress, Resize, Crop, StripExif, BlurFaces, Trim, Split, Merge, Zip, Fit, QrCode, ReadQrCode, Searchable];
+    public static IReadOnlyList<string> All { get; } = [Compress, Resize, Crop, StripExif, BlurFaces, Upscale, Trim, Split, Merge, Zip, Fit, QrCode, ReadQrCode, Searchable];
 
     /// <summary>Every glyph the wheel can draw (tool, category and info glyphs), for the font-coverage test.</summary>
     public static IReadOnlyList<string> Everything { get; } = [.. All, Image, Document, Pdf, Video, Audio, Info];

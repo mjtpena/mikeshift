@@ -18,7 +18,8 @@
   xmlns:desktop5="http://schemas.microsoft.com/appx/manifest/desktop/windows10/5"
   xmlns:com="http://schemas.microsoft.com/appx/manifest/com/windows10"
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
-  IgnorableNamespaces="uap uap5 desktop desktop4 desktop5 com rescap">
+  xmlns:systemai="http://schemas.microsoft.com/appx/manifest/systemai/windows10"
+  IgnorableNamespaces="uap uap5 desktop desktop4 desktop5 com rescap systemai">
 
   <Identity
     Name="2259MichaelJohnTimpocPea.MikeShift"
@@ -32,7 +33,7 @@
   </Properties>
 
   <Dependencies>
-    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.26100.0" />
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.26226.0" />
   </Dependencies>
 
   <Resources>
@@ -95,5 +96,8 @@
 
   <Capabilities>
     <rescap:Capability Name="runFullTrust" />
+    <!-- Lets the Windows AI image scaler (Upscale 2x on Copilot+ PCs) run for this app. Not a network capability: Windows installs the model
+         itself; MikeShift opens no connection (docs/privacy.md). Needs MaxVersionTested 10.0.26226.0 or later. -->
+    <systemai:Capability Name="systemAIModels" />
   </Capabilities>
 </Package>
