@@ -76,6 +76,19 @@
     <BundleCli Condition="'$(BundleCli)' == ''">true</BundleCli>
   </PropertyGroup>
 
+  <!-- The packaging tools write MaxVersionTested into the package manifest from the target platform version (10.0.26100.0 here), whatever
+       Package.appxmanifest says. The systemAIModels capability (Upscale 2x) needs at least 10.0.26226.0, so the one device family item is
+       declared here instead of being generated. Minimum stays 10.0.17763.0 (Windows 10 1809). -->
+  <PropertyGroup>
+    <AppxAddDefaultTargetDeviceFamilyItem>false</AppxAddDefaultTargetDeviceFamilyItem>
+  </PropertyGroup>
+  <ItemGroup>
+    <TargetDeviceFamily Include="Windows.Desktop">
+      <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+      <TargetPlatformVersion>10.0.26226.0</TargetPlatformVersion>
+    </TargetDeviceFamily>
+  </ItemGroup>
+
   <!-- PublishTrimmed etc. (after SelfContained, which it depends on). -->
   <Import Project="..\..\Trimming.props" />
 
