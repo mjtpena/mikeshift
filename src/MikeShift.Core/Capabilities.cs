@@ -59,6 +59,13 @@ public sealed record Capabilities
     /// <summary>Windows face detection (<c>FaceDetector.IsSupported</c>) works on this PC. Gates the Blur faces tile.</summary>
     public bool FaceDetect { get; init; }
 
+    /// <summary>
+    /// The Windows AI image scaler (<c>ImageScaler</c>, Copilot+ PCs) can upscale a picture here, or can once Windows has installed its model:
+    /// true when its ready state is <c>Ready</c> or <c>NotReady</c> (supported, model not installed yet), false when it is disabled by the
+    /// user, not supported, or the component cannot load (an unpackaged run). Gates the Upscale 2x tile.
+    /// </summary>
+    public bool AiUpscale { get; init; }
+
     /// <summary>Microsoft Word is installed (<c>HKCR\Word.Application</c>). Informational: MikeShift only drives Word when <see cref="WordCom"/> is true.</summary>
     public bool WordInstalled { get; init; }
 
@@ -84,7 +91,7 @@ public sealed record Capabilities
     {
         HeifEncode = true, HeifDecode = true, WebpEncode = true, AvifDecode = true,
         Mp3Encode = true, FlacEncode = true, H264Encode = true, AacEncode = true,
-        HevcDecode = true, Vp9Decode = true, Av1Decode = true, WebmOpen = true, Ocr = true, FaceDetect = true,
+        HevcDecode = true, Vp9Decode = true, Av1Decode = true, WebmOpen = true, Ocr = true, FaceDetect = true, AiUpscale = true,
         WordInstalled = true, WordCom = true,
     };
 
@@ -168,7 +175,7 @@ public sealed record Capabilities
 
     /// <summary>
     /// Dev/test only (see <see cref="CapabilityOverrides"/>): removes capabilities from every snapshot, so a PC that has the HEIF extension can show
-    /// what one without it sees. Null (the default) changes nothing.
+    /// what one without it sees, and can force <see cref="AiUpscale"/> on for a PC that is not a Copilot+ PC. Null (the default) changes nothing.
     /// </summary>
     public static Func<Capabilities, Capabilities>? Override { get; set; }
 

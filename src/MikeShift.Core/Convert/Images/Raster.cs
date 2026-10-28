@@ -35,6 +35,35 @@ internal sealed class Raster
         }
     }
 
+    /// <summary>A copy with every pixel made fully opaque and the colour left as it is (what an engine that ignores transparency should see).</summary>
+    public Raster WithOpaqueAlpha()
+    {
+        var dst = (byte[])Bgra.Clone();
+        for (var i = 3; i < dst.Length; i += 4) dst[i] = 0xFF;
+        return new Raster(Width, Height, dst);
+    }
+
+    /// <summary>The alpha channel as an opaque grey picture (blue, green and red all hold the alpha), so it can be resampled like any picture.</summary>
+    public Raster AlphaAsGrey()
+    {
+        var dst = new byte[Bgra.Length];
+        for (var i = 0; i < dst.Length; i += 4)
+        {
+            dst[i] = dst[i + 1] = dst[i + 2] = Bgra[i + 3];
+            dst[i + 3] = 0xFF;
+        }
+        return new Raster(Width, Height, dst);
+    }
+
+    /// <summary>A copy of this picture whose alpha channel is the blue channel of <paramref name="grey"/> (same size); see <see cref="AlphaAsGrey"/>.</summary>
+    public Raster WithAlphaOf(Raster grey)
+    {
+        if (grey.Width != Width || grey.Height != Height) throw new ArgumentException("The alpha picture must have the same size.", nameof(grey));
+        var dst = (byte[])Bgra.Clone();
+        for (var i = 0; i < dst.Length; i += 4) dst[i + 3] = grey.Bgra[i];
+        return new Raster(Width, Height, dst);
+    }
+
     /// <summary>True if every pixel's colour channels are zero (black, or fully transparent): what a failed HEIC/AVIF decode produces.</summary>
     public bool IsAllBlack()
     {

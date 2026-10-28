@@ -1,6 +1,6 @@
 # MikeShift privacy statement
 
-Last updated: 2026-10-24. This statement applies to MikeShift 1.0.
+Last updated: 2026-10-28. This statement applies to MikeShift 1.0 and later.
 
 MikeShift is a free, open-source Windows app that converts files on your PC. This page says what the app does and does not do with data. It was written against the source code and checked with the measurements described below, so you can verify it yourself.
 
@@ -10,6 +10,7 @@ MikeShift is a free, open-source Windows app that converts files on your PC. Thi
 * Your files are read from, and written to, your own PC only. Originals are never changed or moved.
 * The app keeps a few small files on your PC (settings and logs, below). They never leave it unless you send them yourself.
 * One optional feature involves another company's program: if you turn on Microsoft Word in Settings, Word (not MikeShift) may connect to Microsoft. It is off by default.
+* On a Copilot+ PC, **Upscale 2x** uses an AI model that belongs to Windows. The first time you use it, **Windows** may download that model through Windows Update. MikeShift itself still opens no connection, and the picture never leaves your PC.
 
 ## Who is responsible
 
@@ -52,6 +53,7 @@ A few buttons hand a web address to **your** browser or the Microsoft Store app 
 
 * **Microsoft Word (optional, off by default).** Settings → "Use Microsoft Word for Word documents", or `--use-word` on the command line for one run. When on, legacy `.doc` files and DOCX-to-PDF are handed to Word, which runs invisibly on a private copy of the file and is quit afterwards. **Word is a separate Microsoft program and is not offline**: in the offline measurement above, the Word instances MikeShift started opened HTTPS connections to Microsoft (licensing and "connected experiences"), governed by your Microsoft Office privacy settings. With the setting off, Word is never started, even if it is installed, and MikeShift's own converters are used.
 * **Windows.** MikeShift uses Windows components to convert files (the Windows imaging codecs, Media Foundation, the Windows PDF renderer, Windows text recognition to read the text in pictures and scanned PDFs, and Windows face detection to find the faces to blur, which both run on your PC). Any diagnostic data Windows itself collects is governed by your Windows privacy settings and Microsoft's policy, not by MikeShift.
+* **Windows AI image upscaler (Copilot+ PCs only).** **Upscale 2x** calls the image upscaler that is part of Windows. It runs on your PC's NPU, with the picture in memory, and nothing about the picture is sent anywhere. The model it uses is not in MikeShift: if Windows does not have it yet, the first use asks Windows to install it, and **Windows** (not MikeShift) downloads it through Windows Update, the way it installs any Windows component, and shows the progress in Settings → Windows Update. That download is a connection made by Windows, under Windows' own privacy settings; MikeShift makes none and sends nothing to it. The app's package declares the `systemAIModels` capability so Windows will let it ask; it is not a network capability. On a PC that is not a Copilot+ PC, or where the feature is turned off in Windows, the tile is hidden and none of this happens. The offline measurement above covers MikeShift's own processes; it was run on a PC that is not a Copilot+ PC, so it did not exercise this tool.
 * **Microsoft Store extensions** (HEIF Image Extensions, HEVC Video Extensions, AV1 Video Extension, WebP Image Extensions, Web Media Extensions) are separate programs from Microsoft that you install yourself; MikeShift only reads whether they are present.
 
 ## Children

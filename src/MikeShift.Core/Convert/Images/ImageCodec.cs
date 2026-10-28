@@ -345,6 +345,29 @@ internal static class ImageCodec
         return (1, false);
     }
 
+    /// <summary>
+    /// The pixel size from the header alone (no pixel decode, orientation not applied), or null when Windows' decoder cannot say. Lets a tool whose
+    /// output is much larger than its input refuse before it decodes a huge picture; the real decode still checks the size.
+    /// </summary>
+    public static async Task<(int Width, int Height)?> HeaderSizeAsync(string path, CancellationToken ct)
+    {
+        try
+        {
+            using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete, 4096);
+            using var ras = fs.AsRandomAccessStream();
+            var decoder = await BitmapDecoder.CreateAsync(ras).AsTask(ct).ConfigureAwait(false);
+            return ((int)decoder.PixelWidth, (int)decoder.PixelHeight);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
+
     /// <summary>Header-only check that some decoder accepts the file.</summary>
     public static bool CanDecodeHeader(string path)
     {

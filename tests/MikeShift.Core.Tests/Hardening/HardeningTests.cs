@@ -16,6 +16,12 @@ public class HardeningTests
     private static readonly TimeSpan MaxRun = TimeSpan.FromSeconds(30);
 
     /// <summary>
+    /// This PC's capabilities, with Upscale 2x forced on so its tile is in the matrix on a PC that is not a Copilot+ PC: a bad picture must fail at
+    /// decoding, and a good one meets the real scaler, which reports a plain error where it cannot run.
+    /// </summary>
+    private static Capabilities Corpus => Capabilities.Current with { AiUpscale = true };
+
+    /// <summary>
     /// A legacy .doc goes through Word, which starts slowly and has its own 90 s kill switch (WordInterop.Timeout): the limit for those
     /// has to outlast that, or a slow Word start (cold machine, add-ins) would be reported as a hang. A real hang still fails.
     /// </summary>
@@ -118,7 +124,7 @@ public class HardeningTests
         var stdout = new StringWriter();
         var stderr = new StringWriter();
         var sw = Stopwatch.StartNew();
-        var task = Task.Run(() => CliRunner.RunAsync(args, stdout, stderr, Capabilities.Current));
+        var task = Task.Run(() => CliRunner.RunAsync(args, stdout, stderr, Corpus));
         var exit = await task.WaitAsync(limit); // a hang fails the test with a TimeoutException
         return new Run(exit, stdout.ToString(), stderr.ToString(), sw.Elapsed);
     }
@@ -140,7 +146,7 @@ public class HardeningTests
         {
             Kind.ClearCache();
             category = Kind.Of(path);
-            actions = ActionCatalog.For([path], Capabilities.Current);
+            actions = ActionCatalog.For([path], Corpus);
         }
         catch (Exception ex)
         {

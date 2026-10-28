@@ -15,6 +15,9 @@ Console.CancelKeyPress += (_, e) =>
     cts.Cancel();
 };
 
+// MIKESHIFT_CAPS (dev builds, or --dev on an unpackaged run): see DevSwitches.
+args = DevSwitches.Apply(args);
+
 var exitCode = await CliRunner.RunAsync(args, stdout, stderr, ct: cts.Token);
 
 // Skip native teardown (see FastExit); if the terminate call itself fails, fall back to a normal exit.

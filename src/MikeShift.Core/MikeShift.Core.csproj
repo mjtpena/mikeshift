@@ -16,6 +16,9 @@
     <PackageReference Include="SkiaSharp.NativeAssets.Win32" />
     <PackageReference Include="ZXing.Net" />
     <PackageReference Include="Microsoft.Windows.CsWin32" PrivateAssets="all" />
+    <!-- Windows AI imaging (ImageScaler for Upscale 2x): compile-time only. The tray app references the same package for real and carries the
+         projection and the native files; Core must not pass any of it on to the other projects, which would then pick up its build targets. -->
+    <PackageReference Include="Microsoft.WindowsAppSDK.AI" ExcludeAssets="runtime;native;build;buildTransitive;contentfiles;analyzers" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>

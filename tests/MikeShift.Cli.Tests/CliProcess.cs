@@ -34,7 +34,16 @@ public static class CliProcess
 
     public static CliResult Run(params string[] args) => Run(TimeSpan.FromMinutes(2), args);
 
-    public static CliResult Run(TimeSpan timeout, params string[] args)
+    /// <summary>
+    /// Runs the CLI with the dev switch <c>MIKESHIFT_CAPS</c> set to <paramref name="caps"/> (for example <c>ai-upscale</c> or <c>no-ai-upscale</c>) and
+    /// <c>--dev</c> in front, which a trimmed Release CLI needs before it honours the switch (a Debug one does not, and ignores the extra flag).
+    /// </summary>
+    public static CliResult RunWithCaps(string caps, params string[] args) =>
+        Run(TimeSpan.FromMinutes(2), new Dictionary<string, string> { ["MIKESHIFT_CAPS"] = caps }, ["--dev", .. args]);
+
+    public static CliResult Run(TimeSpan timeout, params string[] args) => Run(timeout, null, args);
+
+    private static CliResult Run(TimeSpan timeout, IReadOnlyDictionary<string, string>? environment, string[] args)
     {
         if (!File.Exists(ExePath)) throw new FileNotFoundException("MikeShift.Cli.exe was not copied to the test output.", ExePath);
 
@@ -48,6 +57,8 @@ public static class CliProcess
             StandardErrorEncoding = new UTF8Encoding(false),
         };
         foreach (var a in args) psi.ArgumentList.Add(a);
+        if (environment is not null)
+            foreach (var (name, value) in environment) psi.Environment[name] = value;
 
         using var p = Process.Start(psi) ?? throw new InvalidOperationException("Could not start MikeShift.Cli.exe");
         var stdout = p.StandardOutput.ReadToEndAsync();

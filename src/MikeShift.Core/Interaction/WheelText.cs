@@ -52,6 +52,7 @@ public static class WheelText
             "Crop" => "Choose the part of the picture to keep",
             "Strip EXIF" => "Save a copy without camera and location data",
             "Blur faces" => "Save a copy with the faces blurred",
+            "Upscale 2x" => "Save a copy at twice the width and height",
             "Trim" => "Choose the part to keep",
             "Split" => "Save each page as its own PDF",
             "Merge" => "Combine the files into one PDF",
