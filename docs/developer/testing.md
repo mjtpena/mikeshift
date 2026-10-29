@@ -94,7 +94,7 @@ Do these on the packages you intend to ship ([releasing](releasing.md)):
 
 * `makeappx` validates the manifest, including the `mikeshift.exe` alias to `MikeShift.Cli.exe` and its `desktop4:Subsystem="console"`.
 * Package contents: the self-contained runtime is present (`coreclr.dll`), `MikeShift.Cli.exe` and `MikeShift.exe` sit side by side in the package root, and there is no `onnxruntime.dll`, `DirectML.dll` or other Windows AI payload.
-* From an unpacked package: `MikeShift.Cli.exe --list`, `--run JPG`, `--run "Resize 50%"`, `--run Zip` and `--bogus` give exit codes 0 and 2; `MikeShift.exe --smoke-test` exits 0; the CLI suites pass against the trimmed executable (`MIKESHIFT_CLI_EXE`); a release build ignores `MIKESHIFT_LOG` without `--dev` and honours it with it.
+* From an unpacked package: `MikeShift.Cli.exe --list`, `--run JPG` (on a PNG: JPG is not offered for a JPG), `--run "Resize 50%"`, `--run Zip` and `--bogus` give exit codes 0 and 2; `MikeShift.exe --smoke-test` exits 0; the CLI suites pass against the trimmed executable (`MIKESHIFT_CLI_EXE`); a release build ignores `MIKESHIFT_LOG` without `--dev` and honours it with it.
 * The signature's subject equals the manifest's `Publisher`, and the SHA-256 of each file matches `SHA256SUMS.txt`.
 
 ## UI harnesses
@@ -131,6 +131,7 @@ Scenarios of the synthetic source: `copy`, `tools`, `shiftfirst`, `multi`, `esc`
 | Tray and click mode | `tray-keys`, `tray-mouse`, `tray-escape`, `tray-blur`, `tray-cancel`, `tray-flyout`, `tray-keyboard`, `tray-keyboard-open` |
 | Entry points | `ctrl-mode`, `ctrl-mode-shift`, `shift-mode-ctrl`, `hotkey`, `hotkey-empty`, `hotkey-none` (each with a scratch settings file via `MIKESHIFT_SETTINGS_PATH`, so your preferences are never touched) |
 | Measurements | `latency-primary`, `latency-left` (key to visible wheel, idle cost) |
+| Any tile, your own files | `action` (not part of `all`): copies your files into a fresh folder, shift-drags them out of a real File Explorer window and drops them on the tile you name. `--action-file a.png[,b.png]` (use roughly square pictures: Explorer starts a drag only on the picture itself, not on the empty part of a wide thumbnail), `--action-tile "Blur faces"`, `--action-out "a faces.png"` (output names to wait for, `*` allowed), `--action-toast "Blurred 1"` (text the toast must contain; without it the toast is only printed), `--action-timeout 120` (seconds, default 60), or `--action-absent` to check that the tile is on neither page. Example: `& $h --explorer action --action-file scan.pdf --action-tile TXT --action-out "scan*.txt"` |
 | Touches your files | `desktop` converts a file on your real Desktop and deletes it afterwards; run it deliberately, not as part of `all` on a machine you care about |
 
 Every scenario also asserts that the originals are byte-identical and in place, that the app log has no `[ERROR]`, and that the wheel is hidden at the end. The scenario IDs map to the manual checklist below. The missing-HEIF tile cannot be reproduced on a PC that has the extension, so it is checked three ways: unit tests with fake capabilities (`CodecHelpTests`), the developer capability override `MIKESHIFT_CAPS=no-heif,no-hevc`, and offscreen renders (`MikeShift.exe --dev --render-wheel heic-missing-drag-dark`; `--render-wheel list` lists the scenarios).
@@ -150,7 +151,7 @@ $h = 'tools\ContextMenuHarness\bin\Debug\net10.0-windows10.0.26100.0\ContextMenu
 & $h menu <workfolder> timing 8                                  # right-click to menu on screen, with and without the extension registered
 ```
 
-`menu` opens its own File Explorer window on the work folder (a temp folder you created containing `photo1.jpg` to `photo3.jpg`, `sample.png`, `doc.pdf`, `letter.docx`, `IMG_0001.heic`, `folder\`, `big\` with 600 JPEGs and `mixedbig\` with 18 JPEGs and 4 PDFs), selects items through the shell view, right-clicks with `SendInput`, finds the menu and its submenu through UI Automation, clicks real entries, then checks the folder: output beside the original, original SHA-256 unchanged. `HARNESS_SHOTS=<folder>` saves cropped menu screenshots (only the menu bodies are copied; the rest of the picture stays transparent). The tray app is started, and its one-time welcome window closed, first.
+`menu` opens its own File Explorer window on the work folder (a temp folder you created containing `photo1.jpg` to `photo3.jpg`, `sample.png`, `doc.pdf`, `letter.docx`, `IMG_0001.heic`, `folder\`, `big\` with 600 JPEGs and `mixedbig\` with 18 JPEGs and 4 PDFs, named `a01.jpg` onwards as the scenarios expect; keep the 600 JPEGs small, or Zip takes minutes), selects items through the shell view, right-clicks with `SendInput`, finds the menu and its submenu through UI Automation, clicks real entries, then checks the folder: output beside the original, original SHA-256 unchanged. `HARNESS_SHOTS=<folder>` saves cropped menu screenshots (only the menu bodies are copied; the rest of the picture stays transparent). The tray app is started, and its one-time welcome window closed, first.
 
 ### Screenshots without a desktop
 
