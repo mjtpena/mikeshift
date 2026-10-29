@@ -19,6 +19,7 @@ internal static partial class ExplorerScenarios
     /// --action-file a.png[,b.png]   files to copy into a fresh folder, select in Explorer and drag
     /// --action-tile "Blur faces"    the tile to drop on (found on the Formats or the Tools page)
     /// --action-out "a faces.png"    output names expected beside the originals (* matches any run of characters)
+    /// --action-toast "Blurred 1"    text the toast must contain (without it, the toast is only printed)
     /// --action-absent               instead, require that the tile is on neither page and drop nothing
     /// --action-timeout 120          seconds to wait for each output (default 60)
     /// </code>
@@ -30,6 +31,7 @@ internal static partial class ExplorerScenarios
             var sources = Opt("--action-file").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             var tile = Opt("--action-tile");
             var expected = Opt("--action-out").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            var toast = Opt("--action-toast");
             var absent = _args.Contains("--action-absent");
             var timeoutMs = int.TryParse(Opt("--action-timeout", "60"), out var secs) ? secs * 1000 : 60000;
             if (sources.Length == 0 || tile.Length == 0)
@@ -75,9 +77,11 @@ internal static partial class ExplorerScenarios
                         Rec.Check("Ctrl switched to the Tools page", s.App.WaitLog(t => t[s.LogMark..].Contains("page = Tool"), 1500));
                         Thread.Sleep(450);
                     }
-                    var hit = s.ToTile(tile, onTools && !onFormats);
-                    Rec.Check($"pointer on '{tile}' highlighted it", hit, hit ? "" : s.App.LastLine("highlight:"));
-                    Shot(s, "action-" + tile.Replace(' ', '-'));
+                    // The offered checks ignore case, ToTile does not: aim at the title as the wheel spells it.
+                    var title = (onFormats ? formats : tools).First(t => string.Equals(t, tile, StringComparison.OrdinalIgnoreCase));
+                    var hit = s.ToTile(title, onTools && !onFormats);
+                    Rec.Check($"pointer on '{title}' highlighted it", hit, hit ? "" : s.App.LastLine("highlight:"));
+                    Shot(s, "action-" + title.Replace(' ', '-'));
                     s.Release();
 
                     foreach (var pattern in expected)
@@ -85,13 +89,17 @@ internal static partial class ExplorerScenarios
                         string? found = null;
                         var got = Sess.Wait(() =>
                         {
-                            found = Directory.EnumerateFileSystemEntries(s.Work, pattern).FirstOrDefault(p => !names.Contains(Path.GetFileName(p)));
+                            // Naming's hidden .name.guid.mikeshift-tmp container is not an output, even when the pattern matches it.
+                            found = Directory.EnumerateFileSystemEntries(s.Work, pattern).FirstOrDefault(p =>
+                                !names.Contains(Path.GetFileName(p)) && !p.EndsWith(".mikeshift-tmp", StringComparison.OrdinalIgnoreCase));
                             return found is not null;
                         }, timeoutMs);
                         Rec.Check("output appeared: " + pattern, got, got ? Path.GetFileName(found) + (File.Exists(found) ? $", {new FileInfo(found!).Length} bytes" : "") : "");
                         if (got) Rec.Check("Explorer lists the output: " + Path.GetFileName(found), s.Ex.HasItem(Path.GetFileName(found!), 6000));
                     }
-                    Rec.Note("toast: " + string.Join(" | ", s.ToastTexts(2500)));
+                    var toasts = string.Join(" | ", s.ToastTexts(2500));
+                    if (toast.Length > 0) Rec.Check($"toast contains '{toast}'", toasts.Contains(toast, StringComparison.OrdinalIgnoreCase), toasts);
+                    else Rec.Note("toast: " + toasts);
                     var drop = Regex.Match(s.LogNew, @"Drop on.*").Value;
                     Rec.Check("drop effect was COPY", Regex.IsMatch(drop, @"effect=COPY"), drop);
                     Rec.Note("folder now: " + string.Join(", ", Directory.GetFileSystemEntries(s.Work).Select(p => Path.GetFileName(p))));
