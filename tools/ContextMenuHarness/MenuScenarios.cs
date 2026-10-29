@@ -233,8 +233,9 @@ internal static class MenuScenarios
             client.Connect(5000);
             using (var w = new BinaryWriter(client, System.Text.Encoding.UTF8, leaveOpen: true))
             {
-                w.Write(0x3148534Du); w.Write((byte)1); w.Write("PNG"); w.Write(paths.Length);
+                w.Write(0x3248534Du); w.Write((byte)1); w.Write("PNG"); w.Write(paths.Length);
                 foreach (var p in paths) w.Write(p);
+                w.Write(false); w.Write(0); w.Write(0); // no pointer position
                 w.Flush();
             }
             Check(client.ReadByte() == 1, "the tray app accepted the request");
@@ -362,7 +363,8 @@ internal static class MenuScenarios
                 client.Connect(attempt == 0 ? 500 : 20000);
                 using (var w = new BinaryWriter(client, System.Text.Encoding.UTF8, leaveOpen: true))
                 {
-                    w.Write(0x3148534Du); w.Write((byte)3); w.Write(""); w.Write(0); w.Flush();
+                    // A Ping in the current wire format (ShellRequest: "MSH2", verb, title, path count, then the optional pointer position).
+                    w.Write(0x3248534Du); w.Write((byte)3); w.Write(""); w.Write(0); w.Write(false); w.Write(0); w.Write(0); w.Flush();
                 }
                 up = client.ReadByte() == 1;
             }
