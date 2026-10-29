@@ -43,7 +43,7 @@ Everything runs on your PC. **Nothing is uploaded**, there is no telemetry, and 
 
 * **Local and private.** The package declares no internet capability and the code has no networking calls. It was also measured: while every action ran on every kind of file, no MikeShift process opened a connection ([how to check it yourself](docs/developer/testing.md#offline-verification)). The one exception is yours to choose: Microsoft Word, if you turn it on in Settings (off by default), is a separate program that talks to Microsoft on its own.
 * **Originals are never touched.** Every conversion writes a new file next to the original (`photo.heic` becomes `photo.png`, or `photo 2.png` if that exists) through a temporary file, so a failure leaves no half-written output. The automated tests compare each original's checksum before and after.
-* **Small and quiet.** The Microsoft Store package is about 23 MB to download and the sideload package about 45 MB, with no bundled third-party programs. Idle, the tray app uses about 17 MB of memory and no CPU, and the wheel appears within about 30 ms of the key press.
+* **Small and quiet.** The Microsoft Store package is about 24 MB to download and the sideload package about 49 MB, with no bundled third-party programs. Idle, the tray app uses about 17 MB of memory and no CPU, and the wheel appears within about 30 ms of the key press.
 * **Looks like Windows.** WinUI 3 with Mica, light, dark and high-contrast themes, per-monitor scaling, and a wheel that moves away from the taskbar. The wheel has named UI Automation tiles and a keyboard path; it has **not** yet been checked with Narrator, and the drag gesture itself needs a mouse.
 
 ## Install
@@ -52,10 +52,10 @@ Which file you need depends on your PC and on where you get MikeShift.
 
 | Package | Size | When to use it |
 |---|---:|---|
-| **Microsoft Store** | about 23 MB | Planned. It will install with no certificate steps and fetch the Windows App Runtime itself. A link will be here once it is published. |
-| `MikeShift_<version>_x64.msix` or `_arm64.msix` | about 45 MB | **Sideload**, complete: nothing else to install. **x64** suits most PCs; **ARM64** is for Snapdragon and other ARM PCs (built, but not yet run on ARM hardware). |
-| `MikeShift_<version>_store_x64.msix` or `_arm64.msix` | about 23 MB | Sideload, smaller: needs the [Windows App Runtime 2.5](https://learn.microsoft.com/windows/apps/windows-app-sdk/downloads) installed first. |
-| `MikeShift_<version>.msixbundle` | about 88 MB | Both architectures in one file (Windows picks the right one); twice the download. |
+| **Microsoft Store** | about 24 MB | Planned. It will install with no certificate steps and fetch the Windows App Runtime itself. A link will be here once it is published. |
+| `MikeShift_<version>_x64.msix` or `_arm64.msix` | about 49 MB (x64), 48 MB (ARM64) | **Sideload**, complete: nothing else to install. **x64** suits most PCs; **ARM64** is for Snapdragon and other ARM PCs (built, but not yet run on ARM hardware). |
+| `MikeShift_<version>_store_x64.msix` or `_arm64.msix` | about 24 MB (x64), 23 MB (ARM64) | Sideload, smaller: needs the [Windows App Runtime 2.5](https://learn.microsoft.com/windows/apps/windows-app-sdk/downloads) installed first. |
+| `MikeShift_<version>.msixbundle` | about 97 MB | Both architectures in one file (Windows picks the right one); twice the download. |
 
 To find out which you have, open Settings → System → About and read **System type**: "x64-based processor" means x64, "ARM-based processor" means ARM64.
 
@@ -87,18 +87,19 @@ The full walkthrough is the [user guide](docs/user-guide.md): every action by fi
 
 ## Supported formats
 
-44 actions in all; the wheel and the right-click menu show only the ones that fit your selection and your PC.
+53 actions in all; the wheel and the right-click menu show only the ones that fit your selection and your PC.
 
 | You have | Convert to | Tools |
 |---|---|---|
-| **Pictures**: PNG, JPG, HEIC, TIFF, GIF, WebP, BMP, AVIF | PNG, JPG, TIFF, GIF, BMP, WebP, HEIC, PDF, TXT (text in the picture) | Compress, Resize, Crop, Strip EXIF, Merge PDF |
-| **PDF** | PNG or JPG (pages), TXT (scans too) | Compress, Split, Merge |
+| **Pictures**: PNG, JPG, HEIC, TIFF, GIF, WebP, BMP, AVIF | PNG, JPG, TIFF, GIF, BMP, WebP, HEIC, ICO, PDF, Searchable PDF, TXT (text in the picture) | Compress, Resize, Crop, Strip EXIF, Blur faces, Upscale 2x (Copilot+ PCs), Read QR code, Merge PDF, Merge searchable PDF |
+| **PDF** | PNG or JPG (pages), TXT (scans too) | Compress, Split, Merge, Searchable PDF (for scans) |
 | **Video**: MP4, MOV, MKV, AVI, WMV, WebM and others | MP4, M4V, WMV, GIF, or audio only (M4A, MP3) | Compress, Fit 10 MB, Fit 25 MB, Trim |
 | **Audio**: MP3, WAV, M4A, FLAC, AIFF, WMA, AAC | M4A, WAV, AIFF, FLAC, MP3 | Compress, Trim |
-| **Documents**: DOCX, RTF, ODT, HTML, TXT, Markdown, DOC (needs Word) | PDF, DOCX, RTF, TXT, HTML, ODT | none |
+| **Documents**: DOCX, RTF, ODT, HTML, TXT, Markdown, DOC (needs Word) | PDF, DOCX, RTF, TXT, HTML, ODT | QR code (TXT files only) |
+| **Internet shortcuts**: URL | none | QR code |
 | **Anything, including folders** | Zip | none |
 
-HEIC, AVIF and WebP reading, MP3, FLAC and H.264 encoding, and some video codecs rely on Windows features or optional Microsoft extensions; MikeShift hides tiles that cannot work. Not offered: MOV and AVIF output, dithered GIFs (GIFs are up to 30 s, 480 px), lossless video trim, searchable PDFs. Text from pictures and scans needs a Windows language with text recognition. Documents become PDF with MikeShift's own plain layout, so they will not match Word's pagination. The full tables are in [supported formats](docs/supported-formats.md).
+HEIC, AVIF and WebP reading, MP3, FLAC and H.264 encoding, and some video codecs rely on Windows features or optional Microsoft extensions; MikeShift hides tiles that cannot work. Not offered: MOV and AVIF output, dithered GIFs (GIFs are up to 30 s, 480 px), lossless video trim, PDF editing. Text from pictures and scans (TXT, Searchable PDF) needs a Windows language with text recognition, Blur faces needs Windows face detection, and Upscale 2x appears only on Copilot+ PCs. Documents become PDF with MikeShift's own plain layout, so they will not match Word's pagination. The full tables are in [supported formats](docs/supported-formats.md).
 
 **Limits worth knowing first:** the Windows 10 right-click entry follows Microsoft's documentation but has not been seen on a Windows 10 PC; elevated (administrator) File Explorer windows are invisible to MikeShift; files that are not real files on disk (browser images, Outlook attachments) need saving first; encrypted PDFs are refused. Everything else is in [known limitations](docs/limitations.md).
 
