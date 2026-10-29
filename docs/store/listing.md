@@ -67,7 +67,7 @@ WHAT PEOPLE USE IT FOR
 • Video for chat and email: Fit 10 MB or Fit 25 MB makes a copy that fits the upload limit
 • QR codes: read one from a picture, or make one from a link or a short text
 • Logos: turn a PNG into a Windows icon (ICO)
-• Photos you share: blur every face in them
+• Photos you share: blur the faces Windows detects in them
 • Anything: Zip files and folders
 
 THREE WAYS TO USE IT
@@ -98,7 +98,7 @@ MikeShift shows only the actions that work for the files you picked on your PC.
 GOOD TO KNOW
 • HEIC (iPhone) photos need Microsoft's free HEIF Image Extensions and HEVC Video Extensions from the Microsoft Store. If they are missing, MikeShift tells you and offers a "Get HEIF" button that opens the Store page. Install them, then restart MikeShift.
 • MikeShift focuses on the common conversions. It does not do PDF editing or MOV and AVIF output, GIFs are limited to 30 seconds (15 by default), and documents become PDFs with MikeShift's own plain layout (not Word's exact pagination). Password-protected PDFs are refused. The full list is in the project's documentation.
-• Reading text from pictures and scans uses Windows' own text recognition, on your PC, in the languages Windows has installed. Without one of those languages the text and searchable PDF tiles are hidden.
+• Reading text from pictures and scans uses Windows' own text recognition, on your PC, in the languages Windows has installed. Without one of those languages the TXT tile for pictures and the searchable PDF tiles are hidden. PDF to TXT still works on PDFs that already have text.
 • Blur faces uses Windows face detection. It finds faces looking at the camera best and can miss others, so check the result before you share it.
 • Upscale 2x appears only on Copilot+ PCs. It uses the image upscaler built into Windows. The first time, Windows may download that AI model through Windows Update. That is Windows, not MikeShift, which still makes no connection, and the picture never leaves your PC.
 • Windows 11 is where it was built and tested. The package also installs on Windows 10 (1809 or later), but MikeShift has not yet been tested there, including the right-click entry.
@@ -116,7 +116,7 @@ New in 1.1:
 • Text from pictures and scanned PDFs. Pictures get a TXT tile, PDF to TXT now reads scanned pages, and Searchable PDF makes a scan searchable. It uses Windows' own text recognition on your PC.
 • Fit 10 MB and Fit 25 MB make a copy of a video small enough to send in chat or email.
 • Read QR code finds the codes in a picture. QR code makes one from a link or a short text.
-• Blur faces covers every face in a photo before you share it.
+• Blur faces covers the faces Windows detects in a photo. Check the result for missed faces before you share it.
 • ICO turns a logo into a Windows icon.
 • Upscale 2x doubles the size of a small picture on Copilot+ PCs. Windows may download its AI model the first time.
 • Fixed: WebP pictures work in PDF and the crop editor without Microsoft's WebP extension, and Hebrew and Arabic text from PDFs keeps its word order.
@@ -145,7 +145,7 @@ Microsoft Word is optional and off by default. Turn it on in Settings only if yo
 Free and open source under the MIT licence.
 Get the text out of a screenshot, a photo of a page or a scanned PDF, or make a scan searchable. Uses Windows' own text recognition on your PC.
 Make a video fit a 10 MB or 25 MB upload limit. Read a QR code from a picture, or make one from a link or a short text.
-Blur every face in a photo, make a Windows icon (ICO) from a logo, or upscale a small picture 2x on a Copilot+ PC.
+Blur detected faces in a photo (check for missed ones), make a Windows icon (ICO) from a logo, or upscale a small picture 2x on a Copilot+ PC.
 ```
 
 (20 bullets; the limit is 20. The three newest are at the end; move them up if you would rather lead with them.)
