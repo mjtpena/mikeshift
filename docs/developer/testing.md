@@ -94,7 +94,7 @@ Do these on the packages you intend to ship ([releasing](releasing.md)):
 
 * `makeappx` validates the manifest, including the `mikeshift.exe` alias to `MikeShift.Cli.exe` and its `desktop4:Subsystem="console"`.
 * Package contents: the self-contained runtime is present (`coreclr.dll`), `MikeShift.Cli.exe` and `MikeShift.exe` sit side by side in the package root, and there is no `onnxruntime.dll`, `DirectML.dll` or other Windows AI payload.
-* From an unpacked package: `MikeShift.Cli.exe --list`, `--run JPG`, `--run "Resize 50%"`, `--run Zip` and `--bogus` give exit codes 0 and 2; `MikeShift.exe --smoke-test` exits 0; the CLI suites pass against the trimmed executable (`MIKESHIFT_CLI_EXE`); a release build ignores `MIKESHIFT_LOG` without `--dev` and honours it with it.
+* From an unpacked package: `MikeShift.Cli.exe --list`, `--run JPG` (on a PNG: JPG is not offered for a JPG), `--run "Resize 50%"`, `--run Zip` and `--bogus` give exit codes 0 and 2; `MikeShift.exe --smoke-test` exits 0; the CLI suites pass against the trimmed executable (`MIKESHIFT_CLI_EXE`); a release build ignores `MIKESHIFT_LOG` without `--dev` and honours it with it.
 * The signature's subject equals the manifest's `Publisher`, and the SHA-256 of each file matches `SHA256SUMS.txt`.
 
 ## UI harnesses
@@ -151,7 +151,7 @@ $h = 'tools\ContextMenuHarness\bin\Debug\net10.0-windows10.0.26100.0\ContextMenu
 & $h menu <workfolder> timing 8                                  # right-click to menu on screen, with and without the extension registered
 ```
 
-`menu` opens its own File Explorer window on the work folder (a temp folder you created containing `photo1.jpg` to `photo3.jpg`, `sample.png`, `doc.pdf`, `letter.docx`, `IMG_0001.heic`, `folder\`, `big\` with 600 JPEGs and `mixedbig\` with 18 JPEGs and 4 PDFs), selects items through the shell view, right-clicks with `SendInput`, finds the menu and its submenu through UI Automation, clicks real entries, then checks the folder: output beside the original, original SHA-256 unchanged. `HARNESS_SHOTS=<folder>` saves cropped menu screenshots (only the menu bodies are copied; the rest of the picture stays transparent). The tray app is started, and its one-time welcome window closed, first.
+`menu` opens its own File Explorer window on the work folder (a temp folder you created containing `photo1.jpg` to `photo3.jpg`, `sample.png`, `doc.pdf`, `letter.docx`, `IMG_0001.heic`, `folder\`, `big\` with 600 JPEGs and `mixedbig\` with 18 JPEGs and 4 PDFs, named `a01.jpg` onwards as the scenarios expect; keep the 600 JPEGs small, or Zip takes minutes), selects items through the shell view, right-clicks with `SendInput`, finds the menu and its submenu through UI Automation, clicks real entries, then checks the folder: output beside the original, original SHA-256 unchanged. `HARNESS_SHOTS=<folder>` saves cropped menu screenshots (only the menu bodies are copied; the rest of the picture stays transparent). The tray app is started, and its one-time welcome window closed, first.
 
 ### Screenshots without a desktop
 
