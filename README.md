@@ -10,7 +10,7 @@ It is a free, open-source tray app for Windows 10 (version 1809 and later) and W
 |:-:|:-:|
 | <img src="docs/images/right-click-menu.png" alt="Right-clicking a HEIC photo in Windows 11 shows Convert with MikeShift with Convert to JPG, Convert to PNG, Convert to PDF, Compress, Resize 50%, Zip and More options" width="300"> | <img src="docs/images/wheel-formats-dark.png" alt="A wheel of output formats under the pointer while dragging a picture: PDF, PNG, JPG, TIFF, GIF, BMP, HEIC, WebP" width="360"> |
 
-> **Status: version 1.0 is in preparation and there is no signed release yet.** Everything described here is built and was tested on one Windows 11 x64 PC. It has not yet been run on ARM64 hardware, on Windows 10, or with a screen reader. [Installing today](#install) means building the package and signing it yourself, and [what has not been tested](docs/limitations.md#what-has-and-has-not-been-tested) is written out.
+> **Status: MikeShift is in the [Microsoft Store](https://apps.microsoft.com/detail/9PNZ1C9NRD8Z), and the Store version is the signed one.** The packages you build yourself are not signed (see [Install](#install)). Everything described here was tested on one Windows 11 x64 PC. It has not yet been run on ARM64 hardware, on Windows 10, or with a screen reader, and [what has not been tested](docs/limitations.md#what-has-and-has-not-been-tested) is written out.
 
 ## What people use it for
 
@@ -52,14 +52,14 @@ Which file you need depends on your PC and on where you get MikeShift.
 
 | Package | Size | When to use it |
 |---|---:|---|
-| **Microsoft Store** | about 24 MB | Planned. It will install with no certificate steps and fetch the Windows App Runtime itself. A link will be here once it is published. |
+| **[Microsoft Store](https://apps.microsoft.com/detail/9PNZ1C9NRD8Z)** | about 24 MB | The signed version, and the easiest way to install. It needs no certificate steps and fetches the Windows App Runtime itself. |
 | `MikeShift_<version>_x64.msix` or `_arm64.msix` | about 49 MB (x64), 48 MB (ARM64) | **Sideload**, complete: nothing else to install. **x64** suits most PCs; **ARM64** is for Snapdragon and other ARM PCs (built, but not yet run on ARM hardware). |
 | `MikeShift_<version>_store_x64.msix` or `_arm64.msix` | about 24 MB (x64), 23 MB (ARM64) | Sideload, smaller: needs the [Windows App Runtime 2.5](https://learn.microsoft.com/windows/apps/windows-app-sdk/downloads) installed first. |
 | `MikeShift_<version>.msixbundle` | about 97 MB | Both architectures in one file (Windows picks the right one); twice the download. |
 
 To find out which you have, open Settings → System → About and read **System type**: "x64-based processor" means x64, "ARM-based processor" means ARM64.
 
-**There is no signed release yet.** Windows installs a package only if it trusts whoever signed it, and public signing (the Store, or a purchased or Azure Trusted Signing certificate) is not set up. Until it is, you build the package and sign it with a certificate you make yourself. This takes a few minutes, needs administrator rights once to trust that certificate, and changes your PC's certificate store, so do it only for software you built or reviewed. You need the build tools listed under [Build from source](#build-from-source).
+**Outside the Store there is no signed package.** Windows installs a package only if it trusts whoever signed it, and the Store signs only what it publishes. For the other packages in this table you build the package and sign it with a certificate you make yourself. This takes a few minutes, needs administrator rights once to trust that certificate, and changes your PC's certificate store, so do it only for software you built or reviewed. You need the build tools listed under [Build from source](#build-from-source).
 
 ```powershell
 ./packaging/make-dev-cert.ps1 -Password (Read-Host -AsSecureString 'PFX password')   # makes a self-signed certificate matching the manifest Publisher
