@@ -172,6 +172,7 @@ internal static partial class ExplorerScenarios
 
     public static int Run(string[] args, string appExe, string repo)
     {
+        _args = args;
         AppExe = appExe;
         RepoRoot = repo;
         Root = Path.GetFullPath(Environment.GetEnvironmentVariable("MIKESHIFT_EXPLORER_ROOT") is { Length: > 0 } r ? r : Path.Combine(Path.GetTempPath(), "mikeshift-explorer"));
@@ -183,7 +184,7 @@ internal static partial class ExplorerScenarios
 
         var wanted = args[Array.IndexOf(args, "--explorer") + 1].Split(',');
         var all = Tests();
-        var run = wanted.Contains("all") ? all.Keys.ToArray() : wanted;
+        var run = wanted.Contains("all") ? all.Keys.Where(k => k != "action").ToArray() : wanted;
         foreach (var name in run)
         {
             if (!all.TryGetValue(name, out var test)) { Console.Error.WriteLine("unknown scenario " + name + "; known: " + string.Join(", ", all.Keys)); return 2; }
@@ -284,6 +285,7 @@ internal static partial class ExplorerScenarios
         RegisterTrayKeyboard(d);
         RegisterTrayKeyboardOpen(d);
         RegisterEntryPoints(d);
+        RegisterActions(d);
         return d;
     }
 }
