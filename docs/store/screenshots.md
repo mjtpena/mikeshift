@@ -19,13 +19,13 @@ None of the captures in `docs/images/` is big enough for the Store on its own, s
 | 3 | `03-formats-and-tools.png` | Formats on one page, tools on the other: Compress, Resize 50%, Crop, Strip EXIF and Zip. Press the other key to switch. | `wheel-formats-dark.png`, `wheel-tools-dark.png` |
 | 4 | `04-merge-and-zip.png` | The menu fits what you selected: three images offer Merge PDF, a folder offers Zip. | `right-click-menu-multiple.png`, `right-click-menu-folder.png` |
 | 5 | `05-keyboard-and-settings.png` | Select files in File Explorer and press Ctrl+Alt+Shift+Space to open the wheel from the keyboard. Settings choose the keys and keep Word off by default. | `wheel-keyboard-dark.png`, `settings-open-the-wheel.png` |
-| 6 | `06-private-and-small.png` | Nothing is uploaded: no network code, no account, no telemetry. Originals are never moved or changed. About 23 MB to download. | `welcome.png` |
+| 6 | `06-private-and-small.png` | Nothing is uploaded: no network code, no account, no telemetry. Originals are never moved or changed. About 24 MB to download. | `welcome.png` |
 | 7 | `07-heic-guidance.png` | iPhone HEIC photos need Microsoft's free HEIF and HEVC extensions. If they are missing, MikeShift says so and opens the Store page. | `heic-extension-hint.png`, `failure-dialog.png` |
 | 8 | `08-crop-and-trim.png` | Crop a photo or trim a clip in a small editor. Results are saved as copies. | `crop-editor.png`, `trim-dialog.png` |
 
 Suggested upload order: 1, 2, 4, 3, 6, 5, 7, 8 (jobs first, then the wheel, then trust, then edge cases). Images 1 and 4 show other apps' entries in the Windows menu (Clipchamp, OneDrive, Acrobat, ChatGPT and PowerToys entries from the capture PC). That is normal for a Windows menu, but a hero shot on a clean PC (below) is cleaner and should replace images 1 and 4 when you have it. Images 2, 3 and 5 show the wheel over a synthetic backdrop, so no desktop pixels are in them.
 
-Image 6 says "About 23 MB" and "no network code" and is true of the Store package as built (23.3 MB x64, 22.5 MB ARM64) and of the measurement described in [offline verification](../developer/testing.md#offline-verification). If a later build grows, re-check the number.
+Image 6 still says "About 23 MB" (made for 1.0). The 1.1.0 Store package is 23.7 MB x64 and 22.9 MB ARM64, so the caption above says "About 24 MB" and the image should be re-made when convenient. "No network code" is true of the package and of the measurement described in [offline verification](../developer/testing.md#offline-verification). If a later build grows, re-check the number.
 
 ## What is missing
 
