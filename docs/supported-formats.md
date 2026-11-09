@@ -1,6 +1,6 @@
 # Supported formats
 
-MikeShift offers 44 actions across six kinds of file. The wheel and the right-click menu show only the actions that fit your selection and that your PC can do, so you never see a tile that cannot work. This page lists what can go in, what can come out, and what depends on optional Microsoft extensions.
+MikeShift offers 53 actions across six kinds of file. The wheel and the right-click menu show only the actions that fit your selection and that your PC can do, so you never see a tile that cannot work. This page lists what can go in, what can come out, and what depends on optional Microsoft extensions.
 
 How a file is recognised: by its content and its extension. A PDF is recognised by its `%PDF` header even if it is misnamed. Video and audio files are recognised only when Windows can actually open them. A selection of mixed kinds offers **Zip** only.
 
@@ -111,7 +111,7 @@ MikeShift checks at start-up what Windows on this PC can do, and hides tiles tha
 ## What is not supported
 
 * **MOV and AVIF output.** Windows has no QuickTime or AVIF writer. MOV files can be read; they convert to MP4, M4V, WMV, GIF, M4A or MP3. AVIF files can be read when the AV1 extension is installed.
-* **PDF editing, PDF forms and searchable PDFs.** MikeShift converts, merges, splits and compresses PDFs; it does not edit them. Text read from a scan comes out as a TXT file, not as a PDF you can search.
+* **PDF editing and PDF forms.** MikeShift converts, merges, splits and compresses PDFs, and can add a text layer to a scan with Searchable PDF; it does not edit them.
 * **Handwriting, layout and a choice of OCR language.** Text recognition reads printed text in the languages of your Windows profile, one line after another; columns and tables are not rebuilt.
 * **Presets, custom sizes and per-format options.** Settings has [five conversion choices](user-guide.md#conversions); there is no custom percentage, pixel size, bitrate or naming template. Video Fit offers 10 MB and 25 MB; other sizes are for the command line only (`--max-size`).
 * **Size targets for audio.** Fit is for video; audio has Compress.

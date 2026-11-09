@@ -24,7 +24,7 @@
   <Identity
     Name="2259MichaelJohnTimpocPea.MikeShift"
     Publisher="CN=C81A4E31-21AC-4917-B3E7-F1C28300F48A"
-    Version="1.0.0.0" />
+    Version="1.1.0.0" />
 
   <Properties>
     <DisplayName>MikeShift</DisplayName>

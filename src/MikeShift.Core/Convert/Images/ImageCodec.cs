@@ -315,6 +315,8 @@ internal static class ImageCodec
     /// </summary>
     public static async Task<(int Frames, bool Animated)> FrameInfoAsync(string path, CancellationToken ct)
     {
+        // AsTask(ct) may not observe a token that is already cancelled when the decoder completes synchronously
+        ct.ThrowIfCancellationRequested();
         try
         {
             var container = SniffFile(path);

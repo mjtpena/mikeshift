@@ -8,8 +8,8 @@ MikeShift ships as MSIX packages, one per architecture (x64 and ARM64), IL-trimm
 
 | Flavour | `-Flavor` | Windows App SDK | Size per architecture | For |
 |---|---|---|---|---|
-| **sideload** (default) | `sideload` | inside the package | about 45 MB | Anything you hand to someone: nothing to install first. |
-| **store** | `store` | the shared framework package `Microsoft.WindowsAppRuntime.2` | about 23 MB | The Microsoft Store, which installs the framework itself. A sideloaded Store-flavour package needs the framework installed first (Microsoft's `WindowsAppRuntimeInstall-<arch>.exe`, or `Add-AppxPackage -DependencyPath`). |
+| **sideload** (default) | `sideload` | inside the package | about 49 MB (x64), 48 MB (ARM64) | Anything you hand to someone: nothing to install first. |
+| **store** | `store` | the shared framework package `Microsoft.WindowsAppRuntime.2` | about 24 MB (x64), 23 MB (ARM64) | The Microsoft Store, which installs the framework itself. A sideloaded Store-flavour package needs the framework installed first (Microsoft's `WindowsAppRuntimeInstall-<arch>.exe`, or `Add-AppxPackage -DependencyPath`). |
 
 ## Making the packages
 

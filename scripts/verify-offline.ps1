@@ -269,7 +269,7 @@ try {
       $args += $f.FullName
       $r = Invoke-Cli $args; $cliRuns++
       $key = "exit $($r.Exit)"; $exitCodes[$key] = 1 + [int]$exitCodes[$key]
-      if ($r.Exit -ne 0 -and $r.Err -notmatch 'already small|Animated images|pages, and only|no audio|probably a scan|find any text|No faces found|read from an animated|Convert it to PDF first|already searchable') { $failures.Add("$($f.Name) / $t : exit $($r.Exit): $($r.Err.Trim())") }
+      if ($r.Exit -ne 0 -and $r.Err -notmatch 'already small|Animated images|pages, and only|no audio|probably a scan|find any text|No faces found|read from an animated|Convert it to PDF first|already searchable|find a QR code') { $failures.Add("$($f.Name) / $t : exit $($r.Exit): $($r.Err.Trim())") }
     }
   }
   foreach ($set in @(@('Merge', (Get-ChildItem (Join-Path $samples 'pdf') -Filter *.pdf)), @('Merge PDF', (Get-ChildItem (Join-Path $samples 'images') -Include *.png, *.jpg -Recurse)), @('Merge searchable PDF', (Get-ChildItem (Join-Path $samples 'images') -Include *.png, *.jpg -Recurse)))) {
@@ -300,7 +300,11 @@ try {
     if ($alive -and -not $app.HasExited) {
       $png = Join-Path $samples 'images\scene.png'
       $before = @(Get-ChildItem (Split-Path $png) -File).Count
-      $second = Start-Process -FilePath $AppPath -ArgumentList @('--convert', $png) -PassThru
+      # --convert is a dev switch (honoured by a Release exe only with --dev), and a plain second launch would hand over to the running
+      # instance without its arguments, so this one skips the single-instance check.
+      $env:MIKESHIFT_NO_SINGLE_INSTANCE = '1'
+      try { $second = Start-Process -FilePath $AppPath -ArgumentList @('--dev', '--convert', $png) -PassThru }
+      finally { Remove-Item Env:MIKESHIFT_NO_SINGLE_INSTANCE -ErrorAction SilentlyContinue }
       Start-Sleep -Seconds 6
       try {
         Add-Type -AssemblyName System.Windows.Forms
