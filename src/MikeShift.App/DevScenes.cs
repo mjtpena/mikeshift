@@ -11,7 +11,7 @@ namespace MikeShift.App;
 /// instance and the global input hooks alone, and <c>MIKESHIFT_THEME=light|dark</c> to force the XAML theme.
 /// Scenes: <c>toast-progress</c>, <c>toast-progress-batch</c>, <c>toast-success</c>, <c>toast-success-many</c>, <c>toast-downloads</c>,
 /// <c>toast-partial</c>, <c>toast-already</c>, <c>toast-long</c>, <c>dialog-single</c>, <c>dialog-partial</c>, <c>dialog-all</c>, <c>dialog-merged</c>,
-/// <c>dialog-elevated</c>, <c>tray-menu</c>, <c>picker</c>, <c>dialog-heic</c>, <c>toast-select-first</c>. The onboarding states are the
+/// <c>dialog-elevated</c>, <c>tray-menu</c>, <c>picker</c>, <c>dialog-heic</c>, <c>toast-select-first</c>, <c>merge-order</c>, <c>merge-order-folders</c>. The onboarding states are the
 /// ordinary windows with a scratch settings file and a capability override: <c>--show-welcome</c> / <c>--show-settings</c> with
 /// <c>MIKESHIFT_SETTINGS_PATH</c> (e.g. <c>{"armKey":"Ctrl"}</c>) and <c>MIKESHIFT_CAPS=no-heif,no-hevc</c> (see <c>scripts/capture-scene.ps1 -Env</c>).
 /// </summary>
@@ -136,6 +136,14 @@ internal static class DevScenes
             case "toast-select-first":
                 services.Hud.Show(FeedbackCopy.SelectFilesFirst);
                 break;
+            case "merge-order":
+                // The Merge order dialog over names only (no file is opened). Closing it writes the answer to the log.
+                _ = ShowMergeOrder([@"C:\Scans\invoice 10.pdf", @"C:\Scans\invoice 2.pdf", @"C:\Scans\Cover letter.pdf", @"C:\Scans\invoice 1.pdf"]);
+                break;
+            case "merge-order-folders":
+                // The same, with files from several folders: each row shows its folder.
+                _ = ShowMergeOrder([@"C:\Users\me\Pictures\page 3.jpg", @"C:\Users\me\Downloads\page 1.jpg", @"D:\Camera\page 2.jpg"]);
+                break;
             case "dialog-elevated":
                 services.Dialogs.Show(new DialogContent(FeedbackCopy.ElevatedTitle, FeedbackCopy.ElevatedBody, [], null, DialogSeverity.Warning,
                     [new DialogButton("Close", DialogCommand.Close), new DialogButton("Quit MikeShift", DialogCommand.QuitApp)]));
@@ -152,5 +160,11 @@ internal static class DevScenes
                 tray.ConvertFiles();
                 break;
         }
+    }
+
+    private static async Task ShowMergeOrder(string[] paths)
+    {
+        var ordered = await Editors.MergeOrderDialog.ShowAsync(paths, CancellationToken.None);
+        Wheel.WheelLog.Info("merge-order scene: " + (ordered is null ? "cancelled" : string.Join(" | ", ordered.Select(Path.GetFileName))));
     }
 }

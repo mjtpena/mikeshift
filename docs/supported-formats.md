@@ -46,7 +46,7 @@ Pictures are converted upright: the camera's rotation is applied, so the result 
 | TXT | The text of the PDF, UTF-8, with a blank line between pages. Pages without text (scans) are read with Windows text recognition when your PC has a language for it; otherwise a scanned PDF is refused. |
 | Compress | A copy with the pictures inside recompressed, only if it comes out smaller. |
 | Split | One PDF per page, in a new folder named `<name> split`. |
-| Merge | `Merged.pdf`, from two or more PDFs, in the order they are listed. |
+| Merge | `Merged.pdf`, from two or more PDFs, in the order you set in the [Merge order window](user-guide.md#merge-order) (on the command line, the order the files are given). |
 | Searchable PDF | `<name> searchable.pdf`: a scanned PDF with an invisible text layer on top of its original pages, so it can be searched and its text copied. Pages are kept as they are, not re-rendered. Pages that already have text are left alone. A PDF with text on every page is refused as already searchable. Needs text recognition (hidden without it). The text is set in an installed Windows font (Arial for Latin, Greek, Cyrillic, Hebrew and Arabic; the CJK, Hangul, Indic, Thai and Myanmar fonts of Windows for those scripts); words in a script with no installed font are left out. |
 
 Encrypted PDFs are refused (see [limitations](limitations.md#pdf)).

@@ -1,3 +1,5 @@
+using MikeShift.Core.Actions;
+using MikeShift.Core.Actions.Catalog;
 using MikeShift.Core.Pdf;
 using static MikeShift.Core.Tests.Pdf.PdfTestHelpers;
 
@@ -63,6 +65,46 @@ public class PdfSplitMergeTests
         var (w1, h1) = PageSize(output, 1);
         Assert.True(w0 > h0, "first page should be the landscape one");
         Assert.True(w1 < h1);
+    }
+
+    [Fact]
+    public async Task Merge_action_joins_the_files_in_the_order_the_user_chose()
+    {
+        using var tmp = new TempDir();
+        tmp.CreateDir("one");
+        tmp.CreateDir("two");
+        var landscape = tmp.WriteFile("one/first.pdf", Fixtures.PdfLandscape());
+        var text = tmp.WriteFile("two/second.pdf", Fixtures.PdfText(3));
+        using var guard = OriginalsGuard.Watch(landscape, text);
+        var ask = new FakeInteraction { Order = paths => [.. paths.Reverse()] };
+        var merge = ActionCatalog.Find(PdfActions.All, "Merge")!;
+
+        var result = await merge.Run([landscape, text], new ActionContext(Capabilities.All, ask), default);
+
+        Assert.Equal([landscape, text], ask.OrderAsked);
+        var output = Assert.Single(result.Outputs);
+        Assert.Equal(tmp.Combine("two", "Merged.pdf"), output.Path); // beside the first file of the chosen order
+        Assert.Equal(text, output.Input);
+        Assert.Equal(4, PageCount(output.Path));
+        var (w0, h0) = PageSize(output.Path, 0);
+        var (w3, h3) = PageSize(output.Path, 3);
+        Assert.True(w0 < h0, "the first page should now be the portrait one");
+        Assert.True(w3 > h3, "the last page should now be the landscape one");
+    }
+
+    [Fact]
+    public async Task Merge_action_cancelled_in_the_order_dialog_writes_nothing()
+    {
+        using var tmp = new TempDir();
+        var a = tmp.WriteFile("a.pdf", Fixtures.PdfText(1));
+        var b = tmp.WriteFile("b.pdf", Fixtures.PdfText(1));
+        var merge = ActionCatalog.Find(PdfActions.All, "Merge")!;
+
+        var result = await merge.Run([a, b], new ActionContext(Capabilities.All, new FakeInteraction { Order = _ => null }), default);
+
+        Assert.True(result.Cancelled);
+        Assert.False(File.Exists(tmp.Combine("Merged.pdf")));
+        Assert.Equal(["a.pdf", "b.pdf"], Directory.GetFileSystemEntries(tmp.Path).Select(p => Path.GetFileName(p)!).Where(n => n != "__downloads").Order().ToArray());
     }
 
     [Fact]

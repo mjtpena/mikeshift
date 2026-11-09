@@ -222,6 +222,107 @@ public class EachTests
         Assert.True(r3.Cancelled);
     }
 
+    // ------------------------------------------------------------------ the order of a merge
+
+    private static readonly string[] OrderInput = [@"C:\in\a.pdf", @"C:\in\b.pdf", @"C:\in\c.pdf"];
+
+    [Fact]
+    public async Task SingleOutput_with_chooseOrder_runs_on_the_files_in_the_chosen_order()
+    {
+        IReadOnlyList<string>? seen = null;
+        var action = ActionDef.SingleOutput("Merge", WheelPage.Tool,
+            (paths, _, _) => { seen = paths; return Task.FromResult(@"C:\in\Merged.pdf"); }, chooseOrder: true);
+        var ask = new FakeInteraction { Order = p => [p[2], p[0], p[1]] };
+
+        var result = await action.Run(OrderInput, new ActionContext(Capabilities.All, ask), CancellationToken.None);
+
+        Assert.Equal(OrderInput, ask.OrderAsked);
+        Assert.Equal([@"C:\in\c.pdf", @"C:\in\a.pdf", @"C:\in\b.pdf"], seen);
+        Assert.Equal(3, result.Total);
+        // "the first input" is the first file of the chosen order: it is what the output is reported against.
+        Assert.Equal(@"C:\in\c.pdf", Assert.Single(result.Outputs).Input);
+    }
+
+    [Fact]
+    public async Task SingleOutput_with_chooseOrder_is_interactive_and_asks_once()
+    {
+        var ask = new FakeInteraction();
+        var action = ActionDef.SingleOutput("Merge", WheelPage.Tool, (_, _, _) => Task.FromResult(@"C:\in\Merged.pdf"), chooseOrder: true);
+
+        await action.Run(OrderInput, new ActionContext(Capabilities.All, ask), CancellationToken.None);
+
+        Assert.True(action.Interactive);
+        Assert.Equal(1, ask.OrderRequests);
+    }
+
+    [Fact]
+    public async Task SingleOutput_without_chooseOrder_never_asks()
+    {
+        var ask = new FakeInteraction();
+        var action = ActionDef.SingleOutput("Archive", WheelPage.Tool, (_, _, _) => Task.FromResult(@"C:\in\Archive.zip"));
+
+        await action.Run(OrderInput, new ActionContext(Capabilities.All, ask), CancellationToken.None);
+
+        Assert.False(action.Interactive);
+        Assert.Equal(0, ask.OrderRequests);
+    }
+
+    [Fact]
+    public async Task SingleOutput_with_chooseOrder_cancelled_converts_nothing()
+    {
+        var converted = false;
+        var action = ActionDef.SingleOutput("Merge", WheelPage.Tool,
+            (_, _, _) => { converted = true; return Task.FromResult(@"C:\in\Merged.pdf"); }, chooseOrder: true);
+        var ask = new FakeInteraction { Order = _ => null };
+
+        var result = await action.Run(OrderInput, new ActionContext(Capabilities.All, ask), CancellationToken.None);
+
+        Assert.True(result.Cancelled);
+        Assert.Empty(result.Outputs);
+        Assert.False(converted);
+    }
+
+    [Theory]
+    [InlineData("dropped")]
+    [InlineData("added")]
+    [InlineData("swapped")]
+    public async Task SingleOutput_with_chooseOrder_refuses_an_answer_that_is_not_the_same_files(string kind)
+    {
+        var converted = false;
+        var action = ActionDef.SingleOutput("Merge", WheelPage.Tool,
+            (_, _, _) => { converted = true; return Task.FromResult(@"C:\in\Merged.pdf"); }, chooseOrder: true);
+        var ask = new FakeInteraction
+        {
+            Order = p => kind switch
+            {
+                "dropped" => [.. p.Take(2)],
+                "added" => [.. p, @"C:\in\d.pdf"],
+                _ => [p[0], p[1], @"C:\in\d.pdf"],
+            },
+        };
+
+        var result = await action.Run(OrderInput, new ActionContext(Capabilities.All, ask), CancellationToken.None);
+
+        Assert.False(result.Cancelled);
+        Assert.Empty(result.Outputs);
+        Assert.False(converted);
+        Assert.NotEmpty(result.Failures);
+    }
+
+    [Fact]
+    public async Task SingleOutput_with_chooseOrder_already_cancelled_does_not_ask()
+    {
+        var ask = new FakeInteraction();
+        var action = ActionDef.SingleOutput("Merge", WheelPage.Tool, (_, _, _) => Task.FromResult(@"C:\in\Merged.pdf"), chooseOrder: true);
+        using var cts = new CancellationTokenSource();
+        await cts.CancelAsync();
+
+        var result = await action.Run(OrderInput, new ActionContext(Capabilities.All, ask), cts.Token);
+
+        Assert.True(result.Cancelled);
+        Assert.Equal(0, ask.OrderRequests);
+    }
+
     private sealed class SyncProgress(Action<string> onReport) : IProgress<string>
     {
         public void Report(string value) => onReport(value);

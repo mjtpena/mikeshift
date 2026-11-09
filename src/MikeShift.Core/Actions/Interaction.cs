@@ -1,3 +1,5 @@
+using MikeShift.Core.Editing;
+
 namespace MikeShift.Core.Actions;
 
 /// <summary>An axis-aligned pixel rectangle with a top-left origin (x grows right, y grows down).</summary>
@@ -20,9 +22,9 @@ public readonly record struct TimeRange(TimeSpan Start, TimeSpan End)
 }
 
 /// <summary>
-/// How an interactive action (Crop, Trim) asks the user for input. The App shows editor windows; the CLI answers
-/// from <c>--crop</c>/<c>--range</c>; tests use a fake. Returning null means the user cancelled, which stops the
-/// batch but keeps outputs already written.
+/// How an interactive action (Crop, Trim, the order of a Merge) asks the user for input. The App shows editor windows; the CLI answers
+/// from <c>--crop</c>/<c>--range</c> and takes the files in the order given; tests use a fake. Returning null means the user cancelled,
+/// which stops the batch but keeps outputs already written.
 /// </summary>
 public interface IInteraction
 {
@@ -31,9 +33,18 @@ public interface IInteraction
 
     /// <summary>Asks for a time range of the media file at <paramref name="path"/>. Null = cancelled.</summary>
     Task<TimeRange?> ChooseRangeAsync(string path, CancellationToken ct);
+
+    /// <summary>
+    /// Asks in which order <paramref name="paths"/> are to be joined (Merge, Merge PDF). The answer holds exactly the same files, in the
+    /// chosen order (<see cref="MikeShift.Core.Editing.FileOrderModel.IsPermutation"/>). Null = cancelled.
+    /// </summary>
+    Task<IReadOnlyList<string>?> ChooseOrderAsync(IReadOnlyList<string> paths, CancellationToken ct);
 }
 
-/// <summary>An <see cref="IInteraction"/> that cancels everything. Used for headless runs without interactive input.</summary>
+/// <summary>
+/// An <see cref="IInteraction"/> for runs without anyone to ask. It cancels a crop or a trim, which have no sensible default, and keeps
+/// the order of a merge as it was given.
+/// </summary>
 public sealed class NoInteraction : IInteraction
 {
     public static NoInteraction Instance { get; } = new();
@@ -41,6 +52,9 @@ public sealed class NoInteraction : IInteraction
     public Task<CropChoice?> ChooseCropAsync(string path, CancellationToken ct) => Task.FromResult<CropChoice?>(null);
 
     public Task<TimeRange?> ChooseRangeAsync(string path, CancellationToken ct) => Task.FromResult<TimeRange?>(null);
+
+    public Task<IReadOnlyList<string>?> ChooseOrderAsync(IReadOnlyList<string> paths, CancellationToken ct) =>
+        Task.FromResult<IReadOnlyList<string>?>(paths);
 }
 
 /// <summary>Everything an action run needs besides the file list.</summary>
@@ -75,4 +89,17 @@ public sealed class ActionContext
     public async Task<TimeRange> RequireRangeAsync(string path, CancellationToken ct) =>
         await Interaction.ChooseRangeAsync(path, ct).ConfigureAwait(false)
         ?? throw new OperationCanceledException("Trim cancelled.");
+
+    /// <summary>
+    /// Asks in which order to join <paramref name="paths"/>; throws <see cref="OperationCanceledException"/> if the user cancelled and
+    /// <see cref="InvalidOperationException"/> if the answer is not the same files (a merge must never silently drop or add one).
+    /// </summary>
+    public async Task<IReadOnlyList<string>> RequireOrderAsync(IReadOnlyList<string> paths, CancellationToken ct)
+    {
+        var ordered = await Interaction.ChooseOrderAsync(paths, ct).ConfigureAwait(false)
+            ?? throw new OperationCanceledException("Merge cancelled.");
+        if (!FileOrderModel.IsPermutation(paths, ordered))
+            throw new InvalidOperationException("The chosen order does not hold the files that were selected.");
+        return ordered;
+    }
 }
