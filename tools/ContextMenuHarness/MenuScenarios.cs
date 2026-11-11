@@ -102,9 +102,35 @@ internal static class MenuScenarios
         Check(items.Contains("Merge PDF"), "submenu offers Merge PDF for 3 images");
         Shot("modern-menu-multi-images.png");
         ClickName("Merge PDF");
+        ConfirmMergeOrder(3);
         var output = WaitForFile(Path.Combine(Work, "Merged.pdf"));
         Check(output is not null, "Merged.pdf appeared");
         Cleanup();
+    }
+
+    /// <summary>
+    /// The Merge order dialog opens before a merge runs. Waits for it, checks that it lists <paramref name="files"/> files and clicks Merge
+    /// with a real click, as a person would.
+    /// </summary>
+    private static void ConfirmMergeOrder(int files)
+    {
+        AutomationElement? dialog = null;
+        var sw = Stopwatch.StartNew();
+        while (dialog is null && sw.ElapsedMilliseconds < 8000)
+        {
+            dialog = AutomationElement.RootElement.FindFirst(TreeScope.Children, new PropertyCondition(AutomationElement.NameProperty, "Merge order"));
+            if (dialog is null) Thread.Sleep(100);
+        }
+        Check(dialog is not null, "the Merge order dialog opened");
+        if (dialog is null) return;
+
+        var rows = dialog.FindAll(TreeScope.Descendants, new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.ListItem)).Count;
+        Check(rows == files, $"the dialog lists the {files} files (rows={rows})");
+        var merge = dialog.FindFirst(TreeScope.Descendants, new PropertyCondition(AutomationElement.NameProperty, "Merge (Enter)"));
+        Check(merge is not null, "the dialog has a Merge button");
+        if (merge is null) return;
+        var r = merge.Current.BoundingRectangle;
+        RealInput.LeftClick((int)(r.X + r.Width / 2), (int)(r.Y + r.Height / 2));
     }
 
     private static void FolderZip()

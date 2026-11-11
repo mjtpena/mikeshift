@@ -169,14 +169,14 @@ For release testing, on a real Windows 11 machine (and, where noted, Windows 10)
 - [ ] **3. Shift held before the click** (range select): the wheel still works. After converting, repeat with a Shift-click: the previously produced file is excluded from the selection. *(Scenarios `shift-range`, `shift-click-rule`.)*
 - [ ] **4. Gesture keys.** The other key mid-drag goes to Tools and back; a mouse-wheel tick toggles; releasing over empty space lets Explorer's own drop proceed; Esc dismisses; dropping on the hub does nothing. *(Scenarios `toggles`, `release-elsewhere`, `escape`, `hub`.)*
 - [ ] **5. Two input languages installed:** the Shift-then-Ctrl gesture does not switch language or layout.
-- [ ] **6. Multi-file.** Three pictures offer Merge PDF; a picture plus a PDF offers Zip only; a folder offers Zip; a 500-file selection stays responsive. *(Scenarios `merge-pdf`, `zip-mixed`, `zip-folder`, `big-selection`, `already-png`.)*
+- [ ] **6. Multi-file.** Three pictures offer Merge PDF; a picture plus a PDF offers Zip only; a folder offers Zip; a 500-file selection stays responsive. Merge PDF (and Merge for PDFs) opens the Merge order window first; Merge in it writes `Merged.pdf` in the order shown, Cancel writes nothing. *(Scenarios `merge-pdf`, `zip-mixed`, `zip-folder`, `big-selection`, `already-png`; `merge-pdf` and the context-menu scenario `multi-merge` click Merge in the window.)*
 - [ ] **7. Virtual files.** A browser image, an Outlook attachment, a file inside a `.zip` and a file on a phone (MTP) each show "Save the file first", with no crash and Explorer unaffected. *(Scenario `zip-save-first`.)*
 - [ ] **8. Elevation.** An elevated File Explorer window shows no wheel (documented). MikeShift started elevated shows its startup warning.
 
 **Click mode, editors and messages**
 
 - [ ] **9. Convert files….** Click mode, keyboard navigation, the screen reader announces tiles, focus loss dismisses. *(Scenarios `tray-keys`, `tray-mouse`, `tray-escape`, `tray-blur`, `tray-cancel`, `tray-flyout`, `tray-keyboard`, `tray-keyboard-open`.)*
-- [ ] **10. Crop and Trim editors.** Presets, slider and pixel-box sync, Esc and Enter, correct outputs.
+- [ ] **10. Crop and Trim editors, and the Merge order window.** Presets, slider and pixel-box sync, Esc and Enter, correct outputs. In the Merge order window: drag a file to a new place (with the mouse and with touch), Move up / Move down and Alt+Up / Alt+Down, Sort by name (`page 2` before `page 10`), a screen reader reads "1. name" for each row, and the pages of the merged PDF follow the order shown.
 - [ ] **11. Messages.** A single job; several jobs ("N more in progress"); the partial-failure dialog; the sound toggle; the "in Downloads" fallback (read-only source folder); **Show in folder** opens File Explorer with the output selected.
 - [ ] **12. Open at login** matches Windows Settings → Apps → Startup and survives a reboot. A second launch pops the tray menu.
 

@@ -454,5 +454,9 @@ public static class CliRunner
             if (range is null) MissingRange = true;
             return Task.FromResult(range);
         }
+
+        // A script already says the order: the files as they were named on the command line.
+        public Task<IReadOnlyList<string>?> ChooseOrderAsync(IReadOnlyList<string> paths, CancellationToken ct) =>
+            Task.FromResult<IReadOnlyList<string>?>(paths);
     }
 }

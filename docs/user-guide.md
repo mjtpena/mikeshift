@@ -170,9 +170,9 @@ Tools appear on the wheel's second page (and on the right-click menu where they 
 | **Upscale 2x** | Pictures, on Copilot+ PCs | Makes a copy at exactly twice the width and height, in the same format and with transparency kept. It uses the image upscaler built into Windows, which runs on the NPU, so the tile appears only on Copilot+ PCs. The first time, Windows may need to download the upscaler's AI model; that takes a few minutes, and the job waits for it (see the [privacy statement](privacy.md#third-parties)). A picture over about 50 megapixels is refused, because the result would pass 200. See [known limitations](limitations.md#pictures). | `logo 2x.png` |
 | **Fit 10 MB**, **Fit 25 MB** | Video | Makes an MP4 small enough to attach: at most 10 MB (or 25 MB), never over it. A video already under the size is copied into MP4 without re-encoding where possible. A video too long to stay watchable at that size is refused, with roughly how long one can be. See [supported formats](supported-formats.md#video). | `clip 10 MB.mp4` |
 | **Trim** | Video, audio | Opens the trim dialog; see below. | `clip trimmed.mp4` |
-| **Merge PDF** | Two or more pictures | Puts them into one PDF, in the order listed. | `Merged.pdf` |
+| **Merge PDF** | Two or more pictures | Puts them into one PDF, in the order you set in the window that opens first; see below. | `Merged.pdf` |
 | **Merge searchable PDF** | Two or more pictures | As Merge PDF, with a text layer you can search and copy from. | `Merged searchable.pdf` |
-| **Merge** | Two or more PDFs | Joins them into one PDF. | `Merged.pdf` |
+| **Merge** | Two or more PDFs | Joins them into one PDF, in the order you set in the window that opens first; see below. | `Merged.pdf` |
 | **Searchable PDF** | PDF | Adds an invisible text layer to the pages that have no text (scans), so the PDF can be searched and its text copied. The pages look exactly as before. Pictures have a **Searchable PDF** format tile that does the same while making the PDF. | `scan searchable.pdf` |
 | **Split** | PDF | One PDF per page, in a new folder. | `report split` (folder) |
 | **Zip** | Anything | Puts the files and folders into a zip archive. One item becomes `<name>.zip`; several become `Archive.zip`. | `photo.zip`, `Archive.zip` |
@@ -198,13 +198,26 @@ PDF to PNG or JPG also writes a folder (`report pages`) with one image per page.
 * **Trim** (or Enter) writes the selected part; **Cancel** (or Esc) writes nothing.
 * Video is re-encoded so the cut is exact (as MP4, or WMV for WMV sources). WAV and AIFF audio is cut without any loss; other audio becomes an M4A.
 
+### Merge order
+
+**Merge**, **Merge PDF** and **Merge searchable PDF** open a window first, with the files in a list, so you can put them in the order they should have in the merged file. The list starts in the order File Explorer gave the files, and the first file in the list comes first in the result.
+
+<img src="images/merge-order.png" alt="The Merge order window: four PDFs in a numbered list, Move up, Move down and Sort by name buttons, Cancel and Merge" width="440">
+
+* Drag a file up or down the list, or select it and use **Move up** and **Move down** (or Alt+Up and Alt+Down).
+* **Sort by name** puts the files in order of their names, reading numbers as numbers, so `page 2` comes before `page 10`.
+* **Merge** (or Enter) joins the files in the order shown. **Cancel** (or Esc) writes nothing.
+* When the files come from different folders, each line also shows its folder.
+
+The window only changes the order; it never opens the files. On the command line there is no window: the files join in the order you name them.
+
 ## Where converted files go
 
 * **Next to the original,** by default, with the same name and the new extension: `photo.heic` becomes `photo.png`.
 * **Names never overwrite.** If `photo.png` exists, the new file is `photo 2.png`, then `photo 3.png`. The result of a tool adds a word (`photo compressed.jpg`, `photo 50%.jpg`, `photo cropped.jpg`, `photo clean.jpg`, `clip trimmed.mp4`, `clip 10 MB.mp4`).
 * **In a folder you choose,** if you set **Where converted files go** in [Settings](#conversions). If that folder is missing or cannot be written to, the files go to your **Downloads** folder for that job and the message says so.
 * **If the original's folder cannot be written to** (a read-only share, a protected folder), the files go to **Downloads** too, and the message says "in Downloads".
-* **Merged and zipped files** are named `Merged.pdf` and `Archive.zip` (or `<name>.zip` for a single item) and placed next to the first file.
+* **Merged and zipped files** are named `Merged.pdf` and `Archive.zip` (or `<name>.zip` for a single item) and placed next to the first file (for a merge, the first file in the order you chose).
 * **Safe by construction.** Each conversion is written to a hidden temporary folder next to the result and moved into place at the end, so a failed or cancelled conversion leaves nothing half-written. The original is never edited, moved or deleted.
 
 ## Messages and Show in folder
@@ -285,6 +298,8 @@ Shows what this PC can do: which Microsoft Store extensions are installed (HEIF,
 | | **Esc** | Close the wheel (so does clicking another window) |
 | Crop editor | **Arrow keys** / **Shift+arrows** | Move the crop box 1 / 10 pixels |
 | Crop editor, Trim dialog | **Enter** / **Esc** | Save / cancel |
+| Merge order window | **Alt+Up** / **Alt+Down** | Move the selected file earlier / later |
+| | **Enter** / **Esc** | Merge / cancel |
 | Tray menu | the underlined letters (access keys) | **C** Convert files…, **L** Open at login, **S** Settings, **H** How it works, **U** Check for updates, **X** Exit |
 
 ## Accessibility
@@ -303,7 +318,7 @@ The package adds a `mikeshift` command to your PATH (open a new terminal after i
 mikeshift --list photo.heic                    # what can be done with this file on this PC
 mikeshift --run PNG photo.heic                 # prints the output path, exit code 0
 mikeshift --run "Resize 50%" a.jpg b.jpg
-mikeshift --run Merge a.pdf b.pdf              # Merged.pdf next to a.pdf
+mikeshift --run Merge a.pdf b.pdf              # Merged.pdf next to a.pdf; files join in the order given
 mikeshift --run TXT screenshot.png scan.pdf    # the text in a picture and in a scanned PDF
 mikeshift --run "Searchable PDF" scan.pdf       # scan searchable.pdf, with text you can search
 mikeshift --run "Read QR code" screenshot.png   # screenshot qr.txt holds what the code says

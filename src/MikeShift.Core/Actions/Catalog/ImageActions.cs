@@ -61,12 +61,14 @@ public static class ImageActions
         ActionDef.SingleOutput("Merge PDF", WheelPage.Tool,
             (paths, _, ct) => PdfConverter.MergeImagesAsync(paths, ct),
             glyph: Glyphs.MergePdf,
-            appliesTo: ActionDef.AtLeast(2)),
+            appliesTo: ActionDef.AtLeast(2),
+            chooseOrder: true),
         ActionDef.SingleOutput("Merge searchable PDF", WheelPage.Tool,
             (paths, _, ct) => PdfConverter.MergeImagesSearchableAsync(paths, ct),
             glyph: Glyphs.MergePdf,
             requires: c => c.Ocr,
-            appliesTo: ActionDef.AtLeast(2)),
+            appliesTo: ActionDef.AtLeast(2),
+            chooseOrder: true),
         ReadQrCode(),
     ];
 

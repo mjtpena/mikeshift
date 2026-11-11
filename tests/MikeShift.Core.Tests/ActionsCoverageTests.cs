@@ -139,10 +139,13 @@ public class ActionsCoverageTests
     // ------------------------------------------------------------------ IInteraction / ActionContext
 
     [Fact]
-    public async Task NoInteraction_cancels_every_question()
+    public async Task NoInteraction_cancels_crop_and_trim_and_keeps_the_merge_order()
     {
         Assert.Null(await NoInteraction.Instance.ChooseCropAsync("x.png", CancellationToken.None));
         Assert.Null(await NoInteraction.Instance.ChooseRangeAsync("x.wav", CancellationToken.None));
+        // A merge with nobody to ask keeps the order it was given.
+        IReadOnlyList<string> files = ["b.pdf", "a.pdf"];
+        Assert.Equal(files, await NoInteraction.Instance.ChooseOrderAsync(files, CancellationToken.None));
     }
 
     [Fact]

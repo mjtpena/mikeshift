@@ -1,3 +1,7 @@
+#:property PublishAot=false
+// A file-based app publishes with AOT by default, which restores Microsoft.DotNet.ILCompiler. This tool never publishes, and a security
+// advisory on that package (NU1903) fails every trimmed build under TreatWarningsAsErrors, so AOT is switched off.
+//
 // Build-time helper for the IL trimmer (Trimming.props): finds every [ComImport] interface in a list of assemblies.
 //
 //   dotnet run --file tools/ComInterfaceScan.cs -- --list <file with one assembly path per line> [--descriptor <out.xml>] [--linked <dir>]

@@ -28,7 +28,7 @@ Almost everything the issue lists as "host" already contains no converter code. 
 
 | Type | Why it is not host-only |
 |---|---|
-| `ActionDef`, `ActionContext` (`Actions/`) | `ActionDef` is built on `Capabilities`, `Kind`, and `WheelPage` with two fixed pages (formats, tools). `ActionContext` carries `ConversionOptions`, and `IInteraction` has two methods, `ChooseCropAsync` and `ChooseRangeAsync`, which are Crop and Trim. `ActionDef.Run` also sets `Naming.OutputFolder` from `ConversionOptions.OutputFolder`. |
+| `ActionDef`, `ActionContext` (`Actions/`) | `ActionDef` is built on `Capabilities`, `Kind`, and `WheelPage` with two fixed pages (formats, tools). `ActionContext` carries `ConversionOptions`, and `IInteraction` has three methods, `ChooseCropAsync`, `ChooseRangeAsync` and `ChooseOrderAsync`, which are Crop, Trim and the order of a merge. `ActionDef.Run` also sets `Naming.OutputFolder` from `ConversionOptions.OutputFolder`. |
 | `ActionCatalog` | A static class that picks the list by `Category` (Image, Pdf, Video, Audio, Document). The wheel, the Explorer bridge, the job runner and the CLI all call it directly (`WheelController`, `ShellBridge.RunAction`, `CliRunner`). |
 | `ContextMenuPlanner` | The ranking table is keyed by `Category`, the top-level text is the constant "Convert with MikeShift", and it calls `CodecHelp`. |
 | `DragSession`, `WheelModel`, `WheelText` | They take `WheelPage` and `ActionDef`. `WheelText` knows about Word and `.doc`. |

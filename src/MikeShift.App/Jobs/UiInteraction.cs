@@ -5,10 +5,10 @@ using MikeShift.Core.Actions;
 namespace MikeShift.App.Jobs;
 
 /// <summary>
-/// The App's <see cref="IInteraction"/>: how Crop and Trim ask the user for input.
+/// The App's <see cref="IInteraction"/>: how Crop, Trim and the order of a Merge ask the user for input.
 /// <para>
-/// Until an editor is attached the methods return null (cancelled) after showing a "not available yet" toast.
-/// App startup attaches the real editors by setting <see cref="CropEditor"/> and <see cref="TrimEditor"/>. The handlers are called on a thread-pool thread because actions run
+/// Until an editor is attached Crop and Trim return null (cancelled) after showing a "not available yet" toast, and a Merge keeps the order it was given.
+/// App startup attaches the real editors by setting <see cref="CropEditor"/>, <see cref="TrimEditor"/> and <see cref="OrderEditor"/>. The handlers are called on a thread-pool thread because actions run
 /// there; use <see cref="OnUiThreadAsync{T}"/> to open XAML windows.
 /// </para>
 /// </summary>
@@ -41,6 +41,16 @@ public sealed class UiInteraction : IInteraction
         if (TrimEditor is { } editor) return editor(path, ct);
         _hud.Show("Trim is not available yet");
         return Task.FromResult<TimeRange?>(null);
+    }
+
+    /// <summary>Shows the Merge order dialog for the selected files and returns them in the chosen order (null = cancelled). Set at startup.</summary>
+    public Func<IReadOnlyList<string>, CancellationToken, Task<IReadOnlyList<string>?>>? OrderEditor { get; set; }
+
+    public Task<IReadOnlyList<string>?> ChooseOrderAsync(IReadOnlyList<string> paths, CancellationToken ct)
+    {
+        // Unlike a crop, a merge has a sensible answer when nobody can be asked: the order it was given.
+        if (OrderEditor is { } editor) return editor(paths, ct);
+        return Task.FromResult<IReadOnlyList<string>?>(paths);
     }
 
     /// <summary>
@@ -89,5 +99,12 @@ internal sealed class NotifyingInteraction : IInteraction
         var range = await _inner.ChooseRangeAsync(path, ct).ConfigureAwait(false);
         if (range is not null) _accepted();
         return range;
+    }
+
+    public async Task<IReadOnlyList<string>?> ChooseOrderAsync(IReadOnlyList<string> paths, CancellationToken ct)
+    {
+        var ordered = await _inner.ChooseOrderAsync(paths, ct).ConfigureAwait(false);
+        if (ordered is not null) _accepted();
+        return ordered;
     }
 }

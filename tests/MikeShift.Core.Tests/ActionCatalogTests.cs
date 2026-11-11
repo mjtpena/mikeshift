@@ -46,7 +46,8 @@ public class ActionCatalogTests
         Assert.Equal(["Compress", "Resize 50%", "Crop", "Strip EXIF", "Blur faces", "Upscale 2x", "Merge PDF", "Merge searchable PDF", "Read QR code", "Zip"], tools);
         Assert.All(all.Where(a => a.Page == WheelPage.Tool), a => Assert.False(string.IsNullOrEmpty(a.Glyph)));
         Assert.All(all.Where(a => a.Page == WheelPage.Format), a => Assert.Null(a.Glyph));
-        Assert.Single(all.Where(a => a.Interactive), a => a.Title == "Crop");
+        // Crop asks for a rectangle; the two Merge tiles ask for the order of the files.
+        Assert.Equal(["Crop", "Merge PDF", "Merge searchable PDF"], all.Where(a => a.Interactive).Select(a => a.Title));
     }
 
     [Fact]

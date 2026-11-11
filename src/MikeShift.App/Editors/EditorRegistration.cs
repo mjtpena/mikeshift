@@ -3,7 +3,7 @@ using MikeShift.App.Jobs;
 namespace MikeShift.App.Editors;
 
 /// <summary>
-/// Plugs the Crop editor and the Trim dialog into the app. Call <see cref="Register"/> once from
+/// Plugs the Crop editor, the Trim dialog and the Merge order dialog into the app. Call <see cref="Register"/> once from
 /// <c>App.OnLaunched</c>, after the services exist.
 /// </summary>
 public static class EditorRegistration
@@ -12,7 +12,7 @@ public static class EditorRegistration
     public static string DevResultPath => Path.Combine(Path.GetTempPath(), "mikeshift-editor-result.txt");
 
     /// <summary>
-    /// Sets <see cref="UiInteraction.CropEditor"/> and <see cref="UiInteraction.TrimEditor"/>. The handlers are called on a
+    /// Sets <see cref="UiInteraction.CropEditor"/>, <see cref="UiInteraction.TrimEditor"/> and <see cref="UiInteraction.OrderEditor"/>. The handlers are called on a
     /// thread-pool thread (actions run there), so they hop to the UI thread to create the windows, and complete when
     /// the window closes. Cancelling the token closes the window and yields null.
     /// </summary>
@@ -27,6 +27,11 @@ public static class EditorRegistration
         interaction.TrimEditor = (path, ct) => interaction.OnUiThreadAsync(async () =>
         {
             try { return await TrimDialog.ShowAsync(path, ct); }
+            finally { MemoryTrim.CompactSoon(); }
+        });
+        interaction.OrderEditor = (paths, ct) => interaction.OnUiThreadAsync(async () =>
+        {
+            try { return await MergeOrderDialog.ShowAsync(paths, ct); }
             finally { MemoryTrim.CompactSoon(); }
         });
     }

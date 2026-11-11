@@ -2,6 +2,12 @@
 
 All notable changes to MikeShift are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+### Added
+
+* **Choose the order of a merge.** **Merge**, **Merge PDF** and **Merge searchable PDF** now open a small window first, with the selected files in a list, so you can put them in the order they should have in the merged file: drag a file up or down, use **Move up** and **Move down** (Alt+Up and Alt+Down), or press **Sort by name**, which reads numbers as numbers (`page 2` before `page 10`). **Merge** (or Enter) joins them in that order and **Cancel** (or Esc) writes nothing. Until now the files were joined in whatever order File Explorer listed the selection, with no way to change it short of renaming the files. `Merged.pdf` goes next to the first file in the chosen order. The command line is unchanged: files join in the order they are named.
+
 ## 1.1.0 (2026-10-29)
 
 ### Added

@@ -63,7 +63,7 @@ public sealed record ActionDef
     /// </summary>
     public IReadOnlySet<string> HideFor { get; init; } = NoExtensions;
 
-    /// <summary>True for actions that need user input first (Crop, Trim): the HUD toast waits until the editor closes.</summary>
+    /// <summary>True for actions that need user input first (Crop, Trim, and the Merge tiles, which ask for the order of the files): the HUD toast waits until the editor closes.</summary>
     public bool Interactive { get; init; }
 
     /// <summary>Capability gate (e.g. <c>c =&gt; c.HeifEncode</c>). Null = always available.</summary>
@@ -143,6 +143,11 @@ public sealed record ActionDef
     /// Creates an action that consumes the whole selection and produces ONE output (Merge PDF, Merge, Zip): <paramref name="convert"/>
     /// returns the output path. Cancellation, <see cref="ConversionException"/> and unexpected exceptions become a proper
     /// <see cref="ActionResult"/>; the Downloads fallback is inferred against the first input.
+    /// <para>
+    /// With <paramref name="chooseOrder"/> the action first asks the user in which order to join the files
+    /// (<see cref="IInteraction.ChooseOrderAsync"/>) and runs <paramref name="convert"/> on them in that order, so "the first input" (where the
+    /// output goes, what the result is reported against) is the first file of the chosen order. The action is then <see cref="Interactive"/>.
+    /// </para>
     /// </summary>
     public static ActionDef SingleOutput(
         string title,
@@ -150,13 +155,16 @@ public sealed record ActionDef
         Func<IReadOnlyList<string>, ActionContext, CancellationToken, Task<string>> convert,
         string? glyph = null,
         Func<Capabilities, bool>? requires = null,
-        Func<IReadOnlyList<string>, Capabilities, bool>? appliesTo = null) =>
-        Batch(title, page, async (paths, ctx, ct) =>
+        Func<IReadOnlyList<string>, Capabilities, bool>? appliesTo = null,
+        bool chooseOrder = false) =>
+        Batch(title, page, async (selected, ctx, ct) =>
         {
+            var paths = selected;
             if (ct.IsCancellationRequested) return new ActionResult { Total = paths.Count, Cancelled = true };
-            ctx.Progress?.Report(title);
             try
             {
+                if (chooseOrder) paths = await ctx.RequireOrderAsync(selected, ct).ConfigureAwait(false);
+                ctx.Progress?.Report(title);
                 var output = await convert(paths, ctx, ct).ConfigureAwait(false);
                 return new ActionResult
                 {
@@ -176,7 +184,7 @@ public sealed record ActionDef
             {
                 return ActionResult.Failed(paths.Count, paths[0], Each.DescribeUnexpected(ex));
             }
-        }, glyph, requires, appliesTo);
+        }, glyph, requires, appliesTo) with { Interactive = chooseOrder };
 
     /// <summary>An <c>appliesTo</c> predicate: at least <paramref name="n"/> selected items.</summary>
     public static Func<IReadOnlyList<string>, Capabilities, bool> AtLeast(int n) => (paths, _) => paths.Count >= n;

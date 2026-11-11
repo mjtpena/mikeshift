@@ -64,6 +64,7 @@ public class ImageActionTests
     {
         public Task<CropChoice?> ChooseCropAsync(string path, CancellationToken ct) => Task.FromResult(choice);
         public Task<TimeRange?> ChooseRangeAsync(string path, CancellationToken ct) => Task.FromResult<TimeRange?>(null);
+        public Task<IReadOnlyList<string>?> ChooseOrderAsync(IReadOnlyList<string> paths, CancellationToken ct) => Task.FromResult<IReadOnlyList<string>?>(paths);
     }
 
     [Fact]
@@ -217,6 +218,7 @@ public class ImageActionTests
     {
         public Task<CropChoice?> ChooseCropAsync(string path, CancellationToken ct) => Task.FromResult(next());
         public Task<TimeRange?> ChooseRangeAsync(string path, CancellationToken ct) => Task.FromResult<TimeRange?>(null);
+        public Task<IReadOnlyList<string>?> ChooseOrderAsync(IReadOnlyList<string> paths, CancellationToken ct) => Task.FromResult<IReadOnlyList<string>?>(paths);
     }
 
     [Fact]

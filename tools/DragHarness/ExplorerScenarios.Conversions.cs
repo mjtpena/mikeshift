@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.IO.Compression;
 using System.Text.RegularExpressions;
+using System.Windows.Automation;
 
 namespace DragHarness;
 
@@ -20,7 +21,34 @@ internal static partial class ExplorerScenarios
     }
 
     /// <summary>Finishes a drag onto a tile: highlight, screenshot, release, and wait for the output files.</summary>
-    private static bool DropOn(Sess s, string tile, bool tools, string shot, params string[] outputs)
+    private static bool DropOn(Sess s, string tile, bool tools, string shot, params string[] outputs) =>
+        DropOnThen(s, tile, tools, shot, null, outputs);
+
+    /// <summary>
+    /// The Merge order dialog opens before a merge runs. Waits for it, checks that it lists <paramref name="files"/> files and clicks Merge,
+    /// with a real click, as a person would.
+    /// </summary>
+    private static void ConfirmMergeOrder(int files)
+    {
+        var sw = Stopwatch.StartNew();
+        AutomationElement? dialog = null;
+        while (dialog is null && sw.ElapsedMilliseconds < 8000)
+        {
+            dialog = AutomationElement.RootElement.FindFirst(TreeScope.Children, new PropertyCondition(AutomationElement.NameProperty, "Merge order"));
+            if (dialog is null) Thread.Sleep(100);
+        }
+        Rec.Check("the Merge order dialog opened", dialog is not null);
+        if (dialog is null) return;
+
+        var rows = dialog.FindAll(TreeScope.Descendants, new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.ListItem)).Count;
+        Rec.Check($"the dialog lists the {files} files", rows == files, "rows=" + rows);
+        var merge = dialog.FindFirst(TreeScope.Descendants, new PropertyCondition(AutomationElement.NameProperty, "Merge (Enter)"));
+        Rec.Check("the dialog has a Merge button", merge is not null);
+        if (merge is not null) TrayKit.Click(merge);
+    }
+
+    /// <summary>Like <see cref="DropOn"/>, running <paramref name="afterRelease"/> (a dialog the tile opens) between the release and the wait for the outputs.</summary>
+    private static bool DropOnThen(Sess s, string tile, bool tools, string shot, Action? afterRelease, params string[] outputs)
     {
         var tiled = s.WaitTiles();
         Rec.Check("tiles populated", tiled, tiled ? string.Join(",", s.Tiles(false)) + " | " + string.Join(",", s.Tiles(true)) : s.Log);
@@ -30,6 +58,7 @@ internal static partial class ExplorerScenarios
         Rec.Check($"pointer on '{tile}' highlighted it", hit, hit ? "" : s.App.LastLine("highlight:"));
         if (shot.Length > 0) Shot(s, shot);
         s.Release();
+        afterRelease?.Invoke();
         var ok = true;
         foreach (var o in outputs)
         {
@@ -101,7 +130,7 @@ internal static partial class ExplorerScenarios
                 Thread.Sleep(450);
                 Rec.Check("Merge PDF is offered for 3 images", s.Tiles(true).Any(t => t.Contains("Merge")), string.Join(",", s.Tiles(true)));
                 var merge = s.Tiles(true).FirstOrDefault(t => t.Contains("Merge")) ?? "Merge PDF";
-                DropOn(s, merge, true, "merge-pdf-tools", "Merged.pdf");
+                DropOnThen(s, merge, true, "merge-pdf-tools", () => ConfirmMergeOrder(3), "Merged.pdf");
                 var pdf = Path.Combine(s.Work, "Merged.pdf");
                 if (File.Exists(pdf))
                 {

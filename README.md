@@ -18,7 +18,7 @@ It is a free, open-source tray app for Windows 10 (version 1809 and later) and W
 |---|---|
 | Turn an iPhone **HEIC** photo into a JPG or PNG | Right-click, **Convert with MikeShift**, **Convert to JPG**. (Needs Microsoft's two free codec extensions; see [HEIC photos](#heic-photos).) |
 | Turn a **WebP** (or any web image) into a PNG or JPG | The same. Select many files and they all convert at once. |
-| **Merge** images or PDFs into one PDF, **split** a PDF, get a PDF's pages as images or its text | Select two or more files, right-click, **Merge PDF**. Split, page images and text are in the wheel. |
+| **Merge** images or PDFs into one PDF, **split** a PDF, get a PDF's pages as images or its text | Select two or more files, right-click, **Merge PDF**, put them in order and press Merge. Split, page images and text are in the wheel. |
 | Make a video an **MP4**, a short **GIF**, or pull out the **MP3** | Right-click, or drag the video onto a format in the wheel. |
 | **Shrink** photos to email them | **Compress** or **Resize 50%**. Crop and Strip EXIF are there too. |
 | Convert a document (DOCX, RTF, ODT, HTML, TXT) or **zip** files and folders | Right-click, pick the format or **Zip**. |
