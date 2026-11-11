@@ -112,14 +112,8 @@ Free, MIT licence, source code on GitHub.
 ## Paste: what's new in this version (up to 1,500 characters)
 
 ```
-New in 1.1:
-• Text from pictures and scanned PDFs. Pictures get a TXT tile, PDF to TXT now reads scanned pages, and Searchable PDF makes a scan searchable. It uses Windows' own text recognition on your PC.
-• Fit 10 MB and Fit 25 MB make a copy of a video small enough to send in chat or email.
-• Read QR code finds the codes in a picture. QR code makes one from a link or a short text.
-• Blur faces covers the faces Windows detects in a photo. Check the result for missed faces before you share it.
-• ICO turns a logo into a Windows icon.
-• Upscale 2x doubles the size of a small picture on Copilot+ PCs. Windows may download its AI model the first time.
-• Fixed: WebP pictures work in PDF and the crop editor without Microsoft's WebP extension, and Hebrew and Arabic text from PDFs keeps its word order.
+New in 1.2:
+• Choose the order of a merge. Merge, Merge PDF and Merge searchable PDF now open a small window with your files in a list. Drag them into the order you want, or use Move up, Move down and Sort by name, then press Merge. Before, files were joined in whatever order File Explorer listed them.
 Still nothing is uploaded: no network code, no account, no telemetry.
 ```
 
@@ -235,17 +229,18 @@ Notes: the memory and storage figures are from the project's measurements ([limi
 ## Notes for certification (paste in Product > Submission options > Notes for certification, which allows 2,000 characters at the time of writing)
 
 ```
-MikeShift is a tray app that converts files from File Explorer. No account or sign-in is needed. It has no network code and declares no internet capability.
+MikeShift is a tray app that converts files from File Explorer. No account is needed. It has no network code and declares no internet capability.
 
 How to test:
-1. Install and launch. A welcome window opens and an icon appears in the notification area (it may be in the overflow).
-2. In File Explorer, right-click a .jpg or .png, choose "Convert with MikeShift" (in the main Windows 11 menu), then "Convert to PNG" or "Convert to JPG". A copy appears next to the original and a message says so.
-3. Optional: drag a file and hold Shift (or Ctrl). Drop it on a tile of the wheel that appears. Esc cancels. Ctrl+Alt+Shift+Space opens the wheel for the selected files.
-4. New in 1.1 (if a tile is not in the short right-click list, choose "More options..." or run "mikeshift --list <file>"): a screenshot or scanned PDF > TXT or Searchable PDF. A video > Fit 10 MB. A picture of a QR code > Read QR code. A .url or .txt file > QR code. A photo of people > Blur faces. A .png > ICO. Tiles that need Windows text recognition or face detection are hidden where Windows lacks it.
+1. Install and launch. A welcome window opens and an icon appears in the notification area (maybe in the overflow).
+2. In File Explorer, right-click a .jpg or .png, choose "Convert with MikeShift" (main Windows 11 menu), then "Convert to PNG" or "Convert to JPG". A copy appears next to the original.
+3. Optional: drag a file and hold Shift (or Ctrl), then drop it on a tile of the wheel. Ctrl+Alt+Shift+Space opens the wheel for the selected files.
+4. Other tiles (if one is not in the short list, choose "More options..." or run "mikeshift --list <file>"): scan or screenshot > TXT or Searchable PDF; video > Fit 10 MB; picture of a QR code > Read QR code; .url or .txt > QR code; photo of people > Blur faces; .png > ICO. Tiles needing text recognition or face detection are hidden where Windows lacks it.
+5. New in 1.2: select two or more .jpg files or PDFs, right-click, "Convert with MikeShift", then "Merge PDF" (for PDFs: "Merge PDFs"). A "Merge order" window lists the files; drag to reorder, then press Merge. Cancel writes nothing.
 
 runFullTrust: MikeShift is a WinUI 3 desktop app. It needs full trust for a low-level mouse and keyboard hook (it reads only mouse movement, the left button, the wheel and Shift, Ctrl, Alt and Esc, to run the gesture, and stores nothing), a File Explorer context-menu COM server, the files the user chooses, Media Foundation and the Windows PDF renderer.
 
-systemAIModels: used only by "Upscale 2x" on Copilot+ PCs, which calls the image upscaler built into Windows (Microsoft.Windows.AI.Imaging). The AI model belongs to Windows. If it is missing, Windows installs it itself through Windows Update. It is not a network capability: MikeShift has no internet capability and opens no connection. On other PCs the tile is hidden, so a tester will not see it.
+systemAIModels: used only by "Upscale 2x" on Copilot+ PCs, which calls the image upscaler built into Windows (Microsoft.Windows.AI.Imaging). The model belongs to Windows, which installs it through Windows Update if missing. This is not a network capability: MikeShift opens no connection. On other PCs the tile is hidden.
 
 "Open at login" is off by default. The app adds a "mikeshift" command line alias.
 ```
